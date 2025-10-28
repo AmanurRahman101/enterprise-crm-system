@@ -54,10 +54,7 @@ This section directly answers the problems from 1.1 by explaining *how* the visi
 
 ## 
 
-## 
 
-## 
-## 
 
 ## **2\. Product Goals & Objectives**
 
