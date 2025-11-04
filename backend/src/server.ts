@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import logger from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/authRoutes';
+import contactRoutes from './routes/contactRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,9 @@ app.get(`/api/${process.env.API_VERSION || 'v1'}`, (_req: Request, res: Response
 
 // Authentication routes
 app.use('/api/auth', authRoutes);
+
+// Contact management routes
+app.use('/api/contacts', contactRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
