@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, DealStage, TaskStatus, TicketStatus, TicketPriority, ActivityType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -23,13 +23,13 @@ async function main() {
   console.log('👤 Creating users...');
   const hashedPassword = await bcrypt.hash('Password123!', 10);
 
-  const admin = await prisma.user.create({
+  await prisma.user.create({
     data: {
       email: 'admin@tawasol.com',
       password: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
-      role: UserRole.ADMIN,
+      role: 'ADMIN',
       isActive: true,
     },
   });
@@ -40,7 +40,7 @@ async function main() {
       password: hashedPassword,
       firstName: 'Sarah',
       lastName: 'Manager',
-      role: UserRole.MANAGER,
+      role: 'MANAGER',
       isActive: true,
     },
   });
@@ -51,7 +51,7 @@ async function main() {
       password: hashedPassword,
       firstName: 'John',
       lastName: 'Sales',
-      role: UserRole.SALES,
+      role: 'SALES',
       isActive: true,
     },
   });
@@ -62,7 +62,7 @@ async function main() {
       password: hashedPassword,
       firstName: 'Emma',
       lastName: 'Wilson',
-      role: UserRole.SALES,
+      role: 'SALES',
       isActive: true,
     },
   });
@@ -73,7 +73,7 @@ async function main() {
       password: hashedPassword,
       firstName: 'Mike',
       lastName: 'Support',
-      role: UserRole.SUPPORT,
+      role: 'SUPPORT',
       isActive: true,
     },
   });
@@ -84,7 +84,7 @@ async function main() {
       password: hashedPassword,
       firstName: 'Lisa',
       lastName: 'Chen',
-      role: UserRole.SUPPORT,
+      role: 'SUPPORT',
       isActive: true,
     },
   });
@@ -235,9 +235,9 @@ async function main() {
         title: 'Acme Corp - Enterprise License Renewal',
         value: 150000,
         currency: 'USD',
-        stage: DealStage.NEGOTIATION,
+        stage: 'NEGOTIATION',
         probability: 80,
-        priority: TicketPriority.HIGH,
+        priority: 'HIGH',
         source: 'Renewal',
         description: 'Annual enterprise license renewal with potential upsell',
         expectedCloseDate: new Date('2025-12-31'),
@@ -251,9 +251,9 @@ async function main() {
         title: 'TechStart - New Implementation',
         value: 45000,
         currency: 'USD',
-        stage: DealStage.PROPOSAL,
+        stage: 'PROPOSAL',
         probability: 60,
-        priority: TicketPriority.MEDIUM,
+        priority: 'MEDIUM',
         source: 'Website',
         description: 'Initial implementation for growing startup',
         expectedCloseDate: new Date('2025-11-30'),
@@ -267,9 +267,9 @@ async function main() {
         title: 'Global Solutions - Consulting Package',
         value: 250000,
         currency: 'GBP',
-        stage: DealStage.QUALIFIED,
+        stage: 'QUALIFIED',
         probability: 40,
-        priority: TicketPriority.HIGH,
+        priority: 'HIGH',
         source: 'Referral',
         description: 'Large consulting engagement for digital transformation',
         expectedCloseDate: new Date('2026-02-28'),
@@ -289,8 +289,8 @@ async function main() {
       data: {
         title: 'Follow up on contract terms',
         description: 'Review and discuss final contract terms with Robert',
-        status: TaskStatus.TODO,
-        priority: TicketPriority.HIGH,
+        status: 'TODO',
+        priority: 'HIGH',
         dueDate: new Date('2025-11-10'),
         contactId: contacts[0].id,
         dealId: deals[0].id,
@@ -302,8 +302,8 @@ async function main() {
       data: {
         title: 'Send proposal to TechStart',
         description: 'Prepare and send customized proposal based on discovery call',
-        status: TaskStatus.IN_PROGRESS,
-        priority: TicketPriority.HIGH,
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
         dueDate: new Date('2025-11-08'),
         contactId: contacts[2].id,
         dealId: deals[1].id,
@@ -315,8 +315,8 @@ async function main() {
       data: {
         title: 'Schedule demo with Global Solutions',
         description: 'Book product demonstration for key stakeholders',
-        status: TaskStatus.TODO,
-        priority: TicketPriority.MEDIUM,
+        status: 'TODO',
+        priority: 'MEDIUM',
         dueDate: new Date('2025-11-15'),
         contactId: contacts[4].id,
         dealId: deals[2].id,
@@ -335,8 +335,8 @@ async function main() {
       data: {
         subject: 'Login issues after password reset',
         description: 'User cannot login after resetting password. Getting error message.',
-        status: TicketStatus.IN_PROGRESS,
-        priority: TicketPriority.HIGH,
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
         category: 'Technical',
         source: 'EMAIL',
         tags: ['authentication', 'urgent'],
@@ -348,8 +348,8 @@ async function main() {
       data: {
         subject: 'Feature request: Export to Excel',
         description: 'Customer requesting ability to export reports to Excel format',
-        status: TicketStatus.OPEN,
-        priority: TicketPriority.LOW,
+        status: 'OPEN',
+        priority: 'LOW',
         category: 'Feature Request',
         source: 'APP',
         tags: ['enhancement'],
@@ -361,8 +361,8 @@ async function main() {
       data: {
         subject: 'Billing inquiry about invoice',
         description: 'Question about recent invoice charges',
-        status: TicketStatus.PENDING,
-        priority: TicketPriority.MEDIUM,
+        status: 'PENDING',
+        priority: 'MEDIUM',
         category: 'Billing',
         source: 'PHONE',
         tags: ['billing'],
@@ -379,7 +379,7 @@ async function main() {
   const activities = await Promise.all([
     prisma.activity.create({
       data: {
-        type: ActivityType.CALL,
+        type: 'CALL',
         subject: 'Discovery call with Robert Johnson',
         description: 'Discussed renewal terms and potential expansion',
         duration: 45,
@@ -392,7 +392,7 @@ async function main() {
     }),
     prisma.activity.create({
       data: {
-        type: ActivityType.EMAIL,
+        type: 'EMAIL',
         subject: 'Sent proposal to David Lee',
         description: 'Initial proposal for TechStart implementation',
         contactId: contacts[2].id,
@@ -403,7 +403,7 @@ async function main() {
     }),
     prisma.activity.create({
       data: {
-        type: ActivityType.MEETING,
+        type: 'MEETING',
         subject: 'Product demo for Acme Corp',
         description: 'Demonstrated new features to VP of Sales',
         duration: 60,
@@ -472,3 +472,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

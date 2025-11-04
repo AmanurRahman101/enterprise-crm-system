@@ -22,7 +22,7 @@ export const errorHandler = (
   err: AppError | Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   // Log error
   logger.error({

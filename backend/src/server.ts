@@ -32,13 +32,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'success',
     message: 'Tawasol CRM API is running',
@@ -48,7 +48,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // API Routes (will be added incrementally)
-app.get(`/api/${process.env.API_VERSION || 'v1'}`, (req: Request, res: Response) => {
+app.get(`/api/${process.env.API_VERSION || 'v1'}`, (_req: Request, res: Response) => {
   res.json({
     message: 'Welcome to Tawasol CRM API',
     version: process.env.API_VERSION || 'v1',
@@ -57,7 +57,7 @@ app.get(`/api/${process.env.API_VERSION || 'v1'}`, (req: Request, res: Response)
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     status: 'error',
     message: 'Route not found'
