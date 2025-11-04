@@ -1,0 +1,424 @@
+### Tawasol CRM - Deal Pipeline Management API Tests
+### Testing Deal CRUD operations, pipeline stages, filters, and statistics
+
+@baseUrl = http://localhost:5000
+@acmeSubdomain = acme.tawasol.com
+@techstartSubdomain = techstart.tawasol.com
+
+### ============================================================
+### 1. Setup - Login to Acme tenant
+POST {{baseUrl}}/api/auth/login
+Host: {{acmeSubdomain}}
+Content-Type: application/json
+
+{
+  "email": "john.doe@acme.com",
+  "password": "password123"
+}
+
+###
+# Save token from response
+@acmeToken = {{1. Setup - Login to Acme tenant.response.body.token}}
+
+### ============================================================
+### 2. Setup - Login to TechStart tenant
+POST {{baseUrl}}/api/auth/login
+Host: {{techstartSubdomain}}
+Content-Type: application/json
+
+{
+  "email": "sarah.wilson@techstart.com",
+  "password": "password123"
+}
+
+###
+@techstartToken = {{2. Setup - Login to TechStart tenant.response.body.token}}
+
+### ============================================================
+### 3. Create Deal - Enterprise Software Deal (Acme)
+POST {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Enterprise CRM Implementation",
+  "value": 150000,
+  "currency": "USD",
+  "stage": "QUALIFIED",
+  "probability": 25,
+  "priority": "HIGH",
+  "source": "Referral",
+  "description": "Complete CRM system implementation for enterprise client",
+  "expectedCloseDate": "2025-12-31",
+  "contactId": "REPLACE_WITH_CONTACT_ID",
+  "companyId": "REPLACE_WITH_COMPANY_ID"
+}
+
+###
+@deal1Id = {{3. Create Deal - Enterprise Software Deal (Acme).response.body.id}}
+
+### ============================================================
+### 4. Create Deal - Consulting Services Deal (Acme)
+POST {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Business Process Consulting",
+  "value": 75000,
+  "currency": "USD",
+  "stage": "PROPOSAL",
+  "probability": 50,
+  "priority": "MEDIUM",
+  "source": "Website",
+  "description": "6-month consulting engagement for process optimization",
+  "expectedCloseDate": "2025-11-30",
+  "contactId": "REPLACE_WITH_CONTACT_ID"
+}
+
+###
+@deal2Id = {{4. Create Deal - Consulting Services Deal (Acme).response.body.id}}
+
+### ============================================================
+### 5. Create Deal - Small Project (Acme)
+POST {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Website Redesign Project",
+  "value": 25000,
+  "currency": "USD",
+  "stage": "NEGOTIATION",
+  "probability": 75,
+  "priority": "LOW",
+  "source": "Cold Call",
+  "description": "Complete website redesign and modernization",
+  "expectedCloseDate": "2025-12-15",
+  "contactId": "REPLACE_WITH_CONTACT_ID"
+}
+
+###
+@deal3Id = {{5. Create Deal - Small Project (Acme).response.body.id}}
+
+### ============================================================
+### 6. Get All Deals (Acme tenant)
+GET {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 7. Get Deals with Pagination
+GET {{baseUrl}}/api/deals?page=1&limit=10
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 8. Search Deals by Title
+GET {{baseUrl}}/api/deals?search=Enterprise
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 9. Filter Deals by Stage - QUALIFIED
+GET {{baseUrl}}/api/deals?stage=QUALIFIED
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 10. Filter Deals by Stage - PROPOSAL
+GET {{baseUrl}}/api/deals?stage=PROPOSAL
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 11. Filter Deals by Stage - NEGOTIATION
+GET {{baseUrl}}/api/deals?stage=NEGOTIATION
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 12. Filter Deals by Priority - HIGH
+GET {{baseUrl}}/api/deals?priority=HIGH
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 13. Filter Deals by Value Range (50k-100k)
+GET {{baseUrl}}/api/deals?minValue=50000&maxValue=100000
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 14. Filter Deals by Expected Close Date Range
+GET {{baseUrl}}/api/deals?expectedCloseDateFrom=2025-11-01&expectedCloseDateTo=2025-12-31
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 15. Filter Deals by Current User (Owner)
+GET {{baseUrl}}/api/deals?ownerId=me
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 16. Sort Deals by Value (Descending)
+GET {{baseUrl}}/api/deals?sortBy=value&sortOrder=desc
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 17. Sort Deals by Expected Close Date (Ascending)
+GET {{baseUrl}}/api/deals?sortBy=expectedCloseDate&sortOrder=asc
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 18. Combined Filters - High Priority Deals Over 50k
+GET {{baseUrl}}/api/deals?priority=HIGH&minValue=50000&sortBy=value&sortOrder=desc
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 19. Get Single Deal by ID
+GET {{baseUrl}}/api/deals/{{deal1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 20. Update Deal - Change Title and Value
+PUT {{baseUrl}}/api/deals/{{deal1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Enterprise CRM Implementation - Updated",
+  "value": 175000,
+  "description": "Complete CRM system implementation with additional modules"
+}
+
+### ============================================================
+### 21. Move Deal to Next Stage - PROPOSAL
+PUT {{baseUrl}}/api/deals/{{deal1Id}}/stage
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "stage": "PROPOSAL"
+}
+
+### ============================================================
+### 22. Move Deal to NEGOTIATION Stage
+PUT {{baseUrl}}/api/deals/{{deal1Id}}/stage
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "stage": "NEGOTIATION"
+}
+
+### ============================================================
+### 23. Move Deal to CLOSED_WON Stage
+PUT {{baseUrl}}/api/deals/{{deal2Id}}/stage
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "stage": "CLOSED_WON"
+}
+
+### ============================================================
+### 24. Move Deal to CLOSED_LOST Stage with Reason
+PUT {{baseUrl}}/api/deals/{{deal3Id}}/stage
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "stage": "CLOSED_LOST",
+  "lostReason": "Budget constraints - customer chose competitor"
+}
+
+### ============================================================
+### 25. Get Deal Statistics (Acme tenant)
+GET {{baseUrl}}/api/deals/stats
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 26. Tenant Isolation Test - Try to Access Acme Deals from TechStart
+GET {{baseUrl}}/api/deals/{{deal1Id}}
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+# Expected: 404 or empty result (tenant isolation)
+
+### ============================================================
+### 27. Tenant Isolation Test - TechStart Deals List
+GET {{baseUrl}}/api/deals
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+# Expected: Should only see TechStart deals (if any)
+
+### ============================================================
+### 28. Create Deal in TechStart Tenant
+POST {{baseUrl}}/api/deals
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+Content-Type: application/json
+
+{
+  "title": "Cloud Migration Project",
+  "value": 200000,
+  "currency": "USD",
+  "stage": "LEAD",
+  "probability": 10,
+  "priority": "URGENT",
+  "source": "Conference",
+  "description": "Full cloud infrastructure migration to AWS",
+  "expectedCloseDate": "2026-01-31",
+  "contactId": "REPLACE_WITH_TECHSTART_CONTACT_ID"
+}
+
+###
+@techstartDeal1Id = {{28. Create Deal in TechStart Tenant.response.body.id}}
+
+### ============================================================
+### 29. Verify TechStart Can Only See Their Deals
+GET {{baseUrl}}/api/deals
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+# Expected: Only TechStart deals visible
+
+### ============================================================
+### 30. Error Test - Create Deal Without Title
+POST {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "value": 50000,
+  "contactId": "REPLACE_WITH_CONTACT_ID"
+}
+# Expected: 400 - Title is required
+
+### ============================================================
+### 31. Error Test - Create Deal Without Value
+POST {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Test Deal",
+  "contactId": "REPLACE_WITH_CONTACT_ID"
+}
+# Expected: 400 - Value is required
+
+### ============================================================
+### 32. Error Test - Create Deal Without Contact ID
+POST {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Test Deal",
+  "value": 50000
+}
+# Expected: 400 - Contact ID is required
+
+### ============================================================
+### 33. Error Test - Invalid Stage Transition
+PUT {{baseUrl}}/api/deals/{{deal1Id}}/stage
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "stage": "INVALID_STAGE"
+}
+# Expected: 400 - Invalid stage
+
+### ============================================================
+### 34. Error Test - Access Without Authentication
+GET {{baseUrl}}/api/deals
+Host: {{acmeSubdomain}}
+# Expected: 401 - Unauthorized
+
+### ============================================================
+### 35. Error Test - Access Without Tenant Header
+GET {{baseUrl}}/api/deals
+Authorization: Bearer {{acmeToken}}
+# Expected: 400 or 401 - Tenant identification required
+
+### ============================================================
+### 36. Get Deal Statistics with Multiple Stages (TechStart)
+GET {{baseUrl}}/api/deals/stats
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+
+### ============================================================
+### 37. Delete Deal (Acme)
+DELETE {{baseUrl}}/api/deals/{{deal1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 38. Verify Deal Deleted
+GET {{baseUrl}}/api/deals/{{deal1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+# Expected: 404 - Deal not found
+
+### ============================================================
+### 39. Delete TechStart Deal
+DELETE {{baseUrl}}/api/deals/{{techstartDeal1Id}}
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+
+### ============================================================
+### 40. Final Statistics Check (Acme)
+GET {{baseUrl}}/api/deals/stats
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### TEST SUMMARY
+### ============================================================
+### These tests cover:
+### 1. CRUD Operations: Create, Read, Update, Delete deals
+### 2. Pipeline Stages: LEAD, QUALIFIED, PROPOSAL, NEGOTIATION, CLOSED_WON, CLOSED_LOST
+### 3. Stage Transitions: Moving deals through the pipeline
+### 4. Pagination: page and limit parameters
+### 5. Search: Search by title and description
+### 6. Filters:
+###    - By stage
+###    - By priority
+###    - By value range (min/max)
+###    - By expected close date range
+###    - By owner (current user)
+### 7. Sorting: By value, expected close date
+### 8. Statistics:
+###    - Total deals
+###    - Deals by stage
+###    - Deals by owner
+###    - Total value, won value, lost value, pipeline value
+###    - Win rate calculation
+###    - Average deal value
+###    - Recently added (last 7 days)
+###    - Closing soon (next 30 days)
+### 9. Tenant Isolation: Acme vs TechStart separation
+### 10. Validation: Missing required fields, invalid stages
+### 11. Authentication: Token required
+### 12. Error Handling: Proper error messages and status codes
+###
+### Total Test Scenarios: 40
+### ============================================================

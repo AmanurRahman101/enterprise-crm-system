@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/authRoutes';
 import contactRoutes from './routes/contactRoutes';
 import companyRoutes from './routes/companyRoutes';
+import dealRoutes from './routes/dealRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -67,6 +68,9 @@ app.use('/api/contacts', contactRoutes);
 
 // Company management routes
 app.use('/api/companies', companyRoutes);
+
+// Deal pipeline management routes
+app.use('/api/deals', dealRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
