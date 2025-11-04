@@ -42,7 +42,13 @@ model Company {
   website     String?
   industry    String?
   size        String?
+  phone       String?
+  email       String?
+  address     String?
+  city        String?
+  country     String?
   description String?
+  logo        String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -50,6 +56,7 @@ model Company {
   contacts    Contact[]
   deals       Deal[]
 
+  @@index([name])
   @@map("companies")
 }
 
@@ -60,11 +67,23 @@ model Contact {
   lastName    String
   email       String?
   phone       String?
+  mobile      String?
   jobTitle    String?
+  department  String?
   linkedinUrl String?
+  twitterUrl  String?
+  address     String?
+  city        String?
+  country     String?
+  timezone    String?
+  language    String?   @default("en")
+  avatar      String?
   isCustomer  Boolean   @default(false)
+  tags        String[]  @default([])
+  customFields Json?
   companyId   String?
   ownerId     String
+  lastContactedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -80,6 +99,7 @@ model Contact {
   @@index([email])
   @@index([ownerId])
   @@index([companyId])
+  @@index([lastName])
   @@map("contacts")
 }
 
@@ -88,12 +108,17 @@ model Deal {
   id            String      @id @default(uuid())
   title         String
   value         Float
+  currency      String      @default("USD")
   stage         DealStage   @default(LEAD)
   probability   Int         @default(10)
+  priority      TicketPriority @default(MEDIUM)
+  source        String?     // e.g., "Website", "Referral", "Cold Call"
+  description   String?
   expectedCloseDate DateTime?
   contactId     String
   companyId     String?
   ownerId       String
+  lostReason    String?     // Reason if CLOSED_LOST
   closedAt      DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -109,6 +134,7 @@ model Deal {
   @@index([ownerId])
   @@index([contactId])
   @@index([stage])
+  @@index([expectedCloseDate])
   @@map("deals")
 }
 
@@ -143,14 +169,20 @@ model Task {
 // Ticket model for helpdesk
 model Ticket {
   id          String        @id @default(uuid())
+  ticketNumber Int         @unique @default(autoincrement())
   subject     String
   description String
   status      TicketStatus  @default(OPEN)
   priority    TicketPriority @default(MEDIUM)
+  category    String?       // e.g., "Technical", "Billing", "General"
   source      String        @default("EMAIL") // EMAIL, PHONE, TELEGRAM, APP
+  tags        String[]      @default([])
+  slaDeadline DateTime?     // SLA deadline for response/resolution
   contactId   String
   assigneeId  String?
   resolvedAt  DateTime?
+  closedAt    DateTime?
+  firstResponseAt DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -164,6 +196,7 @@ model Ticket {
   @@index([assigneeId])
   @@index([status])
   @@index([priority])
+  @@index([ticketNumber])
   @@map("tickets")
 }
 
@@ -174,6 +207,10 @@ model Activity {
   subject     String
   description String?
   duration    Int?          // in minutes
+  outcome     String?       // e.g., "Connected", "Left Voicemail", "No Answer"
+  recordingUrl String?      // For call recordings
+  emailMessageId String?    // Gmail message ID
+  metadata    Json?         // Additional structured data
   contactId   String
   dealId      String?
   ticketId    String?
@@ -189,6 +226,7 @@ model Activity {
 
   @@index([contactId])
   @@index([userId])
+  @@index([type])
   @@index([occurredAt])
   @@map("activities")
 }
