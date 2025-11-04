@@ -10,10 +10,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Tenant model for multi-tenancy
+model Tenant {
+  id          String    @id @default(uuid())
+  name        String    // Organization name
+  subdomain   String    @unique // e.g., "acme" for acme.tawasol.com
+  domain      String?   // Custom domain (optional)
+  email       String    // Primary contact email
+  phone       String?
+  logo        String?
+  timezone    String    @default("UTC")
+  settings    Json?     // Tenant-specific settings
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  users       User[]
+  companies   Company[]
+  contacts    Contact[]
+  deals       Deal[]
+  tasks       Task[]
+  tickets     Ticket[]
+  activities  Activity[]
+  notes       Note[]
+
+  @@index([subdomain])
+  @@index([isActive])
+  @@map("tenants")
+}
+
 // User model for authentication and authorization
 model User {
   id            String    @id @default(uuid())
-  email         String    @unique
+  tenantId      String
+  email         String
   password      String
   firstName     String
   lastName      String
@@ -24,6 +55,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assignedContacts  Contact[]  @relation("ContactOwner")
   assignedDeals     Deal[]     @relation("DealOwner")
   assignedTasks     Task[]     @relation("TaskAssignee")
@@ -38,6 +70,7 @@ model User {
 // Company model
 model Company {
   id          String    @id @default(uuid())
+  tenantId    String
   name        String
   website     String?
   industry    String?
@@ -53,9 +86,11 @@ model Company {
   updatedAt   DateTime  @updatedAt
 
   // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts    Contact[]
   deals       Deal[]
 
+  @@index([tenantId])
   @@index([name])
   @@map("companies")
 }
@@ -63,6 +98,7 @@ model Company {
 // Contact model - Central to CRM
 model Contact {
   id          String    @id @default(uuid())
+  tenantId    String
   firstName   String
   lastName    String
   email       String?
@@ -88,6 +124,7 @@ model Contact {
   updatedAt   DateTime  @updatedAt
 
   // Relations
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company     Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
   owner       User        @relation("ContactOwner", fields: [ownerId], references: [id])
   deals       Deal[]
@@ -96,6 +133,7 @@ model Contact {
   notes       Note[]
   tasks       Task[]
 
+  @@index([tenantId])
   @@index([email])
   @@index([ownerId])
   @@index([companyId])
@@ -106,6 +144,7 @@ model Contact {
 // Deal model for sales pipeline
 model Deal {
   id            String      @id @default(uuid())
+  tenantId      String
   title         String
   value         Float
   currency      String      @default("USD")
@@ -124,6 +163,7 @@ model Deal {
   updatedAt     DateTime    @updatedAt
 
   // Relations
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact       Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
   company       Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
   owner         User        @relation("DealOwner", fields: [ownerId], references: [id])
@@ -131,6 +171,7 @@ model Deal {
   tasks         Task[]
   notes         Note[]
 
+  @@index([tenantId])
   @@index([ownerId])
   @@index([contactId])
   @@index([stage])
@@ -141,6 +182,7 @@ model Deal {
 // Task model
 model Task {
   id          String      @id @default(uuid())
+  tenantId    String
   title       String
   description String?
   status      TaskStatus  @default(TODO)
@@ -155,11 +197,13 @@ model Task {
   updatedAt   DateTime    @updatedAt
 
   // Relations
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact     Contact?    @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal        Deal?       @relation(fields: [dealId], references: [id], onDelete: Cascade)
   assignee    User        @relation("TaskAssignee", fields: [assigneeId], references: [id])
   creator     User        @relation("TaskCreator", fields: [creatorId], references: [id])
 
+  @@index([tenantId])
   @@index([assigneeId])
   @@index([status])
   @@index([dueDate])
@@ -169,7 +213,8 @@ model Task {
 // Ticket model for helpdesk
 model Ticket {
   id          String        @id @default(uuid())
-  ticketNumber Int         @unique @default(autoincrement())
+  tenantId    String
+  ticketNumber Int         @default(autoincrement())
   subject     String
   description String
   status      TicketStatus  @default(OPEN)
@@ -187,11 +232,14 @@ model Ticket {
   updatedAt   DateTime      @updatedAt
 
   // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
   assignee    User?         @relation("TicketAssignee", fields: [assigneeId], references: [id])
   activities  Activity[]
   notes       Note[]
 
+  @@unique([tenantId, ticketNumber])
+  @@index([tenantId])
   @@index([contactId])
   @@index([assigneeId])
   @@index([status])
@@ -203,6 +251,7 @@ model Ticket {
 // Activity model - logs all interactions
 model Activity {
   id          String        @id @default(uuid())
+  tenantId    String
   type        ActivityType
   subject     String
   description String?
@@ -219,11 +268,13 @@ model Activity {
   createdAt   DateTime      @default(now())
 
   // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal        Deal?         @relation(fields: [dealId], references: [id], onDelete: Cascade)
   ticket      Ticket?       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user        User          @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
   @@index([contactId])
   @@index([userId])
   @@index([type])
@@ -234,6 +285,7 @@ model Activity {
 // Note model - for internal notes
 model Note {
   id          String    @id @default(uuid())
+  tenantId    String
   content     String
   contactId   String?
   dealId      String?
@@ -243,11 +295,13 @@ model Note {
   updatedAt   DateTime  @updatedAt
 
   // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact     Contact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
   deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   ticket      Ticket?   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   author      User      @relation(fields: [authorId], references: [id])
 
+  @@index([tenantId])
   @@index([authorId])
   @@map("notes")
 }

@@ -10,9 +10,10 @@ export class UserService {
   /**
    * Register a new user
    */
-  async register(data: CreateUserDTO): Promise<{
+  async register(data: CreateUserDTO & { tenantId: string }): Promise<{
     user: {
       id: string;
+      tenantId: string;
       email: string;
       firstName: string;
       lastName: string;
@@ -26,13 +27,16 @@ export class UserService {
       throw new Error(passwordValidation.message);
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email }
+    // Check if user already exists in this tenant
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        tenantId: data.tenantId,
+        email: data.email 
+      }
     });
 
     if (existingUser) {
-      throw new Error('User with this email already exists');
+      throw new Error('User with this email already exists in this organization');
     }
 
     // Hash password
@@ -41,6 +45,7 @@ export class UserService {
     // Create user
     const user = await prisma.user.create({
       data: {
+        tenantId: data.tenantId,
         email: data.email,
         password: hashedPassword,
         firstName: data.firstName,
@@ -49,6 +54,7 @@ export class UserService {
       },
       select: {
         id: true,
+        tenantId: true,
         email: true,
         firstName: true,
         lastName: true,
@@ -59,6 +65,7 @@ export class UserService {
     // Generate tokens
     const tokens = AuthUtils.generateTokens({
       userId: user.id,
+      tenantId: user.tenantId,
       email: user.email,
       role: user.role
     });
@@ -69,9 +76,10 @@ export class UserService {
   /**
    * Login user
    */
-  async login(data: LoginDTO): Promise<{
+  async login(data: LoginDTO & { tenantId: string }): Promise<{
     user: {
       id: string;
+      tenantId: string;
       email: string;
       firstName: string;
       lastName: string;
@@ -79,9 +87,12 @@ export class UserService {
     };
     tokens: TokenResponse;
   }> {
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: data.email }
+    // Find user by email and tenantId
+    const user = await prisma.user.findFirst({
+      where: { 
+        email: data.email,
+        tenantId: data.tenantId
+      }
     });
 
     if (!user) {
@@ -112,6 +123,7 @@ export class UserService {
     // Generate tokens
     const tokens = AuthUtils.generateTokens({
       userId: user.id,
+      tenantId: user.tenantId,
       email: user.email,
       role: user.role
     });
@@ -119,6 +131,7 @@ export class UserService {
     return {
       user: {
         id: user.id,
+        tenantId: user.tenantId,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -131,10 +144,13 @@ export class UserService {
   /**
    * Refresh access token
    */
-  async refreshToken(userId: string): Promise<TokenResponse> {
+  async refreshToken(userId: string, tenantId: string): Promise<TokenResponse> {
     // Verify user still exists and is active
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
+    const user = await prisma.user.findFirst({
+      where: { 
+        id: userId,
+        tenantId: tenantId
+      }
     });
 
     if (!user || !user.isActive) {
@@ -144,6 +160,7 @@ export class UserService {
     // Generate new tokens
     return AuthUtils.generateTokens({
       userId: user.id,
+      tenantId: user.tenantId,
       email: user.email,
       role: user.role
     });

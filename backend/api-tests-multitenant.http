@@ -1,0 +1,174 @@
+# Tawasol CRM - Multi-Tenant Authentication API Tests
+# Use VS Code REST Client extension
+
+@baseUrl = http://localhost:5000/api/auth
+
+### Test Tenant 1 (Acme Corporation)
+@tenant1Subdomain = acme
+@tenant1Token = YOUR_ACCESS_TOKEN_HERE
+@tenant1Refresh = YOUR_REFRESH_TOKEN_HERE
+
+### Test Tenant 2 (TechStart Inc)
+@tenant2Subdomain = techstart
+@tenant2Token = YOUR_ACCESS_TOKEN_HERE
+@tenant2Refresh = YOUR_REFRESH_TOKEN_HERE
+
+### ============ TENANT 1 (ACME) TESTS ============
+
+### 1. Login to Tenant 1 (Acme) - Admin
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+{
+  "email": "admin@tawasol.com",
+  "password": "Password123!"
+}
+
+### 2. Login to Tenant 1 (Acme) - Sales User
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+{
+  "email": "john.sales@tawasol.com",
+  "password": "Password123!"
+}
+
+### 3. Get Current User Profile - Tenant 1
+GET {{baseUrl}}/me
+Authorization: Bearer {{tenant1Token}}
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+### 4. Register New User - Tenant 1
+POST {{baseUrl}}/register
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+{
+  "email": "newuser@acme.com",
+  "password": "Test1234!",
+  "firstName": "New",
+  "lastName": "User",
+  "role": "USER"
+}
+
+### ============ TENANT 2 (TECHSTART) TESTS ============
+
+### 5. Login to Tenant 2 (TechStart) - Admin
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant2Subdomain}}
+
+{
+  "email": "admin@techstart.com",
+  "password": "Password123!"
+}
+
+### 6. Login to Tenant 2 (TechStart) - Sales User
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant2Subdomain}}
+
+{
+  "email": "bob.sales@techstart.com",
+  "password": "Password123!"
+}
+
+### 7. Get Current User Profile - Tenant 2
+GET {{baseUrl}}/me
+Authorization: Bearer {{tenant2Token}}
+X-Tenant-Subdomain: {{tenant2Subdomain}}
+
+### ============ TENANT ISOLATION TESTS ============
+
+### 8. Try to login Tenant 1 user on Tenant 2 (Should FAIL)
+# This should fail because admin@tawasol.com belongs to Tenant 1
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant2Subdomain}}
+
+{
+  "email": "admin@tawasol.com",
+  "password": "Password123!"
+}
+
+### 9. Try to login Tenant 2 user on Tenant 1 (Should FAIL)
+# This should fail because admin@techstart.com belongs to Tenant 2
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+{
+  "email": "admin@techstart.com",
+  "password": "Password123!"
+}
+
+### ============ ERROR CASES ============
+
+### 10. Login without tenant header (Should FAIL)
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@tawasol.com",
+  "password": "Password123!"
+}
+
+### 11. Register without tenant header (Should FAIL)
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test1234!",
+  "firstName": "Test",
+  "lastName": "User"
+}
+
+### 12. Invalid tenant subdomain (Should FAIL)
+POST {{baseUrl}}/login
+Content-Type: application/json
+X-Tenant-Subdomain: nonexistent
+
+{
+  "email": "admin@tawasol.com",
+  "password": "Password123!"
+}
+
+### ============ TOKEN OPERATIONS ============
+
+### 13. Refresh Token - Tenant 1
+POST {{baseUrl}}/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{tenant1Refresh}}"
+}
+
+### 14. Change Password - Tenant 1
+POST {{baseUrl}}/change-password
+Content-Type: application/json
+Authorization: Bearer {{tenant1Token}}
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+{
+  "currentPassword": "Password123!",
+  "newPassword": "NewPassword123!"
+}
+
+### 15. Update Profile - Tenant 1
+PUT {{baseUrl}}/me
+Content-Type: application/json
+Authorization: Bearer {{tenant1Token}}
+X-Tenant-Subdomain: {{tenant1Subdomain}}
+
+{
+  "firstName": "Updated",
+  "lastName": "Name"
+}
+
+### 16. Logout
+POST {{baseUrl}}/logout
+Authorization: Bearer {{tenant1Token}}
+X-Tenant-Subdomain: {{tenant1Subdomain}}

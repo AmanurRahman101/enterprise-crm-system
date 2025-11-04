@@ -15,6 +15,14 @@ export class AuthController {
    */
   static async register(req: Request, res: Response): Promise<void> {
     try {
+      if (!req.tenant) {
+        res.status(400).json({
+          success: false,
+          message: 'Tenant identification required'
+        });
+        return;
+      }
+
       const data: CreateUserDTO = req.body;
 
       // Validate required fields
@@ -26,9 +34,12 @@ export class AuthController {
         return;
       }
 
-      const result = await userService.register(data);
+      const result = await userService.register({
+        ...data,
+        tenantId: req.tenant.id
+      });
 
-      logger.info(`New user registered: ${result.user.email}`);
+      logger.info(`New user registered: ${result.user.email} (Tenant: ${req.tenant.name})`);
 
       res.status(201).json({
         success: true,
@@ -50,6 +61,14 @@ export class AuthController {
    */
   static async login(req: Request, res: Response): Promise<void> {
     try {
+      if (!req.tenant) {
+        res.status(400).json({
+          success: false,
+          message: 'Tenant identification required'
+        });
+        return;
+      }
+
       const data: LoginDTO = req.body;
 
       // Validate required fields
@@ -61,9 +80,12 @@ export class AuthController {
         return;
       }
 
-      const result = await userService.login(data);
+      const result = await userService.login({
+        ...data,
+        tenantId: req.tenant.id
+      });
 
-      logger.info(`User logged in: ${result.user.email}`);
+      logger.info(`User logged in: ${result.user.email} (Tenant: ${req.tenant.name})`);
 
       res.status(200).json({
         success: true,
@@ -94,7 +116,7 @@ export class AuthController {
         return;
       }
 
-      const tokens = await userService.refreshToken(req.user.userId);
+      const tokens = await userService.refreshToken(req.user.userId, req.user.tenantId);
 
       res.status(200).json({
         success: true,
@@ -218,7 +240,8 @@ export class AuthController {
       // Verify current password by attempting login
       const loginResult = await userService.login({
         email: req.user.email,
-        password: currentPassword
+        password: currentPassword,
+        tenantId: req.user.tenantId
       });
 
       if (!loginResult) {
