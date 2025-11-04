@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import logger from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
+import authRoutes from './routes/authRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -55,6 +56,9 @@ app.get(`/api/${process.env.API_VERSION || 'v1'}`, (_req: Request, res: Response
     documentation: '/api/docs'
   });
 });
+
+// Authentication routes
+app.use('/api/auth', authRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

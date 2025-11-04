@@ -34,6 +34,7 @@ export interface UpdateUserDTO {
   lastName?: string;
   role?: string;
   isActive?: boolean;
+  password?: string;
 }
 
 export interface CreateContactDTO {
