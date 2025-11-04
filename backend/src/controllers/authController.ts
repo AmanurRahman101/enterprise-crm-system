@@ -2,8 +2,11 @@ import { Request, Response } from 'express';
 import { UserService } from '../services/UserService';
 import { CreateUserDTO, UpdateUserDTO, LoginDTO } from '../types';
 import logger from '../utils/logger';
+import { PrismaClient } from '@prisma/client';
+import { AuthUtils } from '../utils/auth';
 
 const userService = new UserService();
+const prisma = new PrismaClient();
 
 /**
  * AuthController - Handles authentication endpoints
@@ -272,3 +275,188 @@ export class AuthController {
     }
   }
 }
+
+/**
+ * Get all tenants where the user has an account
+ * GET /api/auth/my-tenants
+ */
+export const getMyTenants = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+      return;
+    }
+
+    const userId = req.user.userId;
+
+    // Get the user's profile to find all their tenant accounts
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userProfile: {
+          include: {
+            tenantAccounts: {
+              include: {
+                tenant: {
+                  select: {
+                    id: true,
+                    name: true,
+                    subdomain: true,
+                    logo: true,
+                    isActive: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user || !user.userProfile) {
+      res.status(404).json({
+        success: false,
+        message: 'User profile not found'
+      });
+      return;
+    }
+
+    const tenants = user.userProfile.tenantAccounts.map((account: any) => ({
+      userId: account.id,
+      tenantId: account.tenant.id,
+      tenantName: account.tenant.name,
+      subdomain: account.tenant.subdomain,
+      logo: account.tenant.logo,
+      role: account.role,
+      isActive: account.tenant.isActive,
+      isCurrentTenant: account.tenantId === req.user!.tenantId,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        userProfileId: user.userProfile.id,
+        email: user.userProfile.email,
+        firstName: user.userProfile.firstName,
+        lastName: user.userProfile.lastName,
+        tenants,
+      }
+    });
+  } catch (error) {
+    logger.error('Get my tenants error:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get tenants'
+    });
+  }
+};
+
+/**
+ * Switch to a different tenant
+ * POST /api/auth/switch-tenant
+ */
+export const switchTenant = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+      return;
+    }
+
+    const { tenantId } = req.body;
+    const currentUserId = req.user.userId;
+
+    if (!tenantId) {
+      res.status(400).json({
+        success: false,
+        message: 'Tenant ID is required'
+      });
+      return;
+    }
+
+    // Get the user's profile to verify they have access to this tenant
+    const currentUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      include: {
+        userProfile: {
+          include: {
+            tenantAccounts: {
+              where: { tenantId },
+              include: {
+                tenant: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!currentUser || !currentUser.userProfile) {
+      res.status(404).json({
+        success: false,
+        message: 'User profile not found'
+      });
+      return;
+    }
+
+    // Check if user has access to the requested tenant
+    if (currentUser.userProfile.tenantAccounts.length === 0) {
+      res.status(403).json({
+        success: false,
+        message: 'You do not have access to this tenant'
+      });
+      return;
+    }
+
+    const targetAccount = currentUser.userProfile.tenantAccounts[0];
+
+    if (!targetAccount.tenant.isActive) {
+      res.status(403).json({
+        success: false,
+        message: 'Target tenant is inactive'
+      });
+      return;
+    }
+
+    // Generate new tokens for the target tenant
+    const tokens = AuthUtils.generateTokens({
+      userId: targetAccount.id,
+      tenantId: targetAccount.tenantId,
+      email: targetAccount.email,
+      role: targetAccount.role,
+    });
+
+    logger.info(`User ${currentUser.userProfile.email} switched to tenant: ${targetAccount.tenant.name}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Switched tenant successfully',
+      data: {
+        tenant: {
+          id: targetAccount.tenant.id,
+          name: targetAccount.tenant.name,
+          subdomain: targetAccount.tenant.subdomain,
+        },
+        user: {
+          id: targetAccount.id,
+          email: targetAccount.email,
+          firstName: targetAccount.firstName,
+          lastName: targetAccount.lastName,
+          role: targetAccount.role,
+        },
+        ...tokens,
+      }
+    });
+  } catch (error) {
+    logger.error('Switch tenant error:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to switch tenant'
+    });
+  }
+};

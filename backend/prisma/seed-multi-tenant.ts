@@ -18,9 +18,42 @@ async function main() {
     await prisma.company.deleteMany({});
     await prisma.user.deleteMany({});
     await prisma.tenant.deleteMany({});
+    await prisma.userProfile.deleteMany({});
   }
 
   const hashedPassword = await bcrypt.hash('Password123!', 10);
+
+  // Create User Profiles (master identities across tenants)
+  console.log('👤 Creating user profiles...');
+  
+  const adminProfile = await prisma.userProfile.create({
+    data: {
+      email: 'admin@global.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      phone: '+1-555-0001',
+    },
+  });
+
+  const johnProfile = await prisma.userProfile.create({
+    data: {
+      email: 'john.sales@global.com',
+      firstName: 'John',
+      lastName: 'Sales',
+      phone: '+1-555-0002',
+    },
+  });
+
+  const mikeProfile = await prisma.userProfile.create({
+    data: {
+      email: 'mike.support@global.com',
+      firstName: 'Mike',
+      lastName: 'Support',
+      phone: '+1-555-0003',
+    },
+  });
+
+  console.log(`✅ Created ${3} user profiles`);
 
   // Create Tenant 1 (Acme Corporation)
   console.log('🏢 Creating Tenant 1: Acme Corporation...');
@@ -35,10 +68,11 @@ async function main() {
     },
   });
 
-  // Create users for Tenant 1
+  // Create users for Tenant 1 (linked to profiles)
   const tenant1Admin = await prisma.user.create({
     data: {
       tenantId: tenant1.id,
+      userProfileId: adminProfile.id,
       email: 'admin@tawasol.com',
       password: hashedPassword,
       firstName: 'Admin',
@@ -50,6 +84,7 @@ async function main() {
   const tenant1Sales = await prisma.user.create({
     data: {
       tenantId: tenant1.id,
+      userProfileId: johnProfile.id,
       email: 'john.sales@tawasol.com',
       password: hashedPassword,
       firstName: 'John',
@@ -61,6 +96,7 @@ async function main() {
   const tenant1Support = await prisma.user.create({
     data: {
       tenantId: tenant1.id,
+      userProfileId: mikeProfile.id,
       email: 'mike.support@tawasol.com',
       password: hashedPassword,
       firstName: 'Mike',
@@ -204,13 +240,15 @@ async function main() {
   });
 
   // Create users for Tenant 2
+  // Note: John has access to BOTH tenants (cross-tenant user)
   await prisma.user.create({
     data: {
       tenantId: tenant2.id,
+      userProfileId: adminProfile.id, // Same admin profile as Tenant 1
       email: 'admin@techstart.com',
       password: hashedPassword,
-      firstName: 'Alice',
-      lastName: 'Admin',
+      firstName: 'Admin',
+      lastName: 'User',
       role: 'ADMIN',
     },
   });
@@ -218,10 +256,11 @@ async function main() {
   const tenant2Sales = await prisma.user.create({
     data: {
       tenantId: tenant2.id,
-      email: 'bob.sales@techstart.com',
+      userProfileId: johnProfile.id, // John works for BOTH companies!
+      email: 'john.sales@techstart.com',
       password: hashedPassword,
-      firstName: 'Bob',
-      lastName: 'Seller',
+      firstName: 'John',
+      lastName: 'Sales',
       role: 'SALES',
     },
   });
@@ -286,8 +325,9 @@ async function main() {
   console.log('🎉 Multi-tenant seed completed!');
   console.log('═══════════════════════════════════════');
   console.log('📊 Summary:');
+  console.log('  - User Profiles: 3');
   console.log('  - Tenants: 2');
-  console.log('  - Total Users: 5');
+  console.log('  - Total Users: 4 (2 cross-tenant accounts)');
   console.log('  - Total Companies: 3');
   console.log('  - Total Contacts: 3');
   console.log('  - Total Deals: 2');
@@ -297,8 +337,12 @@ async function main() {
   console.log('    - admin@tawasol.com / Password123!');
   console.log('    - john.sales@tawasol.com / Password123!');
   console.log('  Tenant 2 (techstart.tawasol.com):');
-  console.log('    - admin@techstart.com / Password123!');
-  console.log('    - bob.sales@techstart.com / Password123!');
+  console.log('    - admin@techstart.com / Password123! (same admin as Tenant 1)');
+  console.log('    - john.sales@techstart.com / Password123! (same John as Tenant 1)');
+  console.log('\n👥 Cross-Tenant Users:');
+  console.log('  - Admin User works for BOTH Acme and TechStart');
+  console.log('  - John Sales works for BOTH Acme and TechStart');
+  console.log('  - They can switch between tenants with same login!');
   console.log('═══════════════════════════════════════\n');
 }
 

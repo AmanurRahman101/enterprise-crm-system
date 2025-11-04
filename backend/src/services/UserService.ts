@@ -39,13 +39,30 @@ export class UserService {
       throw new Error('User with this email already exists in this organization');
     }
 
+    // Check if a user profile exists with this email
+    let userProfile = await prisma.userProfile.findUnique({
+      where: { email: data.email }
+    });
+
+    // If no profile exists, create one
+    if (!userProfile) {
+      userProfile = await prisma.userProfile.create({
+        data: {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+        }
+      });
+    }
+
     // Hash password
     const hashedPassword = await AuthUtils.hashPassword(data.password);
 
-    // Create user
+    // Create user linked to the profile
     const user = await prisma.user.create({
       data: {
         tenantId: data.tenantId,
+        userProfileId: userProfile.id,
         email: data.email,
         password: hashedPassword,
         firstName: data.firstName,

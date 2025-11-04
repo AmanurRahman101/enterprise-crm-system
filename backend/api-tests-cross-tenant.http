@@ -1,0 +1,173 @@
+### ============================================
+### Cross-Tenant User Tests
+### Test users working across multiple tenants
+### ============================================
+
+### Variables
+@baseUrl = http://localhost:5000/api
+@acme_subdomain = acme
+@techstart_subdomain = techstart
+
+### ============================================
+### Scenario 1: John logs into Acme Corporation
+### ============================================
+
+### 1. Login as John to Acme (Tenant 1)
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+X-Tenant-Subdomain: {{acme_subdomain}}
+
+{
+  "email": "john.sales@tawasol.com",
+  "password": "Password123!"
+}
+
+# Save the access token from response
+# @name loginAcme
+### Expected: 200 OK with tokens, John's role is SALES
+
+### 2. Get John's profile in Acme
+GET {{baseUrl}}/auth/me HTTP/1.1
+Authorization: Bearer {{loginAcme.response.body.data.accessToken}}
+X-Tenant-Subdomain: {{acme_subdomain}}
+
+### Expected: John Sales, role: SALES, tenantId: Acme
+
+### 3. List all tenants John has access to
+GET {{baseUrl}}/auth/my-tenants HTTP/1.1
+Authorization: Bearer {{loginAcme.response.body.data.accessToken}}
+
+### Expected: Array with 2 tenants (Acme and TechStart)
+
+### ============================================
+### Scenario 2: John switches to TechStart
+### ============================================
+
+### 4. Switch to TechStart tenant
+# First, get the tenantId from the my-tenants response
+# Then use it here (replace with actual ID)
+POST {{baseUrl}}/auth/switch-tenant HTTP/1.1
+Authorization: Bearer {{loginAcme.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "tenantId": "PASTE_TECHSTART_TENANT_ID_HERE"
+}
+
+# @name switchTenant
+### Expected: 200 OK with new tokens for TechStart tenant
+
+### 5. Get John's profile in TechStart (using new token)
+GET {{baseUrl}}/auth/me HTTP/1.1
+Authorization: Bearer {{switchTenant.response.body.data.accessToken}}
+X-Tenant-Subdomain: {{techstart_subdomain}}
+
+### Expected: John Sales, role: SALES, tenantId: TechStart
+
+### ============================================
+### Scenario 3: John logs directly into TechStart
+### ============================================
+
+### 6. Login as John to TechStart (Tenant 2)
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+X-Tenant-Subdomain: {{techstart_subdomain}}
+
+{
+  "email": "john.sales@techstart.com",
+  "password": "Password123!"
+}
+
+# @name loginTechStart
+### Expected: 200 OK with tokens, John's role is SALES
+
+### 7. Get John's profile in TechStart
+GET {{baseUrl}}/auth/me HTTP/1.1
+Authorization: Bearer {{loginTechStart.response.body.data.accessToken}}
+X-Tenant-Subdomain: {{techstart_subdomain}}
+
+### Expected: John Sales, role: SALES, tenantId: TechStart
+
+### 8. List all tenants (should show both again)
+GET {{baseUrl}}/auth/my-tenants HTTP/1.1
+Authorization: Bearer {{loginTechStart.response.body.data.accessToken}}
+
+### Expected: Array with 2 tenants (Acme and TechStart)
+
+### ============================================
+### Scenario 4: Admin works across both tenants
+### ============================================
+
+### 9. Login as Admin to Acme
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+X-Tenant-Subdomain: {{acme_subdomain}}
+
+{
+  "email": "admin@tawasol.com",
+  "password": "Password123!"
+}
+
+# @name adminAcme
+### Expected: 200 OK, role: ADMIN
+
+### 10. List admin's tenants
+GET {{baseUrl}}/auth/my-tenants HTTP/1.1
+Authorization: Bearer {{adminAcme.response.body.data.accessToken}}
+
+### Expected: Array with 2 tenants (Acme and TechStart), both with ADMIN role
+
+### 11. Login as Admin to TechStart
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+X-Tenant-Subdomain: {{techstart_subdomain}}
+
+{
+  "email": "admin@techstart.com",
+  "password": "Password123!"
+}
+
+# @name adminTechStart
+### Expected: 200 OK, role: ADMIN
+
+### ============================================
+### Scenario 5: Tenant isolation test
+### ============================================
+
+### 12. Mike Support (only in Acme) tries to login
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+X-Tenant-Subdomain: {{acme_subdomain}}
+
+{
+  "email": "mike.support@tawasol.com",
+  "password": "Password123!"
+}
+
+# @name mikeSales
+### Expected: 200 OK
+
+### 13. Mike checks his tenants (should only have Acme)
+GET {{baseUrl}}/auth/my-tenants HTTP/1.1
+Authorization: Bearer {{mikeSales.response.body.data.accessToken}}
+
+### Expected: Array with 1 tenant (Acme only)
+
+### 14. Mike tries to switch to TechStart (should fail)
+POST {{baseUrl}}/auth/switch-tenant HTTP/1.1
+Authorization: Bearer {{mikeSales.response.body.data.accessToken}}
+Content-Type: application/json
+
+{
+  "tenantId": "PASTE_TECHSTART_TENANT_ID_HERE"
+}
+
+### Expected: 403 Forbidden - You do not have access to this tenant
+
+### ============================================
+### Summary:
+### - John and Admin can work across both tenants
+### - Mike only has access to Acme
+### - Users can switch tenants without re-login
+### - Same email (via UserProfile) links accounts
+### ============================================

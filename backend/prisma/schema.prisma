@@ -40,10 +40,30 @@ model Tenant {
   @@map("tenants")
 }
 
+// UserProfile - Master user identity across tenants
+// One person can have accounts in multiple tenant organizations
+model UserProfile {
+  id            String    @id @default(uuid())
+  email         String    @unique // Global unique email
+  firstName     String
+  lastName      String
+  avatar        String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations - one profile can have multiple tenant accounts
+  tenantAccounts User[]
+
+  @@index([email])
+  @@map("user_profiles")
+}
+
 // User model for authentication and authorization
 model User {
   id            String    @id @default(uuid())
   tenantId      String
+  userProfileId String    // Links to master UserProfile
   email         String
   password      String
   firstName     String
@@ -55,8 +75,9 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  assignedContacts  Contact[]  @relation("ContactOwner")
+  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userProfile       UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  assignedContacts  Contact[]   @relation("ContactOwner")
   assignedDeals     Deal[]     @relation("DealOwner")
   assignedTasks     Task[]     @relation("TaskAssignee")
   createdTasks      Task[]     @relation("TaskCreator")
@@ -64,6 +85,10 @@ model User {
   activities        Activity[]
   notes             Note[]
 
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+  @@index([userProfileId])
   @@map("users")
 }
 
