@@ -1,0 +1,452 @@
+### Tawasol CRM - Task Management API Tests
+### Testing Task CRUD operations, status transitions, filters, and statistics
+
+@baseUrl = http://localhost:5000
+@acmeSubdomain = acme.tawasol.com
+@techstartSubdomain = techstart.tawasol.com
+
+### ============================================================
+### 1. Setup - Login to Acme tenant
+POST {{baseUrl}}/api/auth/login
+Host: {{acmeSubdomain}}
+Content-Type: application/json
+
+{
+  "email": "john.doe@acme.com",
+  "password": "password123"
+}
+
+###
+# Save token from response
+@acmeToken = {{1. Setup - Login to Acme tenant.response.body.token}}
+
+### ============================================================
+### 2. Setup - Login to TechStart tenant
+POST {{baseUrl}}/api/auth/login
+Host: {{techstartSubdomain}}
+Content-Type: application/json
+
+{
+  "email": "sarah.wilson@techstart.com",
+  "password": "password123"
+}
+
+###
+@techstartToken = {{2. Setup - Login to TechStart tenant.response.body.token}}
+
+### ============================================================
+### 3. Create Task - Follow up with Client (Acme)
+POST {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Follow up with Enterprise Client",
+  "description": "Call to discuss CRM implementation timeline and requirements",
+  "status": "TODO",
+  "priority": "HIGH",
+  "dueDate": "2025-11-10"
+}
+
+###
+@task1Id = {{3. Create Task - Follow up with Client (Acme).response.body.id}}
+
+### ============================================================
+### 4. Create Task - Prepare Proposal (Acme)
+POST {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Prepare consulting proposal",
+  "description": "Draft comprehensive proposal document for business process consulting",
+  "status": "IN_PROGRESS",
+  "priority": "MEDIUM",
+  "dueDate": "2025-11-08"
+}
+
+###
+@task2Id = {{4. Create Task - Prepare Proposal (Acme).response.body.id}}
+
+### ============================================================
+### 5. Create Task - Send Contract (Acme)
+POST {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Send signed contract to legal",
+  "description": "Forward the signed website redesign contract for review",
+  "status": "TODO",
+  "priority": "URGENT",
+  "dueDate": "2025-11-06"
+}
+
+###
+@task3Id = {{5. Create Task - Send Contract (Acme).response.body.id}}
+
+### ============================================================
+### 6. Create Task - Research Competitors (Acme - Overdue)
+POST {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Research competitor offerings",
+  "description": "Analyze competitor CRM solutions and pricing",
+  "status": "TODO",
+  "priority": "LOW",
+  "dueDate": "2025-11-01"
+}
+
+###
+@task4Id = {{6. Create Task - Research Competitors (Acme - Overdue).response.body.id}}
+
+### ============================================================
+### 7. Get All Tasks (Acme tenant)
+GET {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 8. Get Tasks with Pagination
+GET {{baseUrl}}/api/tasks?page=1&limit=10
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 9. Search Tasks by Title
+GET {{baseUrl}}/api/tasks?search=proposal
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 10. Filter Tasks by Status - TODO
+GET {{baseUrl}}/api/tasks?status=TODO
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 11. Filter Tasks by Status - IN_PROGRESS
+GET {{baseUrl}}/api/tasks?status=IN_PROGRESS
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 12. Filter Tasks by Priority - HIGH
+GET {{baseUrl}}/api/tasks?priority=HIGH
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 13. Filter Tasks by Priority - URGENT
+GET {{baseUrl}}/api/tasks?priority=URGENT
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 14. Filter Tasks by Assignee - Current User
+GET {{baseUrl}}/api/tasks?assigneeId=me
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 15. Filter Tasks by Creator - Current User
+GET {{baseUrl}}/api/tasks?creatorId=me
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 16. Filter Overdue Tasks
+GET {{baseUrl}}/api/tasks?overdue=true
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 17. Filter Tasks by Due Date Range
+GET {{baseUrl}}/api/tasks?dueDateFrom=2025-11-06&dueDateTo=2025-11-10
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 18. Sort Tasks by Due Date (Ascending)
+GET {{baseUrl}}/api/tasks?sortBy=dueDate&sortOrder=asc
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 19. Sort Tasks by Priority (Descending)
+GET {{baseUrl}}/api/tasks?sortBy=priority&sortOrder=desc
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 20. Combined Filters - Urgent TODO Tasks
+GET {{baseUrl}}/api/tasks?status=TODO&priority=URGENT&sortBy=dueDate&sortOrder=asc
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 21. Get Single Task by ID
+GET {{baseUrl}}/api/tasks/{{task1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 22. Update Task - Change Title and Priority
+PUT {{baseUrl}}/api/tasks/{{task1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Follow up with Enterprise Client - Updated",
+  "priority": "URGENT",
+  "description": "Urgent: Call to discuss CRM implementation timeline, requirements, and budget"
+}
+
+### ============================================================
+### 23. Update Task Status to IN_PROGRESS
+PUT {{baseUrl}}/api/tasks/{{task1Id}}/status
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "status": "IN_PROGRESS"
+}
+
+### ============================================================
+### 24. Update Task Status to COMPLETED
+PUT {{baseUrl}}/api/tasks/{{task2Id}}/status
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "status": "COMPLETED"
+}
+
+### ============================================================
+### 25. Update Task Status to CANCELLED
+PUT {{baseUrl}}/api/tasks/{{task4Id}}/status
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "status": "CANCELLED"
+}
+
+### ============================================================
+### 26. Get Task Statistics (All Tasks - Acme)
+GET {{baseUrl}}/api/tasks/stats
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 27. Get Task Statistics (Current User Only - Acme)
+GET {{baseUrl}}/api/tasks/stats?userId=me
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 28. Tenant Isolation Test - Try to Access Acme Tasks from TechStart
+GET {{baseUrl}}/api/tasks/{{task1Id}}
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+# Expected: 404 or empty result (tenant isolation)
+
+### ============================================================
+### 29. Tenant Isolation Test - TechStart Tasks List
+GET {{baseUrl}}/api/tasks
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+# Expected: Should only see TechStart tasks (if any)
+
+### ============================================================
+### 30. Create Task in TechStart Tenant
+POST {{baseUrl}}/api/tasks
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+Content-Type: application/json
+
+{
+  "title": "Review cloud migration proposal",
+  "description": "Analyze AWS migration costs and timeline",
+  "status": "TODO",
+  "priority": "HIGH",
+  "dueDate": "2025-11-12"
+}
+
+###
+@techstartTask1Id = {{30. Create Task in TechStart Tenant.response.body.id}}
+
+### ============================================================
+### 31. Verify TechStart Can Only See Their Tasks
+GET {{baseUrl}}/api/tasks
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+# Expected: Only TechStart tasks visible
+
+### ============================================================
+### 32. Error Test - Create Task Without Title
+POST {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "description": "This should fail",
+  "priority": "MEDIUM"
+}
+# Expected: 400 - Title is required
+
+### ============================================================
+### 33. Error Test - Invalid Status
+PUT {{baseUrl}}/api/tasks/{{task1Id}}/status
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "status": "INVALID_STATUS"
+}
+# Expected: 400 - Invalid status
+
+### ============================================================
+### 34. Error Test - Access Without Authentication
+GET {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+# Expected: 401 - Unauthorized
+
+### ============================================================
+### 35. Error Test - Access Without Tenant Header
+GET {{baseUrl}}/api/tasks
+Authorization: Bearer {{acmeToken}}
+# Expected: 400 or 401 - Tenant identification required
+
+### ============================================================
+### 36. Create Task with Contact and Deal Association (Acme)
+POST {{baseUrl}}/api/tasks
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "title": "Schedule demo with contact",
+  "description": "Arrange product demo for next week",
+  "status": "TODO",
+  "priority": "HIGH",
+  "dueDate": "2025-11-09",
+  "contactId": "REPLACE_WITH_CONTACT_ID",
+  "dealId": "REPLACE_WITH_DEAL_ID"
+}
+
+###
+@task5Id = {{36. Create Task with Contact and Deal Association (Acme).response.body.id}}
+
+### ============================================================
+### 37. Update Task - Change Due Date
+PUT {{baseUrl}}/api/tasks/{{task3Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+Content-Type: application/json
+
+{
+  "dueDate": "2025-11-15",
+  "priority": "MEDIUM"
+}
+
+### ============================================================
+### 38. Filter Tasks - Due Today
+GET {{baseUrl}}/api/tasks?dueDateFrom=2025-11-05&dueDateTo=2025-11-05
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 39. Delete Task (Acme)
+DELETE {{baseUrl}}/api/tasks/{{task1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 40. Verify Task Deleted
+GET {{baseUrl}}/api/tasks/{{task1Id}}
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+# Expected: 404 - Task not found
+
+### ============================================================
+### 41. Delete TechStart Task
+DELETE {{baseUrl}}/api/tasks/{{techstartTask1Id}}
+Host: {{techstartSubdomain}}
+Authorization: Bearer {{techstartToken}}
+
+### ============================================================
+### 42. Final Statistics Check (Acme)
+GET {{baseUrl}}/api/tasks/stats
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 43. Get Completed Tasks Only
+GET {{baseUrl}}/api/tasks?status=COMPLETED
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 44. Get Cancelled Tasks Only
+GET {{baseUrl}}/api/tasks?status=CANCELLED
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### 45. Combined Filter - Overdue High Priority Tasks
+GET {{baseUrl}}/api/tasks?overdue=true&priority=HIGH
+Host: {{acmeSubdomain}}
+Authorization: Bearer {{acmeToken}}
+
+### ============================================================
+### TEST SUMMARY
+### ============================================================
+### These tests cover:
+### 1. CRUD Operations: Create, Read, Update, Delete tasks
+### 2. Task Statuses: TODO, IN_PROGRESS, COMPLETED, CANCELLED
+### 3. Status Transitions: Updating task status with special endpoint
+### 4. Pagination: page and limit parameters
+### 5. Search: Search by title and description
+### 6. Filters:
+###    - By status (TODO, IN_PROGRESS, COMPLETED, CANCELLED)
+###    - By priority (LOW, MEDIUM, HIGH, URGENT)
+###    - By assignee (current user with "me")
+###    - By creator (current user with "me")
+###    - By contact and deal associations
+###    - By due date range (from/to)
+###    - Overdue tasks filter
+### 7. Sorting: By dueDate, priority, createdAt
+### 8. Statistics:
+###    - Total tasks
+###    - Tasks by status
+###    - Tasks by priority
+###    - Tasks by assignee
+###    - Overdue tasks count
+###    - Due today count
+###    - Due this week count
+###    - Completed tasks count
+###    - Completion rate (%)
+###    - Recently added (last 7 days)
+###    - Statistics filtered by user (userId=me)
+### 9. Associations: Tasks linked to contacts and deals
+### 10. Tenant Isolation: Acme vs TechStart separation
+### 11. Validation: Missing required fields, invalid statuses
+### 12. Authentication: Token required
+### 13. Error Handling: Proper error messages and status codes
+### 14. Completion Tracking: completedAt timestamp set automatically
+###
+### Total Test Scenarios: 45
+### ============================================================

@@ -10,6 +10,7 @@ import authRoutes from './routes/authRoutes';
 import contactRoutes from './routes/contactRoutes';
 import companyRoutes from './routes/companyRoutes';
 import dealRoutes from './routes/dealRoutes';
+import taskRoutes from './routes/taskRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -71,6 +72,9 @@ app.use('/api/companies', companyRoutes);
 
 // Deal pipeline management routes
 app.use('/api/deals', dealRoutes);
+
+// Task management routes
+app.use('/api/tasks', taskRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
