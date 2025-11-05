@@ -13,6 +13,7 @@ import dealRoutes from './routes/dealRoutes';
 import taskRoutes from './routes/taskRoutes';
 import ticketRoutes from './routes/ticketRoutes';
 import activityRoutes from './routes/activityRoutes';
+import noteRoutes from './routes/noteRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -83,6 +84,9 @@ app.use('/api/tickets', ticketRoutes);
 
 // Activity logging routes
 app.use('/api/activities', activityRoutes);
+
+// Note management routes
+app.use('/api/notes', noteRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

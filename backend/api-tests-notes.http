@@ -1,0 +1,541 @@
+### ==================================================
+### Note Management API Tests
+### Module: Internal Notes (Prompt 10)
+### ==================================================
+
+### Variables
+@baseUrl = http://localhost:5000
+@acmeToken = {{loginAcme.response.body.token}}
+@techStartToken = {{loginTechStart.response.body.token}}
+
+### ==================================================
+### SETUP - Authentication
+### ==================================================
+
+### Login as Acme Tenant
+# @name loginAcme
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+X-Tenant: acme
+
+{
+  "email": "john@acme.com",
+  "password": "password123"
+}
+
+### Login as TechStart Tenant
+# @name loginTechStart
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+X-Tenant: techstart
+
+{
+  "email": "jane@techstart.com",
+  "password": "password123"
+}
+
+### ==================================================
+### NOTE CRUD - Create Notes
+### ==================================================
+
+### Create Note 1 - Contact Note
+# @name createNote1
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Customer expressed strong interest in the Enterprise plan. Budget approved for Q1 implementation. Next step: schedule technical demo with IT team.",
+  "contactId": "contact-1-acme"
+}
+
+### Create Note 2 - Deal Note
+# @name createNote2
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Deal status update: Proposal accepted! Contract review in progress with legal team. Expected close date: end of month.",
+  "dealId": "deal-1-acme",
+  "contactId": "contact-1-acme"
+}
+
+### Create Note 3 - Ticket Note
+# @name createNote3
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Ticket resolution: Issue was caused by browser cache. Instructed customer to clear cache and cookies. Verified system is working correctly now.",
+  "ticketId": "ticket-1-acme",
+  "contactId": "contact-3-acme"
+}
+
+### Create Note 4 - Multi-Entity Note
+# @name createNote4
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Follow-up required: Customer mentioned they need additional training for their team. Schedule onboarding session for next week.",
+  "contactId": "contact-2-acme",
+  "dealId": "deal-2-acme",
+  "ticketId": "ticket-2-acme"
+}
+
+### Create Note 5 - Strategy Note
+# @name createNote5
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Sales strategy: Customer is price-sensitive. Competitor analysis shows we're 15% higher. Consider offering discount for annual contract.",
+  "contactId": "contact-1-acme",
+  "dealId": "deal-1-acme"
+}
+
+### Create Note 6 - Support Context
+# @name createNote6
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Important: Customer has specific security requirements (SOC 2 compliance). Need to provide compliance documentation before contract signing.",
+  "contactId": "contact-1-acme"
+}
+
+### Create Note for TechStart Tenant
+# @name createNoteTechStart
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+{
+  "content": "Customer onboarding completed successfully. All team members trained on basic features. Follow-up scheduled for 2 weeks.",
+  "contactId": "contact-1-techstart"
+}
+
+### ==================================================
+### VALIDATION TESTS
+### ==================================================
+
+### Create Note - Missing Content (should fail)
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "contactId": "contact-1-acme"
+}
+
+### Create Note - No Entity Linked (should fail)
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "This note has no entity link"
+}
+
+### Create Note - Invalid Contact (should fail)
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Test note with invalid contact",
+  "contactId": "non-existent-contact"
+}
+
+### Create Note - Invalid Deal (should fail)
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Test note with invalid deal",
+  "contactId": "contact-1-acme",
+  "dealId": "non-existent-deal"
+}
+
+### Create Note - Invalid Ticket (should fail)
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Test note with invalid ticket",
+  "contactId": "contact-1-acme",
+  "ticketId": "non-existent-ticket"
+}
+
+### ==================================================
+### READ OPERATIONS
+### ==================================================
+
+### Get All Notes (Acme Tenant)
+GET {{baseUrl}}/api/notes
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get All Notes with Pagination
+GET {{baseUrl}}/api/notes?page=1&limit=3
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Note by ID
+GET {{baseUrl}}/api/notes/{{createNote1.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### SEARCH & FILTERS
+### ==================================================
+
+### Search by Content
+GET {{baseUrl}}/api/notes?search=budget
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Search by Multiple Keywords
+GET {{baseUrl}}/api/notes?search=customer training
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Contact
+GET {{baseUrl}}/api/notes?contactId=contact-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Deal
+GET {{baseUrl}}/api/notes?dealId=deal-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Ticket
+GET {{baseUrl}}/api/notes?ticketId=ticket-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Current Author (using "me")
+GET {{baseUrl}}/api/notes?authorId=me
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Specific Author
+GET {{baseUrl}}/api/notes?authorId=user-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Combined Filters - Contact + Search
+GET {{baseUrl}}/api/notes?contactId=contact-1-acme&search=strategy
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Combined Filters - Deal + Author
+GET {{baseUrl}}/api/notes?dealId=deal-1-acme&authorId=me
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### SORTING
+### ==================================================
+
+### Sort by Created Date (DESC - Most recent first)
+GET {{baseUrl}}/api/notes?sortBy=createdAt&sortOrder=desc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Sort by Created Date (ASC - Oldest first)
+GET {{baseUrl}}/api/notes?sortBy=createdAt&sortOrder=asc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Sort by Updated Date
+GET {{baseUrl}}/api/notes?sortBy=updatedAt&sortOrder=desc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### UPDATE OPERATIONS
+### ==================================================
+
+### Update Note - Content Only
+PUT {{baseUrl}}/api/notes/{{createNote1.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "UPDATED: Customer expressed strong interest in the Enterprise plan. Budget approved for Q1 implementation. Demo scheduled for next Tuesday at 2 PM."
+}
+
+### Update Note - Add Deal Reference
+PUT {{baseUrl}}/api/notes/{{createNote1.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "dealId": "deal-1-acme"
+}
+
+### Update Note - Add Ticket Reference
+PUT {{baseUrl}}/api/notes/{{createNote6.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "ticketId": "ticket-1-acme"
+}
+
+### Update Note - Change Content and Entities
+PUT {{baseUrl}}/api/notes/{{createNote5.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "UPDATED STRATEGY: Customer agreed to annual contract with 10% discount. Moving forward with implementation plan.",
+  "contactId": "contact-1-acme",
+  "dealId": "deal-1-acme"
+}
+
+### ==================================================
+### STATISTICS
+### ==================================================
+
+### Get Note Statistics - All Notes
+GET {{baseUrl}}/api/notes/stats
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Note Statistics - Current Author
+GET {{baseUrl}}/api/notes/stats?authorId=me
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Note Statistics - Specific Author
+GET {{baseUrl}}/api/notes/stats?authorId=user-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Note Statistics - For Specific Contact
+GET {{baseUrl}}/api/notes/stats?contactId=contact-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Note Statistics - For Specific Deal
+GET {{baseUrl}}/api/notes/stats?dealId=deal-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Note Statistics - For Specific Ticket
+GET {{baseUrl}}/api/notes/stats?ticketId=ticket-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### TENANT ISOLATION
+### ==================================================
+
+### Attempt to Access Acme Note from TechStart (should fail)
+GET {{baseUrl}}/api/notes/{{createNote1.response.body.id}}
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+### Attempt to Update Acme Note from TechStart (should fail)
+PUT {{baseUrl}}/api/notes/{{createNote1.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+{
+  "content": "Attempting to modify another tenant's note"
+}
+
+### Attempt to Delete Acme Note from TechStart (should fail)
+DELETE {{baseUrl}}/api/notes/{{createNote1.response.body.id}}
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+### Verify TechStart Can Only See Their Own Notes
+GET {{baseUrl}}/api/notes
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+### ==================================================
+### DELETE OPERATIONS
+### ==================================================
+
+### Delete Note
+DELETE {{baseUrl}}/api/notes/{{createNote3.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Delete Non-Existent Note (should fail)
+DELETE {{baseUrl}}/api/notes/non-existent-id
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Verify Note Deleted
+GET {{baseUrl}}/api/notes/{{createNote3.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### ERROR HANDLING
+### ==================================================
+
+### Get Notes - No Authentication (should fail)
+GET {{baseUrl}}/api/notes
+X-Tenant: acme
+
+### Get Notes - No Tenant Header (should fail)
+GET {{baseUrl}}/api/notes
+Authorization: Bearer {{acmeToken}}
+
+### Get Notes - Invalid Token (should fail)
+GET {{baseUrl}}/api/notes
+Authorization: Bearer invalid-token-xyz
+X-Tenant: acme
+
+### Get Note - Non-Existent ID (should fail)
+GET {{baseUrl}}/api/notes/non-existent-note-id
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### ADVANCED SCENARIOS
+### ==================================================
+
+### Scenario 1: Complete Deal Notes Timeline
+# Initial note
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Initial contact made. Customer interested in Enterprise plan for 50 users.",
+  "contactId": "contact-4-acme",
+  "dealId": "deal-3-acme"
+}
+
+###
+# Discovery call note
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Discovery call completed. Key requirements: SSO integration, API access, custom reporting.",
+  "contactId": "contact-4-acme",
+  "dealId": "deal-3-acme"
+}
+
+###
+# Proposal note
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Proposal sent including all requested features. Pricing: $5,000/month. Waiting for feedback.",
+  "contactId": "contact-4-acme",
+  "dealId": "deal-3-acme"
+}
+
+###
+# Get all notes for the deal
+GET {{baseUrl}}/api/notes?dealId=deal-3-acme&sortBy=createdAt&sortOrder=asc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Scenario 2: Support Ticket Context
+# Initial ticket note
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Customer reported: 'Error 500 when trying to export contacts to CSV'",
+  "contactId": "contact-5-acme",
+  "ticketId": "ticket-3-acme"
+}
+
+###
+# Troubleshooting note
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Investigated issue. Problem is browser-specific (Safari). Tested on Chrome - works fine. Recommended browser switch as workaround.",
+  "contactId": "contact-5-acme",
+  "ticketId": "ticket-3-acme"
+}
+
+###
+# Resolution note
+POST {{baseUrl}}/api/notes
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "content": "Issue resolved. Safari compatibility fix deployed. Customer confirmed export now working correctly.",
+  "contactId": "contact-5-acme",
+  "ticketId": "ticket-3-acme"
+}
+
+###
+# Get all notes for the ticket
+GET {{baseUrl}}/api/notes?ticketId=ticket-3-acme&sortBy=createdAt&sortOrder=asc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Scenario 3: Contact Relationship Notes
+# Get all notes for a specific contact
+GET {{baseUrl}}/api/notes?contactId=contact-1-acme&sortBy=createdAt&sortOrder=desc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Scenario 4: Team Member Activity
+# Get all notes by current user
+GET {{baseUrl}}/api/notes?authorId=me&sortBy=createdAt&sortOrder=desc&limit=10
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Scenario 5: Search Across All Notes
+# Search for specific keyword
+GET {{baseUrl}}/api/notes?search=security compliance
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### END OF TESTS
+### Total Scenarios: 55+
+### ==================================================
