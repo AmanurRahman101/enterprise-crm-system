@@ -14,6 +14,7 @@ import taskRoutes from './routes/taskRoutes';
 import ticketRoutes from './routes/ticketRoutes';
 import activityRoutes from './routes/activityRoutes';
 import noteRoutes from './routes/noteRoutes';
+import userRoutes from './routes/userRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -87,6 +88,9 @@ app.use('/api/activities', activityRoutes);
 
 // Note management routes
 app.use('/api/notes', noteRoutes);
+
+// User management routes
+app.use('/api/users', userRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
