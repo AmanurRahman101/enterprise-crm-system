@@ -1,0 +1,210 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Organization model - The tenant
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  domain    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users     User[]
+  contacts  Contact[]
+  deals     Deal[]
+  tickets   Ticket[]
+
+  @@map("organizations")
+}
+
+// User model - The employee
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  password       String
+  firstName      String
+  lastName       String
+  role           UserRole @default(EMPLOYEE)
+  phone          String?
+  avatar         String?
+  isActive       Boolean  @default(true)
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deals        Deal[]
+  tickets      Ticket[]
+  tasks        Task[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+// Contact model - The customer
+model Contact {
+  id             String        @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  company        String?
+  position       String?
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  postalCode     String?
+  status         ContactStatus @default(ACTIVE)
+  source         String?       // e.g., "Website", "Referral", "Cold Call"
+  notes          String?       @db.Text
+  organizationId String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deals        Deal[]
+  tickets      Ticket[]
+  tasks        Task[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("contacts")
+}
+
+enum ContactStatus {
+  ACTIVE
+  INACTIVE
+  LEAD
+  CUSTOMER
+}
+
+// Deal model - A sales opportunity
+model Deal {
+  id             String     @id @default(uuid())
+  title          String
+  description    String?    @db.Text
+  value          Decimal    @db.Decimal(10, 2)
+  stage          DealStage  @default(PROSPECTING)
+  probability    Int        @default(0) // 0-100
+  expectedCloseDate DateTime?
+  closedDate     DateTime?
+  contactId      String
+  ownerId        String     // The user responsible for this deal
+  organizationId String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  owner        User         @relation(fields: [ownerId], references: [id])
+  tasks        Task[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([ownerId])
+  @@map("deals")
+}
+
+enum DealStage {
+  PROSPECTING
+  QUALIFICATION
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+// Ticket model - A support ticket
+model Ticket {
+  id             String       @id @default(uuid())
+  subject        String
+  description    String       @db.Text
+  status         TicketStatus @default(OPEN)
+  priority       Priority     @default(MEDIUM)
+  contactId      String
+  assigneeId     String       // The user assigned to this ticket
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  resolvedAt     DateTime?
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignee     User         @relation(fields: [assigneeId], references: [id])
+  tasks        Task[]
+
+  @@index([organizationId])
+  @@index([contactId])
+  @@index([assigneeId])
+  @@map("tickets")
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Task model - An activity
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?    @db.Text
+  dueDate     DateTime?
+  completed   Boolean    @default(false)
+  completedAt DateTime?
+  priority    Priority   @default(MEDIUM)
+  userId      String     // The user responsible for this task
+  
+  // Optional relations to link task to a Contact, Deal, or Ticket
+  contactId   String?
+  dealId      String?
+  ticketId    String?
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  ticket  Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([dealId])
+  @@index([ticketId])
+  @@map("tasks")
+}
