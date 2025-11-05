@@ -11,6 +11,7 @@ import contactRoutes from './routes/contactRoutes';
 import companyRoutes from './routes/companyRoutes';
 import dealRoutes from './routes/dealRoutes';
 import taskRoutes from './routes/taskRoutes';
+import ticketRoutes from './routes/ticketRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -75,6 +76,9 @@ app.use('/api/deals', dealRoutes);
 
 // Task management routes
 app.use('/api/tasks', taskRoutes);
+
+// Ticket system routes
+app.use('/api/tickets', ticketRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

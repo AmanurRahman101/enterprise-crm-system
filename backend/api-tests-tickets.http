@@ -1,0 +1,729 @@
+### ==================================================
+### Ticket System API Tests
+### Module: Helpdesk & Customer Support (Prompt 8)
+### ==================================================
+
+### Variables
+@baseUrl = http://localhost:5000
+@acmeToken = {{loginAcme.response.body.token}}
+@techStartToken = {{loginTechStart.response.body.token}}
+
+### ==================================================
+### SETUP - Authentication
+### ==================================================
+
+### Login as Acme Tenant
+# @name loginAcme
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+X-Tenant: acme
+
+{
+  "email": "john@acme.com",
+  "password": "password123"
+}
+
+### Login as TechStart Tenant
+# @name loginTechStart
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+X-Tenant: techstart
+
+{
+  "email": "jane@techstart.com",
+  "password": "password123"
+}
+
+### ==================================================
+### TICKET CRUD - Create Tickets
+### ==================================================
+
+### Create Ticket 1 - High Priority Support Ticket
+# @name createTicket1
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "System Login Issue - Urgent",
+  "description": "Customer unable to login to the system. Getting 'Invalid credentials' error even with correct password. Needs immediate attention.",
+  "contactId": "contact-1-acme",
+  "priority": "HIGH",
+  "category": "TECHNICAL_SUPPORT",
+  "source": "EMAIL",
+  "slaDeadline": "2025-01-10T18:00:00Z",
+  "tags": ["urgent", "login", "authentication"]
+}
+
+### Create Ticket 2 - Medium Priority Feature Request
+# @name createTicket2
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Feature Request - Export to Excel",
+  "description": "Customer requested ability to export reports to Excel format. Currently only PDF export is available.",
+  "contactId": "contact-2-acme",
+  "priority": "MEDIUM",
+  "category": "FEATURE_REQUEST",
+  "source": "PHONE",
+  "tags": ["feature", "export", "reporting"]
+}
+
+### Create Ticket 3 - Low Priority General Inquiry
+# @name createTicket3
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Question about Subscription Plans",
+  "description": "Customer asking about differences between Basic and Pro plans. What additional features are included in Pro?",
+  "contactId": "contact-3-acme",
+  "assigneeId": "user-1-acme",
+  "priority": "LOW",
+  "category": "QUESTION",
+  "source": "CHAT",
+  "tags": ["subscription", "pricing", "plans"]
+}
+
+### Create Ticket 4 - Critical Bug Report with SLA
+# @name createTicket4
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Data Loss During Sync - CRITICAL",
+  "description": "Customer reported data loss during synchronization process. Multiple records missing after sync. This affects production environment.",
+  "contactId": "contact-1-acme",
+  "assigneeId": "user-2-acme",
+  "priority": "URGENT",
+  "category": "BUG",
+  "source": "PORTAL",
+  "slaDeadline": "2025-01-08T12:00:00Z",
+  "tags": ["critical", "data-loss", "sync", "production"]
+}
+
+### Create Ticket for TechStart Tenant
+# @name createTicketTechStart
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+{
+  "subject": "Account Access Request",
+  "description": "New user needs access to the admin portal. Please create account and send credentials.",
+  "contactId": "contact-1-techstart",
+  "priority": "MEDIUM",
+  "category": "ACCOUNT_MANAGEMENT",
+  "source": "EMAIL",
+  "tags": ["access", "new-user"]
+}
+
+### ==================================================
+### VALIDATION TESTS
+### ==================================================
+
+### Create Ticket - Missing Subject (should fail)
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "description": "Ticket without subject",
+  "contactId": "contact-1-acme"
+}
+
+### Create Ticket - Missing Description (should fail)
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Test Ticket",
+  "contactId": "contact-1-acme"
+}
+
+### Create Ticket - Missing ContactId (should fail)
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Test Ticket",
+  "description": "Ticket without contact"
+}
+
+### Create Ticket - Invalid Contact (should fail)
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Test Ticket",
+  "description": "Ticket with invalid contact",
+  "contactId": "non-existent-contact"
+}
+
+### Create Ticket - Invalid Assignee (should fail)
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Test Ticket",
+  "description": "Ticket with invalid assignee",
+  "contactId": "contact-1-acme",
+  "assigneeId": "non-existent-user"
+}
+
+### ==================================================
+### READ OPERATIONS
+### ==================================================
+
+### Get All Tickets (Acme Tenant)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get All Tickets with Pagination
+GET {{baseUrl}}/api/tickets?page=1&limit=2
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket by ID
+GET {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket by Ticket Number
+GET {{baseUrl}}/api/tickets/number/1
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket by Ticket Number - Not Found
+GET {{baseUrl}}/api/tickets/number/9999
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### SEARCH & FILTERS
+### ==================================================
+
+### Search by Subject
+GET {{baseUrl}}/api/tickets?search=Login
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Search by Description
+GET {{baseUrl}}/api/tickets?search=export
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Search by Ticket Number (numeric search)
+GET {{baseUrl}}/api/tickets?search=1
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Status - OPEN
+GET {{baseUrl}}/api/tickets?status=OPEN
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Status - IN_PROGRESS
+GET {{baseUrl}}/api/tickets?status=IN_PROGRESS
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Priority - HIGH
+GET {{baseUrl}}/api/tickets?priority=HIGH
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Priority - URGENT
+GET {{baseUrl}}/api/tickets?priority=URGENT
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Category - TECHNICAL_SUPPORT
+GET {{baseUrl}}/api/tickets?category=TECHNICAL_SUPPORT
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Category - BUG
+GET {{baseUrl}}/api/tickets?category=BUG
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Source - EMAIL
+GET {{baseUrl}}/api/tickets?source=EMAIL
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Contact
+GET {{baseUrl}}/api/tickets?contactId=contact-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Assignee
+GET {{baseUrl}}/api/tickets?assigneeId=user-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Current User's Assigned Tickets (using "me")
+GET {{baseUrl}}/api/tickets?assigneeId=me
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Tags - Single Tag
+GET {{baseUrl}}/api/tickets?tags=urgent
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by Tags - Multiple Tags
+GET {{baseUrl}}/api/tickets?tags=urgent,critical
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by SLA - Past Due
+GET {{baseUrl}}/api/tickets?slaPast=true
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Filter by SLA - Not Past Due
+GET {{baseUrl}}/api/tickets?slaPast=false
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Combined Filters - High Priority Open Tickets
+GET {{baseUrl}}/api/tickets?status=OPEN&priority=HIGH
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Combined Filters - Technical Support Emails
+GET {{baseUrl}}/api/tickets?category=TECHNICAL_SUPPORT&source=EMAIL
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### SORTING
+### ==================================================
+
+### Sort by Priority (DESC - Most urgent first)
+GET {{baseUrl}}/api/tickets?sortBy=priority&sortOrder=desc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Sort by Created Date (DESC - Newest first)
+GET {{baseUrl}}/api/tickets?sortBy=createdAt&sortOrder=desc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Sort by Ticket Number (ASC)
+GET {{baseUrl}}/api/tickets?sortBy=ticketNumber&sortOrder=asc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Sort by SLA Deadline (ASC - Most urgent first)
+GET {{baseUrl}}/api/tickets?sortBy=slaDeadline&sortOrder=asc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### UPDATE OPERATIONS
+### ==================================================
+
+### Update Ticket - Basic Fields
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "System Login Issue - RESOLVED",
+  "description": "Customer unable to login. Issue was due to expired password. Password reset link sent and customer can now login successfully.",
+  "priority": "MEDIUM"
+}
+
+### Update Ticket - Assign to User
+PUT {{baseUrl}}/api/tickets/{{createTicket2.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "assigneeId": "user-2-acme"
+}
+
+### Update Ticket - Add Tags
+PUT {{baseUrl}}/api/tickets/{{createTicket2.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "tags": ["feature", "export", "reporting", "excel", "in-progress"]
+}
+
+### Update Ticket - Change Priority
+PUT {{baseUrl}}/api/tickets/{{createTicket3.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "priority": "MEDIUM"
+}
+
+### Update Ticket - Set SLA Deadline
+PUT {{baseUrl}}/api/tickets/{{createTicket2.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "slaDeadline": "2025-01-15T17:00:00Z"
+}
+
+### ==================================================
+### STATUS TRANSITIONS
+### ==================================================
+
+### Update Status - OPEN to IN_PROGRESS
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "IN_PROGRESS"
+}
+
+### Update Status - IN_PROGRESS to PENDING
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "PENDING"
+}
+
+### Update Status - PENDING to IN_PROGRESS (back)
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "IN_PROGRESS"
+}
+
+### Update Status - IN_PROGRESS to RESOLVED
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "RESOLVED"
+}
+
+### Update Status - RESOLVED to CLOSED
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "CLOSED"
+}
+
+### Update Status - Invalid Status (should fail)
+PUT {{baseUrl}}/api/tickets/{{createTicket2.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "INVALID_STATUS"
+}
+
+### Complete Workflow - Ticket 4 (OPEN -> IN_PROGRESS -> RESOLVED -> CLOSED)
+PUT {{baseUrl}}/api/tickets/{{createTicket4.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "IN_PROGRESS"
+}
+
+###
+PUT {{baseUrl}}/api/tickets/{{createTicket4.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "RESOLVED"
+}
+
+###
+PUT {{baseUrl}}/api/tickets/{{createTicket4.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "CLOSED"
+}
+
+### ==================================================
+### STATISTICS
+### ==================================================
+
+### Get Ticket Statistics - All Tickets
+GET {{baseUrl}}/api/tickets/stats
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket Statistics - Filter by Status
+GET {{baseUrl}}/api/tickets/stats?status=OPEN
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket Statistics - Filter by Priority
+GET {{baseUrl}}/api/tickets/stats?priority=HIGH
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket Statistics - Filter by Category
+GET {{baseUrl}}/api/tickets/stats?category=TECHNICAL_SUPPORT
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket Statistics - Current User's Tickets (using "me")
+GET {{baseUrl}}/api/tickets/stats?userId=me
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket Statistics - Specific User
+GET {{baseUrl}}/api/tickets/stats?userId=user-1-acme
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Get Ticket Statistics - Date Range
+GET {{baseUrl}}/api/tickets/stats?startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### TENANT ISOLATION
+### ==================================================
+
+### Attempt to Access Acme Ticket from TechStart (should fail)
+GET {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+### Attempt to Update Acme Ticket from TechStart (should fail)
+PUT {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+{
+  "subject": "Attempting to modify another tenant's ticket"
+}
+
+### Attempt to Delete Acme Ticket from TechStart (should fail)
+DELETE {{baseUrl}}/api/tickets/{{createTicket1.response.body.id}}
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+### Verify TechStart Can Only See Their Own Tickets
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{techStartToken}}
+X-Tenant: techstart
+
+### ==================================================
+### DELETE OPERATIONS
+### ==================================================
+
+### Delete Ticket
+DELETE {{baseUrl}}/api/tickets/{{createTicket3.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Delete Non-Existent Ticket (should fail)
+DELETE {{baseUrl}}/api/tickets/non-existent-id
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Verify Ticket Deleted
+GET {{baseUrl}}/api/tickets/{{createTicket3.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### ERROR HANDLING
+### ==================================================
+
+### Get Ticket - No Authentication (should fail)
+GET {{baseUrl}}/api/tickets
+X-Tenant: acme
+
+### Get Ticket - No Tenant Header (should fail)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{acmeToken}}
+
+### Get Ticket - Invalid Token (should fail)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer invalid-token-xyz
+X-Tenant: acme
+
+### Get Ticket - Non-Existent ID (should fail)
+GET {{baseUrl}}/api/tickets/non-existent-ticket-id
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### ADVANCED SCENARIOS
+### ==================================================
+
+### Scenario 1: Create Urgent Ticket with Immediate Assignment
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Server Down - Production Environment",
+  "description": "Production server is completely down. All customers unable to access the system. Need immediate attention.",
+  "contactId": "contact-1-acme",
+  "assigneeId": "user-1-acme",
+  "priority": "URGENT",
+  "category": "BUG",
+  "source": "PHONE",
+  "slaDeadline": "2025-01-07T08:00:00Z",
+  "tags": ["critical", "server", "production", "downtime"]
+}
+
+### Scenario 2: Bulk Filter - All Open High Priority Technical Support Tickets Past SLA
+GET {{baseUrl}}/api/tickets?status=OPEN&priority=HIGH&category=TECHNICAL_SUPPORT&slaPast=true&sortBy=slaDeadline&sortOrder=asc
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Scenario 3: Get Statistics for Support Manager Dashboard
+GET {{baseUrl}}/api/tickets/stats?startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### Scenario 4: Track Ticket Through Complete Lifecycle
+# Create ticket
+# @name lifecycleTicket
+POST {{baseUrl}}/api/tickets
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "subject": "Integration Issue with Third-Party API",
+  "description": "Customer reports integration with Salesforce API is failing. Getting 401 authentication errors.",
+  "contactId": "contact-2-acme",
+  "priority": "HIGH",
+  "category": "TECHNICAL_SUPPORT",
+  "source": "EMAIL",
+  "slaDeadline": "2025-01-09T17:00:00Z",
+  "tags": ["integration", "salesforce", "api"]
+}
+
+###
+# Assign ticket
+PUT {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "assigneeId": "user-2-acme"
+}
+
+###
+# Start working
+PUT {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "IN_PROGRESS"
+}
+
+###
+# Waiting for customer response
+PUT {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "PENDING"
+}
+
+###
+# Continue working after customer reply
+PUT {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "IN_PROGRESS"
+}
+
+###
+# Mark as resolved
+PUT {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "RESOLVED"
+}
+
+###
+# Close ticket
+PUT {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}/status
+Content-Type: application/json
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+{
+  "status": "CLOSED"
+}
+
+###
+# Verify final state with all timestamps
+GET {{baseUrl}}/api/tickets/{{lifecycleTicket.response.body.id}}
+Authorization: Bearer {{acmeToken}}
+X-Tenant: acme
+
+### ==================================================
+### END OF TESTS
+### Total Scenarios: 85+
+### ==================================================
