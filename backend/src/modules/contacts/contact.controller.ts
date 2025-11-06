@@ -20,7 +20,11 @@ export class ContactController {
       };
 
       const result = await contactService.getAllContacts(organizationId, filters);
-      res.json(result);
+      // Transform 'data' to 'contacts' for frontend compatibility
+      res.json({
+        contacts: result.data,
+        pagination: result.pagination,
+      });
     } catch (error) {
       throw error;
     }

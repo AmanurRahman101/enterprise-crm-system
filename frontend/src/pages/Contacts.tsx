@@ -128,12 +128,12 @@ const Contacts = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Contacts</h1>
-          <p className="text-gray-600">Manage your customer relationships</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">Contacts</h1>
+          <p className="text-lg text-gray-600">Manage your customer relationships</p>
         </div>
         <button onClick={openCreateModal} className="btn-primary">
           <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,69 +145,78 @@ const Contacts = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4">
-          {error}
+        <div className="bg-red-50 border-2 border-red-200 text-red-800 px-6 py-4 rounded-xl mb-6 shadow-sm">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <span className="font-medium">{error}</span>
+          </div>
         </div>
       )}
 
       {/* Contacts Table */}
       <div className="card overflow-hidden">
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="mt-2 text-gray-600">Loading contacts...</p>
+          <div className="text-center py-16">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+            <p className="mt-4 text-gray-600 font-medium">Loading contacts...</p>
           </div>
         ) : contacts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">No contacts found. Create your first contact to get started!</p>
+          <div className="text-center py-16">
+            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <p className="text-gray-600 text-lg font-medium">No contacts found</p>
+            <p className="text-gray-500 mt-2">Create your first contact to get started!</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Phone
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Company
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {contacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                  <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-gray-900">
                         {contact.firstName} {contact.lastName}
                       </div>
                       {contact.position && (
-                        <div className="text-sm text-gray-500">{contact.position}</div>
+                        <div className="text-sm text-gray-500 mt-1">{contact.position}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">
                       {contact.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">
                       {contact.phone || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">
                       {contact.company || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <span className={`px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full ${
                         contact.status === 'CUSTOMER' ? 'bg-green-100 text-green-800' :
                         contact.status === 'ACTIVE' ? 'bg-blue-100 text-blue-800' :
                         contact.status === 'LEAD' ? 'bg-yellow-100 text-yellow-800' :
@@ -216,16 +225,16 @@ const Contacts = () => {
                         {contact.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-semibold">
                       <button
                         onClick={() => handleEdit(contact)}
-                        className="text-primary-600 hover:text-primary-900 mr-4"
+                        className="text-primary-600 hover:text-primary-900 mr-6 transition-colors"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(contact.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 transition-colors"
                       >
                         Delete
                       </button>
@@ -240,15 +249,15 @@ const Contacts = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="card max-w-2xl w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-800">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="card max-w-2xl w-full shadow-2xl">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-bold text-gray-800">
                 {editingContact ? 'Edit Contact' : 'Create New Contact'}
               </h3>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -256,10 +265,10 @@ const Contacts = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     First Name *
                   </label>
                   <input
@@ -268,12 +277,12 @@ const Contacts = () => {
                     {...register('firstName', { required: 'First name is required' })}
                   />
                   {errors.firstName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.firstName.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Last Name *
                   </label>
                   <input
@@ -282,13 +291,13 @@ const Contacts = () => {
                     {...register('lastName', { required: 'Last name is required' })}
                   />
                   {errors.lastName && (
-                    <p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
+                    <p className="mt-2 text-sm text-red-600">{errors.lastName.message}</p>
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Email *
                 </label>
                 <input
@@ -303,12 +312,12 @@ const Contacts = () => {
                   })}
                 />
                 {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                  <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Phone
                 </label>
                 <input
@@ -318,9 +327,9 @@ const Contacts = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Company
                   </label>
                   <input
@@ -331,7 +340,7 @@ const Contacts = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Position
                   </label>
                   <input
@@ -343,7 +352,7 @@ const Contacts = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Status
                 </label>
                 <select
@@ -357,7 +366,7 @@ const Contacts = () => {
                 </select>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-4 pt-6">
                 <button
                   type="button"
                   onClick={closeModal}
