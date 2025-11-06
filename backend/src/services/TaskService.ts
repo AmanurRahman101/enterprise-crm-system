@@ -611,7 +611,7 @@ export class TaskService {
     }));
 
     // Tasks by assignee (only if not filtering by user)
-    let assigneeStats = [];
+    let assigneeStats: any[] = [];
     if (!userId) {
       const tasksByAssignee = await prisma.task.groupBy({
         by: ['assigneeId'],

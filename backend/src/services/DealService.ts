@@ -2,14 +2,12 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-type DealStage = 'LEAD' | 'QUALIFIED' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
-
 interface CreateDealInput {
   tenantId: string;
   title: string;
   value: number;
   currency?: string;
-  stage?: DealStage;
+  stageId?: string; // Changed from stage enum to stageId
   probability?: number;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   source?: string;
@@ -24,7 +22,7 @@ interface UpdateDealInput {
   title?: string;
   value?: number;
   currency?: string;
-  stage?: DealStage;
+  stageId?: string; // Changed from stage enum to stageId
   probability?: number;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   source?: string;
@@ -37,7 +35,7 @@ interface UpdateDealInput {
 }
 
 interface GetDealsFilters {
-  stage?: DealStage;
+  stageId?: string; // Changed from stage enum to stageId
   ownerId?: string;
   contactId?: string;
   companyId?: string;
@@ -108,6 +106,31 @@ export class DealService {
       throw new Error('A deal with this title already exists in your tenant');
     }
 
+    // Get default stage if no stageId provided
+    let stageId = data.stageId;
+    if (!stageId) {
+      const defaultStage = await prisma.dealStage.findFirst({
+        where: { 
+          tenantId: data.tenantId, 
+          isDefault: true,
+          isActive: true 
+        },
+      });
+      if (!defaultStage) {
+        // Fallback to first active stage if no default
+        const firstStage = await prisma.dealStage.findFirst({
+          where: { tenantId: data.tenantId, isActive: true },
+          orderBy: { order: 'asc' },
+        });
+        if (!firstStage) {
+          throw new Error('No active stages found for tenant');
+        }
+        stageId = firstStage.id;
+      } else {
+        stageId = defaultStage.id;
+      }
+    }
+
     // Create deal
     const deal = await prisma.deal.create({
       data: {
@@ -115,7 +138,7 @@ export class DealService {
         title: data.title,
         value: data.value,
         currency: data.currency || 'USD',
-        stage: data.stage || 'LEAD',
+        stageId: stageId,
         probability: data.probability !== undefined ? data.probability : 10,
         priority: data.priority || 'MEDIUM',
         source: data.source,
@@ -126,6 +149,16 @@ export class DealService {
         ownerId: data.ownerId,
       },
       include: {
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            isWon: true,
+            isLost: true,
+          },
+        },
         owner: {
           select: {
             id: true,
@@ -164,6 +197,17 @@ export class DealService {
         tenantId: tenantId,
       },
       include: {
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            probability: true,
+            isWon: true,
+            isLost: true,
+          },
+        },
         owner: {
           select: {
             id: true,
@@ -222,7 +266,7 @@ export class DealService {
           take: 10,
           orderBy: { createdAt: 'desc' },
           include: {
-            user: {
+            author: {
               select: {
                 id: true,
                 firstName: true,
@@ -253,7 +297,7 @@ export class DealService {
    */
   async getDeals(tenantId: string, filters: GetDealsFilters = {}) {
     const {
-      stage,
+      stageId,
       ownerId,
       contactId,
       companyId,
@@ -277,8 +321,8 @@ export class DealService {
     };
 
     // Stage filter
-    if (stage) {
-      where.stage = stage;
+    if (stageId) {
+      where.stageId = stageId;
     }
 
     // Owner filter
@@ -342,6 +386,16 @@ export class DealService {
       take: limit,
       orderBy: { [sortBy]: sortOrder },
       include: {
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            isWon: true,
+            isLost: true,
+          },
+        },
         owner: {
           select: {
             id: true,
@@ -465,10 +519,21 @@ export class DealService {
     if (data.title !== undefined) updateData.title = data.title;
     if (data.value !== undefined) updateData.value = data.value;
     if (data.currency !== undefined) updateData.currency = data.currency;
-    if (data.stage !== undefined) {
-      updateData.stage = data.stage;
+    if (data.stageId !== undefined) {
+      // Validate stage exists and belongs to tenant
+      const stage = await prisma.dealStage.findFirst({
+        where: {
+          id: data.stageId,
+          tenantId: tenantId,
+          isActive: true,
+        },
+      });
+      if (!stage) {
+        throw new Error('Stage not found in this tenant');
+      }
+      updateData.stageId = data.stageId;
       // If deal is being closed, set closedAt
-      if (data.stage === 'CLOSED_WON' || data.stage === 'CLOSED_LOST') {
+      if (stage.isWon || stage.isLost) {
         updateData.closedAt = new Date();
       }
     }
@@ -489,6 +554,16 @@ export class DealService {
       where: { id: dealId },
       data: updateData,
       include: {
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            isWon: true,
+            isLost: true,
+          },
+        },
         owner: {
           select: {
             id: true,
@@ -523,7 +598,7 @@ export class DealService {
   async moveDealStage(
     dealId: string,
     tenantId: string,
-    newStage: DealStage,
+    newStageId: string,
     lostReason?: string
   ) {
     // Verify deal exists and belongs to tenant
@@ -538,35 +613,34 @@ export class DealService {
       throw new Error('Deal not found');
     }
 
+    // Validate new stage exists and belongs to tenant
+    const newStage = await prisma.dealStage.findFirst({
+      where: {
+        id: newStageId,
+        tenantId: tenantId,
+        isActive: true,
+      },
+    });
+
+    if (!newStage) {
+      throw new Error('Stage not found in this tenant');
+    }
+
     const updateData: any = {
-      stage: newStage,
+      stageId: newStageId,
     };
 
-    // Update probability based on stage
-    switch (newStage) {
-      case 'LEAD':
-        updateData.probability = 10;
-        break;
-      case 'QUALIFIED':
-        updateData.probability = 25;
-        break;
-      case 'PROPOSAL':
-        updateData.probability = 50;
-        break;
-      case 'NEGOTIATION':
-        updateData.probability = 75;
-        break;
-      case 'CLOSED_WON':
-        updateData.probability = 100;
-        updateData.closedAt = new Date();
-        break;
-      case 'CLOSED_LOST':
-        updateData.probability = 0;
-        updateData.closedAt = new Date();
-        if (lostReason) {
-          updateData.lostReason = lostReason;
-        }
-        break;
+    // Update probability based on stage settings
+    if (newStage.probability !== null) {
+      updateData.probability = newStage.probability;
+    }
+
+    // If moving to won or lost stage, set closedAt
+    if (newStage.isWon || newStage.isLost) {
+      updateData.closedAt = new Date();
+      if (newStage.isLost && lostReason) {
+        updateData.lostReason = lostReason;
+      }
     }
 
     // Update deal
@@ -574,6 +648,17 @@ export class DealService {
       where: { id: dealId },
       data: updateData,
       include: {
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            probability: true,
+            isWon: true,
+            isLost: true,
+          },
+        },
         owner: {
           select: {
             id: true,
@@ -635,19 +720,34 @@ export class DealService {
       where: { tenantId },
     });
 
-    // Deals by stage
+    // Deals by stage - now using stageId
     const dealsByStage = await prisma.deal.groupBy({
-      by: ['stage'],
+      by: ['stageId'],
       where: { tenantId },
-      _count: { stage: true },
+      _count: { stageId: true },
       _sum: { value: true },
     });
 
-    const stageStats = dealsByStage.map((item: any) => ({
-      stage: item.stage,
-      count: item._count.stage,
-      totalValue: item._sum.value || 0,
-    }));
+    // Get stage details for each stageId
+    const stageStats = await Promise.all(
+      dealsByStage.map(async (item: any) => {
+        const stage = await prisma.dealStage.findUnique({
+          where: { id: item.stageId },
+          select: { id: true, name: true, color: true, order: true },
+        });
+        return {
+          stageId: item.stageId,
+          stageName: stage?.name || 'Unknown',
+          stageColor: stage?.color || '#gray',
+          stageOrder: stage?.order || 0,
+          count: item._count.stageId,
+          totalValue: item._sum.value || 0,
+        };
+      })
+    );
+
+    // Sort by stage order
+    stageStats.sort((a, b) => a.stageOrder - b.stageOrder);
 
     // Deals by owner
     const dealsByOwner = await prisma.deal.groupBy({
@@ -678,14 +778,20 @@ export class DealService {
       _sum: { value: true },
     });
 
-    // Total value by stage
+    // Total value by stage status (won/lost/pipeline)
     const wonDealsValue = await prisma.deal.aggregate({
-      where: { tenantId, stage: 'CLOSED_WON' },
+      where: { 
+        tenantId,
+        stage: { isWon: true }
+      },
       _sum: { value: true },
     });
 
     const lostDealsValue = await prisma.deal.aggregate({
-      where: { tenantId, stage: 'CLOSED_LOST' },
+      where: { 
+        tenantId,
+        stage: { isLost: true }
+      },
       _sum: { value: true },
     });
 
@@ -693,7 +799,8 @@ export class DealService {
       where: {
         tenantId,
         stage: {
-          notIn: ['CLOSED_WON', 'CLOSED_LOST'],
+          isWon: false,
+          isLost: false,
         },
       },
       _sum: { value: true },
@@ -701,11 +808,17 @@ export class DealService {
 
     // Count closed deals
     const closedWonCount = await prisma.deal.count({
-      where: { tenantId, stage: 'CLOSED_WON' },
+      where: { 
+        tenantId,
+        stage: { isWon: true }
+      },
     });
 
     const closedLostCount = await prisma.deal.count({
-      where: { tenantId, stage: 'CLOSED_LOST' },
+      where: { 
+        tenantId,
+        stage: { isLost: true }
+      },
     });
 
     const totalClosedDeals = closedWonCount + closedLostCount;
@@ -714,7 +827,7 @@ export class DealService {
     const winRate = totalClosedDeals > 0 ? (closedWonCount / totalClosedDeals) * 100 : 0;
 
     // Average deal value
-    const averageDealValue = totalDeals > 0 ? (totalValue._sum.value || 0) / totalDeals : 0;
+    const averageDealValue = totalDeals > 0 ? ((totalValue._sum?.value || 0) / totalDeals) : 0;
 
     // Recently added deals (last 7 days)
     const sevenDaysAgo = new Date();
@@ -735,7 +848,8 @@ export class DealService {
       where: {
         tenantId,
         stage: {
-          notIn: ['CLOSED_WON', 'CLOSED_LOST'],
+          isWon: false,
+          isLost: false,
         },
         expectedCloseDate: {
           gte: new Date(),
@@ -748,10 +862,10 @@ export class DealService {
       total: totalDeals,
       byStage: stageStats,
       byOwner: ownerStats,
-      totalValue: totalValue._sum.value || 0,
-      wonValue: wonDealsValue._sum.value || 0,
-      lostValue: lostDealsValue._sum.value || 0,
-      pipelineValue: pipelineValue._sum.value || 0,
+      totalValue: totalValue._sum?.value || 0,
+      wonValue: wonDealsValue._sum?.value || 0,
+      lostValue: lostDealsValue._sum?.value || 0,
+      pipelineValue: pipelineValue._sum?.value || 0,
       closedWonCount,
       closedLostCount,
       winRate: Math.round(winRate * 100) / 100,

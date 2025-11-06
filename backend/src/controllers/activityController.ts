@@ -5,7 +5,7 @@ import logger from '../utils/logger';
 /**
  * Create a new activity
  */
-export const createActivity = async (req: Request, res: Response) => {
+export const createActivity = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;

@@ -18,7 +18,7 @@ export const createDeal = async (req: Request, res: Response): Promise<void> => 
       title,
       value,
       currency,
-      stage,
+      stageId,
       probability,
       priority,
       source,
@@ -52,7 +52,7 @@ export const createDeal = async (req: Request, res: Response): Promise<void> => 
       title,
       value,
       currency,
-      stage,
+      stageId,
       probability,
       priority,
       source,
@@ -169,7 +169,7 @@ export const updateDeal = async (req: Request, res: Response): Promise<void> => 
       title,
       value,
       currency,
-      stage,
+      stageId,
       probability,
       priority,
       source,
@@ -185,7 +185,7 @@ export const updateDeal = async (req: Request, res: Response): Promise<void> => 
       title,
       value,
       currency,
-      stage,
+      stageId,
       probability,
       priority,
       source,
@@ -220,26 +220,22 @@ export const moveDealStage = async (req: Request, res: Response): Promise<void> 
     }
 
     const { id } = req.params;
-    const { stage, lostReason } = req.body;
+    const { stageId, lostReason } = req.body;
 
-    if (!stage) {
-      res.status(400).json({ error: 'Stage is required' });
+    if (!stageId) {
+      res.status(400).json({ error: 'Stage ID is required' });
       return;
     }
 
-    const validStages = ['LEAD', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'];
-    if (!validStages.includes(stage)) {
-      res.status(400).json({ error: 'Invalid stage' });
-      return;
-    }
+    const deal = await dealService.moveDealStage(id, req.tenant.id, stageId, lostReason);
 
-    const deal = await dealService.moveDealStage(id, req.tenant.id, stage, lostReason);
-
-    logger.info(`Deal ${id} moved to stage ${stage} in tenant ${req.tenant.id}`);
+    logger.info(`Deal ${id} moved to stage ${stageId} in tenant ${req.tenant.id}`);
     res.json(deal);
   } catch (error: any) {
     logger.error('Error moving deal stage:', error);
     if (error.message === 'Deal not found') {
+      res.status(404).json({ error: error.message });
+    } else if (error.message === 'Stage not found in this tenant') {
       res.status(404).json({ error: error.message });
     } else {
       res.status(500).json({ error: error.message || 'Failed to move deal stage' });

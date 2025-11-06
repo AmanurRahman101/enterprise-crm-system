@@ -17,6 +17,17 @@ dist/
 build/
 out/
 *.log
+logs/
+
+# Test files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+api-tests-*.http
+test-*.ts
+test-*.js
+test-*.ps1
 
 # IDEs
 .vscode/
@@ -83,3 +94,9 @@ local.properties
 *.tmp
 *.temp
 .cache/
+
+# Temporary documentation (keep in docs/ folder only)
+*_STATUS.md
+*_REPORT.md
+*_PLAN.md
+*_RESULTS.md

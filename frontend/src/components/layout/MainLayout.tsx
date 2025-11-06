@@ -1,230 +1,269 @@
-import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Box,
-  Drawer,
-  AppBar,
-  Toolbar,
-  List,
-  Typography,
-  Divider,
-  IconButton,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Menu,
-  MenuItem,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard,
-  People,
-  Business,
-  AttachMoney,
-  Assignment,
-  ConfirmationNumber,
-  Timeline,
-  Note,
-  Settings,
-  Logout,
-  AccountCircle,
-} from '@mui/icons-material';
+  HomeIcon,
+  UsersIcon,
+  BuildingOfficeIcon,
+  BanknotesIcon,
+  ClipboardDocumentListIcon,
+  TicketIcon,
+  ChartBarIcon,
+  DocumentTextIcon,
+  Cog6ToothIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon,
+  ChevronDownIcon,
+  UserCircleIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
+import ThemeToggle from '../common/ThemeToggle';
 
-const drawerWidth = 240;
-
-interface MainLayoutProps {
-  children?: React.ReactNode;
+interface MenuItem {
+  text: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = () => {
+const MainLayout: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileMenuClose = () => {
-    setAnchorEl(null);
-  };
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/' },
-    { text: 'Contacts', icon: <People />, path: '/contacts' },
-    { text: 'Companies', icon: <Business />, path: '/companies' },
-    { text: 'Deals', icon: <AttachMoney />, path: '/deals' },
-    { text: 'Tasks', icon: <Assignment />, path: '/tasks' },
-    { text: 'Tickets', icon: <ConfirmationNumber />, path: '/tickets' },
-    { text: 'Activities', icon: <Timeline />, path: '/activities' },
-    { text: 'Notes', icon: <Note />, path: '/notes' },
+  const menuItems: MenuItem[] = [
+    { text: 'Dashboard', icon: HomeIcon, path: '/' },
+    { text: 'Contacts', icon: UsersIcon, path: '/contacts' },
+    { text: 'Companies', icon: BuildingOfficeIcon, path: '/companies' },
+    { text: 'Deals', icon: BanknotesIcon, path: '/deals' },
+    { text: 'Tasks', icon: ClipboardDocumentListIcon, path: '/tasks' },
+    { text: 'Tickets', icon: TicketIcon, path: '/tickets' },
+    { text: 'Activities', icon: ChartBarIcon, path: '/activities' },
+    { text: 'Notes', icon: DocumentTextIcon, path: '/notes' },
   ];
 
-  const adminMenuItems = [
-    { text: 'Users', icon: <People />, path: '/users' },
-    { text: 'Settings', icon: <Settings />, path: '/settings' },
+  const adminMenuItems: MenuItem[] = [
+    { text: 'Users', icon: UsersIcon, path: '/users' },
+    { text: 'Settings', icon: Cog6ToothIcon, path: '/settings' },
   ];
 
-  const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
-          تواصل CRM
-        </Typography>
-      </Toolbar>
-      <Divider />
-      <List>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton onClick={() => navigate(item.path)}>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-      
-      {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
-        <>
-          <Divider />
-          <List>
-            {adminMenuItems.map((item) => (
-              <ListItem key={item.text} disablePadding>
-                <ListItemButton onClick={() => navigate(item.path)}>
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-        </>
-      )}
-    </div>
-  );
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const NavigationItem: React.FC<{ item: MenuItem }> = ({ item }) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+
+    return (
+      <button
+        onClick={() => {
+          navigate(item.path);
+          setSidebarOpen(false);
+        }}
+        className={`
+          w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg
+          transition-all duration-200 group
+          ${active
+            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 border-r-2 border-primary-600'
+            : 'text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-700/50 hover:text-secondary-900 dark:hover:text-secondary-100'
+          }
+        `}
+      >
+        <Icon className={`w-5 h-5 ${active ? 'text-primary-600 dark:text-primary-400' : 'text-secondary-500 dark:text-secondary-400 group-hover:text-secondary-700 dark:group-hover:text-secondary-300'}`} />
+        <span>{item.text}</span>
+      </button>
+    );
+  };
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-        }}
+    <div className="min-h-screen bg-secondary-50 dark:bg-secondary-900">
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-secondary-900/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 z-40 h-screen w-64 bg-white dark:bg-secondary-800 border-r border-secondary-200 dark:border-secondary-700
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Tawasol CRM
-          </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2">
-              {user?.firstName} {user?.lastName}
-            </Typography>
-            <IconButton
-              size="large"
-              edge="end"
-              aria-label="account of current user"
-              onClick={handleProfileMenuOpen}
-              color="inherit"
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center justify-between h-16 px-6 border-b border-secondary-200">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">T</span>
+              </div>
+              <h1 className="text-lg font-bold text-secondary-900">تواصل CRM</h1>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-secondary-500 hover:text-secondary-700"
             >
-              {user?.avatar ? (
-                <Avatar src={user.avatar} sx={{ width: 32, height: 32 }} />
-              ) : (
-                <AccountCircle />
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
+            {menuItems.map((item) => (
+              <NavigationItem key={item.path} item={item} />
+            ))}
+
+            {/* Admin Section */}
+            {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+              <>
+                <div className="pt-6 pb-2 px-4">
+                  <h3 className="text-xs font-semibold text-secondary-500 uppercase tracking-wider">
+                    Administration
+                  </h3>
+                </div>
+                {adminMenuItems.map((item) => (
+                  <NavigationItem key={item.path} item={item} />
+                ))}
+              </>
+            )}
+          </nav>
+
+          {/* User Profile Section */}
+          <div className="border-t border-secondary-200 dark:border-secondary-700 p-4">
+            <div className="relative">
+              <button
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+              >
+                <div className="flex-shrink-0">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={`${user.firstName} ${user.lastName}`}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-secondary-200 dark:border-secondary-600"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                      <span className="text-primary-700 dark:text-primary-400 font-semibold text-sm">
+                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-secondary-500 dark:text-secondary-400 capitalize">{user?.role.toLowerCase()}</p>
+                </div>
+                <ChevronDownIcon
+                  className={`w-4 h-4 text-secondary-400 dark:text-secondary-500 transition-transform ${
+                    profileMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Profile Dropdown */}
+              {profileMenuOpen && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-secondary-800 rounded-lg shadow-lg border border-secondary-200 dark:border-secondary-700 py-1">
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-700"
+                  >
+                    <UserCircleIcon className="w-4 h-4" />
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/settings');
+                      setProfileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-700"
+                  >
+                    <Cog6ToothIcon className="w-4 h-4" />
+                    Settings
+                  </button>
+                  <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                    Logout
+                  </button>
+                </div>
               )}
-            </IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
+            </div>
+          </div>
+        </div>
+      </aside>
 
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleProfileMenuClose}
-      >
-        <MenuItem onClick={() => { handleProfileMenuClose(); navigate('/profile'); }}>
-          <ListItemIcon>
-            <AccountCircle fontSize="small" />
-          </ListItemIcon>
-          Profile
-        </MenuItem>
-        <MenuItem onClick={() => { handleProfileMenuClose(); navigate('/settings'); }}>
-          <ListItemIcon>
-            <Settings fontSize="small" />
-          </ListItemIcon>
-          Settings
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleLogout}>
-          <ListItemIcon>
-            <Logout fontSize="small" />
-          </ListItemIcon>
-          Logout
-        </MenuItem>
-      </Menu>
+      {/* Main Content */}
+      <div className="lg:pl-64">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 bg-white dark:bg-secondary-800 border-b border-secondary-200 dark:border-secondary-700 h-16">
+          <div className="flex items-center justify-between h-full px-4 lg:px-8">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-secondary-700 dark:text-secondary-300 hover:text-secondary-900 dark:hover:text-secondary-100"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
 
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+            <div className="flex-1 lg:flex lg:items-center lg:justify-between">
+              <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100 hidden lg:block">
+                Tawasol CRM
+              </h2>
+              
+              {/* Desktop User Info */}
+              <div className="hidden lg:flex items-center gap-4">
+                <ThemeToggle />
+                <div className="text-right">
+                  <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-secondary-500 dark:text-secondary-400 capitalize">{user?.role.toLowerCase()}</p>
+                </div>
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-secondary-200 dark:border-secondary-600"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                    <span className="text-primary-700 dark:text-primary-400 font-semibold text-sm">
+                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-        }}
-      >
-        <Toolbar />
-        <Outlet />
-      </Box>
-    </Box>
+        {/* Page Content */}
+        <main className="p-4 lg:p-8">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   );
 };
 

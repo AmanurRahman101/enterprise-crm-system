@@ -35,6 +35,7 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  avatar?: string | null;
 }
 
 export interface AuthResponse {

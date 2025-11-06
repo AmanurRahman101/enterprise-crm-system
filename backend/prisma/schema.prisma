@@ -30,6 +30,7 @@ model Tenant {
   companies   Company[]
   contacts    Contact[]
   deals       Deal[]
+  dealStages  DealStage[]
   tasks       Task[]
   tickets     Ticket[]
   activities  Activity[]
@@ -120,6 +121,31 @@ model Company {
   @@map("companies")
 }
 
+// DealStage model - Customizable pipeline stages per tenant
+model DealStage {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String    // e.g., "Lead", "Qualified", "Proposal"
+  order       Int       // Display order (0-based)
+  color       String    @default("secondary") // UI color: primary, secondary, success, danger, warning
+  probability Int       @default(10) // Default win probability %
+  isActive    Boolean   @default(true)
+  isDefault   Boolean   @default(false) // Default stage for new deals
+  isWon       Boolean   @default(false) // Marks deal as won
+  isLost      Boolean   @default(false) // Marks deal as lost
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deals       Deal[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, order])
+  @@map("deal_stages")
+}
+
 // Contact model - Central to CRM
 model Contact {
   id          String    @id @default(uuid())
@@ -173,7 +199,7 @@ model Deal {
   title         String
   value         Float
   currency      String      @default("USD")
-  stage         DealStage   @default(LEAD)
+  stageId       String      // Reference to DealStage
   probability   Int         @default(10)
   priority      TicketPriority @default(MEDIUM)
   source        String?     // e.g., "Website", "Referral", "Cold Call"
@@ -189,6 +215,7 @@ model Deal {
 
   // Relations
   tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stage         DealStage   @relation(fields: [stageId], references: [id], onDelete: Restrict)
   contact       Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
   company       Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
   owner         User        @relation("DealOwner", fields: [ownerId], references: [id])
@@ -199,7 +226,7 @@ model Deal {
   @@index([tenantId])
   @@index([ownerId])
   @@index([contactId])
-  @@index([stage])
+  @@index([stageId])
   @@index([expectedCloseDate])
   @@map("deals")
 }
@@ -247,7 +274,7 @@ model Ticket {
   category    String?       // e.g., "Technical", "Billing", "General"
   source      String        @default("EMAIL") // EMAIL, PHONE, TELEGRAM, APP
   tags        String[]      @default([])
-  slaDeadline DateTime?     // SLA deadline for response/resolution
+  slaDeadline DateTime?    // SLA deadline for response/resolution
   contactId   String
   assigneeId  String?
   resolvedAt  DateTime?
@@ -338,15 +365,6 @@ enum UserRole {
   SALES
   SUPPORT
   CUSTOMER
-}
-
-enum DealStage {
-  LEAD
-  QUALIFIED
-  PROPOSAL
-  NEGOTIATION
-  CLOSED_WON
-  CLOSED_LOST
 }
 
 enum TaskStatus {

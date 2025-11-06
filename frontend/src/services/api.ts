@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 // Get tenant subdomain from localStorage or URL
 const getTenantSubdomain = (): string | null => {
@@ -42,7 +42,7 @@ apiClient.interceptors.request.use(
     // Add tenant header
     const tenant = getTenantSubdomain();
     if (tenant) {
-      config.headers['X-Tenant'] = tenant;
+      config.headers['X-Tenant-Subdomain'] = tenant;
     }
     
     return config;

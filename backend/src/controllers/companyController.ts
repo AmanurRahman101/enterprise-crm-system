@@ -30,16 +30,10 @@ export class CompanyController {
         phone,
         address,
         city,
-        state,
         country,
-        postalCode,
-        employeeCount,
-        annualRevenue,
+        size,
         description,
-        linkedIn,
-        twitter,
-        facebook,
-        tags,
+        logo,
       } = req.body;
 
       // Validation
@@ -53,7 +47,6 @@ export class CompanyController {
 
       const company = await companyService.createCompany({
         tenantId: req.tenant.id,
-        ownerId: req.user.userId, // Current user becomes owner
         name,
         industry,
         website,
@@ -61,16 +54,10 @@ export class CompanyController {
         phone,
         address,
         city,
-        state,
         country,
-        postalCode,
-        employeeCount,
-        annualRevenue,
+        size,
         description,
-        linkedIn,
-        twitter,
-        facebook,
-        tags,
+        logo,
       });
 
       logger.info(`Company created: ${company.name} by user ${req.user.email}`);
@@ -147,8 +134,7 @@ export class CompanyController {
         limit,
         search,
         industry,
-        ownerId,
-        tags,
+        size,
         sortBy,
         sortOrder,
       } = req.query;
@@ -159,15 +145,17 @@ export class CompanyController {
         limit: limit ? parseInt(limit as string) : undefined,
         search: search as string,
         industry: industry as string,
-        ownerId: ownerId as string,
-        tags: tags ? (tags as string).split(',') : undefined,
+        size: size as string,
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'asc' | 'desc',
       });
 
       res.status(200).json({
         success: true,
-        data: result,
+        data: result.companies,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
       });
     } catch (error) {
       logger.error('Get companies error:', error);
