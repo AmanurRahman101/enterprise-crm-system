@@ -38,11 +38,11 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-primary-100 to-primary-200 flex items-center justify-center p-4">
       <div className="card w-full max-w-md shadow-2xl">
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Tawasol CRM Logo" 
+            className="w-20 h-20 mx-auto mb-4 object-contain"
+          />
           <h1 className="text-4xl font-bold text-gray-800 mb-3">Tawasol CRM</h1>
           <p className="text-lg text-gray-600">Sign in to your account</p>
         </div>
@@ -129,7 +129,7 @@ const Login = () => {
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-bold transition-colors">
+            <Link to="/signup" className="text-primary-700 hover:text-primary-800 font-bold transition-colors">
               Create one now
             </Link>
           </p>

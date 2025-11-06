@@ -135,7 +135,7 @@ const Contacts = () => {
           <h1 className="text-4xl font-bold text-gray-800 mb-3">Contacts</h1>
           <p className="text-lg text-gray-600">Manage your customer relationships</p>
         </div>
-        <button onClick={openCreateModal} className="btn-primary">
+        <button onClick={openCreateModal} className="btn-accent">
           <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>

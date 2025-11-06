@@ -3,7 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes';
 import contactRoutes from './modules/contacts/contact.routes';
+import userRoutes from './modules/users/user.routes';
+import organizationRoutes from './modules/organization/organization.routes';
 import { errorHandler, notFound } from './middleware/error.middleware';
+import { authenticate } from './middleware/auth.middleware';
+import { identifyOrganization } from './middleware/domain.middleware';
 
 // Load environment variables
 dotenv.config();
@@ -18,6 +22,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Domain identification middleware (runs on all requests)
+app.use(identifyOrganization);
+
 // Health check route
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -26,6 +33,8 @@ app.get('/health', (_req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/users', authenticate, userRoutes);
+app.use('/api/organization', authenticate, organizationRoutes);
 
 // 404 handler
 app.use(notFound);

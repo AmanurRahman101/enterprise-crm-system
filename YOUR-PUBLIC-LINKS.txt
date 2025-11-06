@@ -1,0 +1,57 @@
+============================================================
+          YOUR TAWASOL CRM PUBLIC LINKS
+          Generated: November 6, 2025
+============================================================
+
+🌐 SHARE THIS LINK WITH ANYONE:
+
+    https://wet-hoops-bow.loca.lt
+
+    This is your FRONTEND APP - your full CRM interface.
+    Anyone with this link can access your CRM!
+
+------------------------------------------------------------
+
+🔧 BACKEND API (for developers):
+
+    https://tasty-parents-rest.loca.lt
+
+------------------------------------------------------------
+
+📋 INSTRUCTIONS:
+
+1. Copy the frontend link: https://wet-hoops-bow.loca.lt
+2. Send it via email, message, or any way you like
+3. Recipients can open it in their browser
+4. They'll see your CRM login page
+
+------------------------------------------------------------
+
+⚠️ IMPORTANT NOTES:
+
+✓ Keep your servers running (START-ALL.bat)
+✓ Keep the tunnel terminals open
+✓ First-time visitors may see "Click to Continue" - just click it
+✓ Links are temporary and change when you restart tunnels
+✓ Links work worldwide - anyone can access them
+
+------------------------------------------------------------
+
+🔒 CURRENT TEST CREDENTIALS:
+   Email: admin@test.com
+   Password: password123
+
+   (Change these in production!)
+
+------------------------------------------------------------
+
+🛑 TO STOP PUBLIC ACCESS:
+   - Close the tunnel terminals, OR
+   - Run STOP-ALL.bat
+
+------------------------------------------------------------
+
+💡 FOR PERMANENT LINKS:
+   See PUBLIC-ACCESS-INSTRUCTIONS.md for deployment options
+
+============================================================

@@ -12,18 +12,20 @@ datasource db {
 
 // Organization model - The tenant
 model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  domain    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  domain      String?  @unique // Custom domain (e.g., crm.companyA.com)
+  subdomain   String?  @unique // Subdomain (e.g., companyA.tawasol.app)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
-  users     User[]
-  contacts  Contact[]
-  deals     Deal[]
-  tickets   Ticket[]
+  users       User[]
+  contacts    Contact[]
+  deals       Deal[]
+  tickets     Ticket[]
+  invitations Invitation[]
 
   @@map("organizations")
 }
@@ -58,6 +60,37 @@ enum UserRole {
   ADMIN
   MANAGER
   EMPLOYEE
+}
+
+// Invitation model - For inviting team members
+model Invitation {
+  id             String          @id @default(uuid())
+  email          String
+  firstName      String
+  lastName       String
+  role           UserRole
+  token          String          @unique
+  status         InvitationStatus @default(PENDING)
+  organizationId String
+  invitedBy      String          // User ID of the admin who sent the invite
+  expiresAt      DateTime
+  createdAt      DateTime        @default(now())
+  acceptedAt     DateTime?
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
 }
 
 // Contact model - The customer

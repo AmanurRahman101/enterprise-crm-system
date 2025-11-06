@@ -6,6 +6,9 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import Contacts from './pages/Contacts';
+import Users from './pages/Users';
+import Settings from './pages/Settings';
+import AcceptInvitation from './pages/AcceptInvitation';
 
 function App() {
   return (
@@ -15,6 +18,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/accept-invitation" element={<AcceptInvitation />} />
 
           {/* Protected Routes */}
           <Route
@@ -33,6 +37,26 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Contacts />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Users />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
                 </Layout>
               </ProtectedRoute>
             }

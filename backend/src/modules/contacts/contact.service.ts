@@ -60,7 +60,16 @@ export class ContactService {
     const limit = filters?.limit || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = {
+    const where: {
+      organizationId: string;
+      status?: ContactStatus;
+      OR?: Array<{
+        firstName?: { contains: string };
+        lastName?: { contains: string };
+        email?: { contains: string };
+        company?: { contains: string };
+      }>;
+    } = {
       organizationId,
     };
 
