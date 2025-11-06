@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 interface SignUpFormData {
@@ -15,7 +14,6 @@ interface SignUpFormData {
 
 const SignUp = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,8 +31,8 @@ const SignUp = () => {
     setError('');
 
     try {
-      // Call the register-organization endpoint
-      const response = await axios.post('http://localhost:3000/api/auth/register-organization', {
+      // Call the register endpoint
+      const response = await axios.post('http://localhost:3000/api/auth/register', {
         organizationName: data.organizationName,
         firstName: data.firstName,
         lastName: data.lastName,
