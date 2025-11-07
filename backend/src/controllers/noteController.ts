@@ -5,29 +5,32 @@ import logger from '../utils/logger';
 /**
  * Create a new note
  */
-export const createNote = async (req: Request, res: Response) => {
+export const createNote = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { content, contactId, dealId, ticketId, authorId } = req.body;
 
     // Validate required fields
     if (!content) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Missing required field: content',
       });
+      return;
     }
 
     // At least one entity should be specified (contact, deal, or ticket)
     if (!contactId && !dealId && !ticketId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Note must be linked to at least one entity (contact, deal, or ticket)',
       });
+      return;
     }
 
     const note = await NoteService.createNote(tenant.id, {
@@ -48,12 +51,13 @@ export const createNote = async (req: Request, res: Response) => {
 /**
  * Get note by ID
  */
-export const getNote = async (req: Request, res: Response) => {
+export const getNote = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
 
     if (!tenant) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { id } = req.params;
@@ -61,7 +65,8 @@ export const getNote = async (req: Request, res: Response) => {
     const note = await NoteService.getNoteById(tenant.id, id);
 
     if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
+      res.status(404).json({ error: 'Note not found' });
+      return;
     }
 
     res.json(note);
@@ -74,13 +79,14 @@ export const getNote = async (req: Request, res: Response) => {
 /**
  * Get all notes with filters
  */
-export const getNotes = async (req: Request, res: Response) => {
+export const getNotes = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const {
@@ -123,12 +129,13 @@ export const getNotes = async (req: Request, res: Response) => {
 /**
  * Update note
  */
-export const updateNote = async (req: Request, res: Response) => {
+export const updateNote = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
 
     if (!tenant) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { id } = req.params;
@@ -142,7 +149,8 @@ export const updateNote = async (req: Request, res: Response) => {
     });
 
     if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
+      res.status(404).json({ error: 'Note not found' });
+      return;
     }
 
     res.json(note);
@@ -155,12 +163,13 @@ export const updateNote = async (req: Request, res: Response) => {
 /**
  * Delete note
  */
-export const deleteNote = async (req: Request, res: Response) => {
+export const deleteNote = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
 
     if (!tenant) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { id } = req.params;
@@ -168,7 +177,8 @@ export const deleteNote = async (req: Request, res: Response) => {
     const note = await NoteService.deleteNote(tenant.id, id);
 
     if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
+      res.status(404).json({ error: 'Note not found' });
+      return;
     }
 
     res.json({ message: 'Note deleted successfully', note });
@@ -181,13 +191,14 @@ export const deleteNote = async (req: Request, res: Response) => {
 /**
  * Get note statistics
  */
-export const getNoteStats = async (req: Request, res: Response) => {
+export const getNoteStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { authorId, contactId, dealId, ticketId } = req.query;

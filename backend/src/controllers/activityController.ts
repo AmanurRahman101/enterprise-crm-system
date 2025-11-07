@@ -11,7 +11,8 @@ export const createActivity = async (req: Request, res: Response): Promise<void>
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const {
@@ -32,17 +33,19 @@ export const createActivity = async (req: Request, res: Response): Promise<void>
 
     // Validate required fields
     if (!type || !subject || !contactId) {
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Missing required fields: type, subject, contactId',
       });
+      return;
     }
 
     // Validate activity type
     const validTypes = ['CALL', 'EMAIL', 'MEETING', 'NOTE', 'TASK'];
     if (!validTypes.includes(type)) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Invalid activity type. Must be one of: ${validTypes.join(', ')}`,
       });
+      return;
     }
 
     const activity = await ActivityService.createActivity(tenant.id, {
@@ -71,12 +74,13 @@ export const createActivity = async (req: Request, res: Response): Promise<void>
 /**
  * Get activity by ID
  */
-export const getActivity = async (req: Request, res: Response) => {
+export const getActivity = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
 
     if (!tenant) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { id } = req.params;
@@ -84,7 +88,8 @@ export const getActivity = async (req: Request, res: Response) => {
     const activity = await ActivityService.getActivityById(tenant.id, id);
 
     if (!activity) {
-      return res.status(404).json({ error: 'Activity not found' });
+      res.status(404).json({ error: 'Activity not found' });
+      return;
     }
 
     res.json(activity);
@@ -97,13 +102,14 @@ export const getActivity = async (req: Request, res: Response) => {
 /**
  * Get all activities with filters
  */
-export const getActivities = async (req: Request, res: Response) => {
+export const getActivities = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const {
@@ -152,13 +158,14 @@ export const getActivities = async (req: Request, res: Response) => {
 /**
  * Get activity feed - unified timeline
  */
-export const getActivityFeed = async (req: Request, res: Response) => {
+export const getActivityFeed = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { page, limit, entityType, entityId, userId, startDate, endDate } = req.query;
@@ -167,9 +174,10 @@ export const getActivityFeed = async (req: Request, res: Response) => {
     if (entityType) {
       const validTypes = ['contact', 'deal', 'ticket'];
       if (!validTypes.includes(entityType as string)) {
-        return res.status(400).json({
+        res.status(400).json({
           error: `Invalid entityType. Must be one of: ${validTypes.join(', ')}`,
         });
+        return;
       }
     }
 
@@ -199,12 +207,13 @@ export const getActivityFeed = async (req: Request, res: Response) => {
 /**
  * Update activity
  */
-export const updateActivity = async (req: Request, res: Response) => {
+export const updateActivity = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
 
     if (!tenant) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { id } = req.params;
@@ -228,9 +237,10 @@ export const updateActivity = async (req: Request, res: Response) => {
     if (type) {
       const validTypes = ['CALL', 'EMAIL', 'MEETING', 'NOTE', 'TASK'];
       if (!validTypes.includes(type)) {
-        return res.status(400).json({
+        res.status(400).json({
           error: `Invalid activity type. Must be one of: ${validTypes.join(', ')}`,
         });
+        return;
       }
     }
 
@@ -251,7 +261,8 @@ export const updateActivity = async (req: Request, res: Response) => {
     });
 
     if (!activity) {
-      return res.status(404).json({ error: 'Activity not found' });
+      res.status(404).json({ error: 'Activity not found' });
+      return;
     }
 
     res.json(activity);
@@ -264,12 +275,13 @@ export const updateActivity = async (req: Request, res: Response) => {
 /**
  * Delete activity
  */
-export const deleteActivity = async (req: Request, res: Response) => {
+export const deleteActivity = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
 
     if (!tenant) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { id } = req.params;
@@ -277,7 +289,8 @@ export const deleteActivity = async (req: Request, res: Response) => {
     const activity = await ActivityService.deleteActivity(tenant.id, id);
 
     if (!activity) {
-      return res.status(404).json({ error: 'Activity not found' });
+      res.status(404).json({ error: 'Activity not found' });
+      return;
     }
 
     res.json({ message: 'Activity deleted successfully', activity });
@@ -290,13 +303,14 @@ export const deleteActivity = async (req: Request, res: Response) => {
 /**
  * Get activity statistics
  */
-export const getActivityStats = async (req: Request, res: Response) => {
+export const getActivityStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenant = req.tenant;
     const user = req.user;
 
     if (!tenant || !user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { userId, startDate, endDate } = req.query;

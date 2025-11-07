@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const LoginPage = () => {
@@ -216,9 +216,9 @@ const LoginPage = () => {
         <div className="text-center">
           <p className="text-sm text-secondary-600 dark:text-secondary-400">
             Don't have an account?{' '}
-            <a href="#" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors">
-              Contact your administrator
-            </a>
+            <Link to="/register" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors">
+              Create an account
+            </Link>
           </p>
         </div>
       </div>

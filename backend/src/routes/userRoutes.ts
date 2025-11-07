@@ -7,7 +7,12 @@ import {
   reactivateUser,
   getUserStats,
   getTeamMembers,
-  getUserActivity
+  getUserActivity,
+  getProfile,
+  updateProfile,
+  changePassword,
+  getNotificationPreferences,
+  updateNotificationPreferences
 } from '../controllers/userController';
 import { authenticate, authorize } from '../middleware/auth';
 import { tenantMiddleware, requireTenant } from '../middleware/tenant';
@@ -32,6 +37,24 @@ router.use(authenticate);
  * Used for assignment dropdowns in contacts, deals, tasks, tickets
  */
 router.get('/team', getTeamMembers);
+
+/**
+ * User profile routes (current user can access their own profile)
+ */
+// Get current user's profile
+router.get('/profile', getProfile);
+
+// Update current user's profile
+router.put('/profile', updateProfile);
+
+// Change current user's password
+router.put('/password', changePassword);
+
+// Get notification preferences
+router.get('/notifications', getNotificationPreferences);
+
+// Update notification preferences
+router.put('/notifications', updateNotificationPreferences);
 
 /**
  * Admin-only routes

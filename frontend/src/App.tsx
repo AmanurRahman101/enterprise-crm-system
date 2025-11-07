@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ContactListPage from './pages/contacts/ContactListPage';
 import ContactDetailPage from './pages/contacts/ContactDetailPage';
@@ -21,6 +22,17 @@ import TaskListPage from './pages/tasks/TaskListPage';
 import TaskDetailPage from './pages/tasks/TaskDetailPage';
 import TaskFormPage from './pages/tasks/TaskFormPage';
 import StageManagementPage from './pages/settings/StageManagementPage';
+import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
+import ProfilePage from './pages/settings/ProfilePage';
+import NoteListPage from './pages/notes/NoteListPage';
+import NoteFormPage from './pages/notes/NoteFormPage';
+import NoteDetailPage from './pages/notes/NoteDetailPage';
+import ActivityListPage from './pages/activities/ActivityListPage';
+import ActivityFormPage from './pages/activities/ActivityFormPage';
+import ActivityDetailPage from './pages/activities/ActivityDetailPage';
+import UserListPage from './pages/users/UserListPage';
+import UserFormPage from './pages/users/UserFormPage';
+import UserDetailPage from './pages/users/UserDetailPage';
 
 function App() {
   return (
@@ -28,6 +40,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         
         {/* Protected routes with layout */}
         <Route
@@ -71,24 +84,48 @@ function App() {
           <Route path="tasks/:id" element={<TaskDetailPage />} />
           <Route path="tasks/:id/edit" element={<TaskFormPage />} />
           
-          {/* Placeholder routes - will be implemented */}
-          <Route path="activities" element={<div className="p-8 text-center text-secondary-600">Activities (Coming Soon)</div>} />
-          <Route path="notes" element={<div className="p-8 text-center text-secondary-600">Notes (Coming Soon)</div>} />
+          {/* Note routes */}
+          <Route path="notes" element={<NoteListPage />} />
+          <Route path="notes/new" element={<NoteFormPage />} />
+          <Route path="notes/:id" element={<NoteDetailPage />} />
+          <Route path="notes/:id/edit" element={<NoteFormPage />} />
           
-          {/* Admin routes */}
+          {/* Activity routes */}
+          <Route path="activities" element={<ActivityListPage />} />
+          <Route path="activities/new" element={<ActivityFormPage />} />
+          <Route path="activities/:id" element={<ActivityDetailPage />} />
+          <Route path="activities/:id/edit" element={<ActivityFormPage />} />
+          
+          {/* User Management routes (Admin only) */}
           <Route
             path="users"
             element={
               <ProtectedRoute requireAdmin>
-                <div className="p-8 text-center text-secondary-600">Users (Admin Only - Coming Soon)</div>
+                <UserListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="users/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <UserDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="users/:id/edit"
+            element={
+              <ProtectedRoute requireAdmin>
+                <UserFormPage />
               </ProtectedRoute>
             }
           />
           
           {/* Settings routes */}
-          <Route path="settings" element={<div className="p-8 text-center text-secondary-600">Settings (Coming Soon)</div>} />
+          <Route path="settings" element={<GeneralSettingsPage />} />
           <Route path="settings/stages" element={<StageManagementPage />} />
-          <Route path="profile" element={<div className="p-8 text-center text-secondary-600">Profile (Coming Soon)</div>} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
 
         {/* Catch all - redirect to dashboard */}

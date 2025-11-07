@@ -13,8 +13,9 @@ import dealRoutes from './routes/dealRoutes';
 import dealStageRoutes from './routes/dealStageRoutes';
 import taskRoutes from './routes/taskRoutes';
 import ticketRoutes from './routes/ticketRoutes';
-// import activityRoutes from './routes/activityRoutes'; // Temporarily disabled - needs type fixes
-// import noteRoutes from './routes/noteRoutes'; // Temporarily disabled - needs type fixes
+import settingsRoutes from './routes/settingsRoutes';
+import activityRoutes from './routes/activityRoutes';
+import noteRoutes from './routes/noteRoutes';
 import userRoutes from './routes/userRoutes';
 
 // Load environment variables
@@ -87,11 +88,14 @@ app.use('/api/tasks', taskRoutes);
 // Ticket system routes
 app.use('/api/tickets', ticketRoutes);
 
+// Settings routes
+app.use('/api/settings', settingsRoutes);
+
 // Activity logging routes
-// app.use('/api/activities', activityRoutes); // Temporarily disabled - needs type fixes
+app.use('/api/activities', activityRoutes);
 
 // Note management routes
-// app.use('/api/notes', noteRoutes); // Temporarily disabled - needs type fixes
+app.use('/api/notes', noteRoutes);
 
 // User management routes
 app.use('/api/users', userRoutes);
