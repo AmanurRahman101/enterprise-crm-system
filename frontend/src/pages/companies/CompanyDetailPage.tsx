@@ -61,6 +61,9 @@ const CompanyDetailPage: React.FC = () => {
   };
 
   const getInitials = (name: string) => {
+    if (!name || typeof name !== 'string') {
+      return 'NA';
+    }
     const words = name.split(' ');
     if (words.length >= 2) {
       return (words[0][0] + words[1][0]).toUpperCase();
@@ -109,11 +112,11 @@ const CompanyDetailPage: React.FC = () => {
               />
             ) : (
               <div className="h-24 w-24 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-2xl">
-                {getInitials(company.name)}
+                {getInitials(company.name || 'Unknown Company')}
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-bold text-secondary-900">{company.name}</h1>
+              <h1 className="text-3xl font-bold text-secondary-900">{company.name || 'Unknown Company'}</h1>
               <div className="mt-2 flex items-center gap-3">
                 {company.industry && (
                   <span className="badge-primary">{company.industry}</span>
@@ -310,7 +313,7 @@ const CompanyDetailPage: React.FC = () => {
                 <h2 className="text-lg font-semibold text-secondary-900">Contacts</h2>
               </div>
               <div className="card-body">
-                {company.contacts && company.contacts.length > 0 ? (
+                {company.contacts && Array.isArray(company.contacts) && company.contacts.length > 0 ? (
                   <div className="space-y-3">
                     {company.contacts.map((contact) => (
                       <div
@@ -353,7 +356,7 @@ const CompanyDetailPage: React.FC = () => {
                 <h2 className="text-lg font-semibold text-secondary-900">Deals</h2>
               </div>
               <div className="card-body">
-                {company.deals && company.deals.length > 0 ? (
+                {company.deals && Array.isArray(company.deals) && company.deals.length > 0 ? (
                   <div className="space-y-3">
                     {company.deals.map((deal) => (
                       <div

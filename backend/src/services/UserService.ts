@@ -13,7 +13,7 @@ export class UserService {
   async register(data: CreateUserDTO & { tenantId: string }): Promise<{
     user: {
       id: string;
-      tenantId: string;
+      tenantId: string | null;
       email: string;
       firstName: string;
       lastName: string;
@@ -67,7 +67,7 @@ export class UserService {
         password: hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
-        role: (data.role || 'USER') as any
+        role: (data.role || 'SALES') as any
       },
       select: {
         id: true,
@@ -91,12 +91,171 @@ export class UserService {
   }
 
   /**
-   * Login user
+   * Register a new customer (individual account without tenant)
    */
-  async login(data: LoginDTO & { tenantId: string }): Promise<{
+  async registerCustomer(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<{
     user: {
       id: string;
-      tenantId: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      isCustomer: boolean;
+    };
+    tokens: TokenResponse;
+  }> {
+    // Validate password strength
+    const passwordValidation = AuthUtils.validatePassword(data.password);
+    if (!passwordValidation.valid) {
+      throw new Error(passwordValidation.message);
+    }
+
+    // Check if customer already exists
+    const existingUser = await prisma.user.findFirst({
+      where: { 
+        email: data.email,
+        isCustomer: true
+      }
+    });
+
+    if (existingUser) {
+      throw new Error('Customer with this email already exists');
+    }
+
+    // Check if a user profile exists with this email
+    let userProfile = await prisma.userProfile.findUnique({
+      where: { email: data.email }
+    });
+
+    // If no profile exists, create one
+    if (!userProfile) {
+      userProfile = await prisma.userProfile.create({
+        data: {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+        }
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await AuthUtils.hashPassword(data.password);
+
+    // Create customer user without tenant
+    const user = await prisma.user.create({
+      data: {
+        userProfileId: userProfile.id,
+        email: data.email,
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        role: 'CUSTOMER',
+        isCustomer: true
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isCustomer: true
+      }
+    });
+
+    // Generate tokens (no tenantId for customers)
+    const tokens = AuthUtils.generateTokens({
+      userId: user.id,
+      tenantId: null as any,
+      email: user.email,
+      role: user.role
+    });
+
+    return { user, tokens };
+  }
+
+  /**
+   * Login customer (individual account)
+   */
+  async loginCustomer(data: {
+    email: string;
+    password: string;
+  }): Promise<{
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+      isCustomer: boolean;
+    };
+    tokens: TokenResponse;
+  }> {
+    // Find customer by email
+    const user = await prisma.user.findFirst({
+      where: { 
+        email: data.email,
+        isCustomer: true
+      }
+    });
+
+    if (!user) {
+      throw new Error('Invalid email or password');
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new Error('Account is deactivated');
+    }
+
+    // Verify password
+    const isPasswordValid = await AuthUtils.comparePassword(
+      data.password,
+      user.password
+    );
+
+    if (!isPasswordValid) {
+      throw new Error('Invalid email or password');
+    }
+
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    });
+
+    // Generate tokens (no tenantId for customers)
+    const tokens = AuthUtils.generateTokens({
+      userId: user.id,
+      tenantId: null as any,
+      email: user.email,
+      role: user.role
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isCustomer: user.isCustomer
+      },
+      tokens
+    };
+  }
+
+  /**
+   * Login user
+   */
+  async login(data: LoginDTO & { tenantId: string | null }): Promise<{
+    user: {
+      id: string;
+      tenantId: string | null;
       email: string;
       firstName: string;
       lastName: string;
@@ -104,12 +263,18 @@ export class UserService {
     };
     tokens: TokenResponse;
   }> {
-    // Find user by email and tenantId
+    // Build where clause based on whether tenantId is provided
+    const whereClause: any = { 
+      email: data.email
+    };
+    
+    if (data.tenantId !== null) {
+      whereClause.tenantId = data.tenantId;
+    }
+    
+    // Find user by email and optionally tenantId
     const user = await prisma.user.findFirst({
-      where: { 
-        email: data.email,
-        tenantId: data.tenantId
-      }
+      where: whereClause
     });
 
     if (!user) {
@@ -161,13 +326,19 @@ export class UserService {
   /**
    * Refresh access token
    */
-  async refreshToken(userId: string, tenantId: string): Promise<TokenResponse> {
+  async refreshToken(userId: string, tenantId: string | null): Promise<TokenResponse> {
     // Verify user still exists and is active
+    const whereClause: any = { 
+      id: userId
+    };
+    
+    // Only add tenantId filter if it's not null
+    if (tenantId !== null) {
+      whereClause.tenantId = tenantId;
+    }
+    
     const user = await prisma.user.findFirst({
-      where: { 
-        id: userId,
-        tenantId: tenantId
-      }
+      where: whereClause
     });
 
     if (!user || !user.isActive) {

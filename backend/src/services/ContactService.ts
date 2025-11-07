@@ -16,7 +16,6 @@ export class ContactService {
     lastName: string;
     email?: string;
     phone?: string;
-    mobile?: string;
     position?: string;
     department?: string;
     address?: string;
@@ -79,7 +78,6 @@ export class ContactService {
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
-        mobile: data.mobile,
         jobTitle: data.position,
         department: data.department,
         address: data.address,
@@ -206,7 +204,6 @@ export class ContactService {
         { lastName: { contains: params.search, mode: 'insensitive' } },
         { email: { contains: params.search, mode: 'insensitive' } },
         { phone: { contains: params.search, mode: 'insensitive' } },
-        { mobile: { contains: params.search, mode: 'insensitive' } },
       ];
     }
 
@@ -286,7 +283,6 @@ export class ContactService {
       lastName: string;
       email: string | null;
       phone: string | null;
-      mobile: string | null;
       position: string | null;
       department: string | null;
       address: string | null;

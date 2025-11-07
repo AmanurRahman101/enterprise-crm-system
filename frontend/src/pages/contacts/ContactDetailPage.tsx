@@ -147,7 +147,7 @@ const ContactDetailPage: React.FC = () => {
                     <span className={`badge ${contact.isCustomer ? 'badge-success' : 'badge-secondary'}`}>
                       {contact.isCustomer ? 'Customer' : 'Lead'}
                     </span>
-                    {contact.tags.map(tag => (
+                    {Array.isArray(contact.tags) && contact.tags.map(tag => (
                       <span key={tag} className="badge badge-primary">
                         {tag}
                       </span>
@@ -215,16 +215,6 @@ const ContactDetailPage: React.FC = () => {
                     </dt>
                     <dd className="text-sm text-secondary-900">
                       {contact.phone || <span className="text-secondary-400">Not provided</span>}
-                    </dd>
-                  </div>
-
-                  <div>
-                    <dt className="text-sm font-medium text-secondary-500 mb-1 flex items-center gap-2">
-                      <PhoneIcon className="w-4 h-4" />
-                      Mobile
-                    </dt>
-                    <dd className="text-sm text-secondary-900">
-                      {contact.mobile || <span className="text-secondary-400">Not provided</span>}
                     </dd>
                   </div>
 

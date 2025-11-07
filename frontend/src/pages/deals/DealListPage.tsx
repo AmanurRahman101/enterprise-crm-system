@@ -326,7 +326,7 @@ const DealListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {deals.map((deal) => (
+                {Array.isArray(deals) && deals.map((deal) => (
                   <tr
                     key={deal.id}
                     onClick={() => navigate(`/deals/${deal.id}`)}

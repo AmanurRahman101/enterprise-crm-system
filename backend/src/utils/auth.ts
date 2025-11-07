@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 // JWT Payload Interface
 export interface JWTPayload {
   userId: string;
-  tenantId: string;
+  tenantId: string | null;
   email: string;
   role: string;
 }

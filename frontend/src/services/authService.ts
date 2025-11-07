@@ -10,8 +10,12 @@ export const authService = {
   /**
    * Login user
    */
-  async login(credentials: LoginCredentials, tenantSubdomain: string): Promise<AuthResponse> {
-    setTenant(tenantSubdomain);
+  async login(credentials: LoginCredentials, tenantSubdomain?: string): Promise<AuthResponse> {
+    // Only set tenant for business mode
+    if (!credentials.isCustomer && tenantSubdomain) {
+      setTenant(tenantSubdomain);
+    }
+    
     const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
     
     if (response.data.success && response.data.data) {
@@ -19,6 +23,11 @@ export const authService = {
       localStorage.setItem('accessToken', response.data.data.tokens.accessToken);
       localStorage.setItem('refreshToken', response.data.data.tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.data.user));
+      
+      // Store tenant for business mode
+      if (!credentials.isCustomer && tenantSubdomain) {
+        localStorage.setItem('tenantSubdomain', tenantSubdomain);
+      }
     }
     
     return response.data;
@@ -27,8 +36,12 @@ export const authService = {
   /**
    * Register new user
    */
-  async register(data: RegisterData, tenantSubdomain: string): Promise<AuthResponse> {
-    setTenant(tenantSubdomain);
+  async register(data: RegisterData, tenantSubdomain?: string): Promise<AuthResponse> {
+    // Only set tenant for business mode
+    if (!data.isCustomer && tenantSubdomain) {
+      setTenant(tenantSubdomain);
+    }
+    
     const response = await apiClient.post<AuthResponse>('/auth/register', data);
     
     if (response.data.success && response.data.data) {
@@ -36,6 +49,11 @@ export const authService = {
       localStorage.setItem('accessToken', response.data.data.tokens.accessToken);
       localStorage.setItem('refreshToken', response.data.data.tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.data.user));
+      
+      // Store tenant for business mode
+      if (!data.isCustomer && tenantSubdomain) {
+        localStorage.setItem('tenantSubdomain', tenantSubdomain);
+      }
     }
     
     return response.data;

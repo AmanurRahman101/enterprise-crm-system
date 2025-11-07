@@ -120,7 +120,7 @@ const TicketDetailPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-secondary-900 mt-1">{ticket.subject}</h1>
               </div>
             </div>
-            {ticket.tags && ticket.tags.length > 0 && (
+            {ticket.tags && Array.isArray(ticket.tags) && ticket.tags.length > 0 && (
               <div className="flex items-center gap-2">
                 <TagIcon className="h-4 w-4 text-secondary-400" />
                 {ticket.tags.map((tag, index) => (

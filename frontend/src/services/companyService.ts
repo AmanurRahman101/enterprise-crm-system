@@ -27,19 +27,19 @@ export const companyService = {
   // Get a single company by ID
   async getCompany(id: string): Promise<Company> {
     const response = await apiClient.get(`/companies/${id}`);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   // Create a new company
   async createCompany(data: CompanyFormData): Promise<Company> {
     const response = await apiClient.post('/companies', data);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   // Update an existing company
   async updateCompany(id: string, data: CompanyFormData): Promise<Company> {
     const response = await apiClient.put(`/companies/${id}`, data);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   // Delete a company
@@ -58,7 +58,7 @@ export const companyService = {
   // Get company statistics for dashboard
   async getStats(): Promise<{ total: number }> {
     const response = await apiClient.get('/companies/stats');
-    return response.data;
+    return response.data.data || response.data;
   },
 };
 

@@ -211,7 +211,7 @@ const ContactListPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                contacts.map((contact) => (
+                Array.isArray(contacts) && contacts.map((contact) => (
                   <tr key={contact.id} className="hover:bg-secondary-50">
                     <td>
                       <div className="flex items-center gap-3">
@@ -254,10 +254,10 @@ const ContactListPage: React.FC = () => {
                       )}
                     </td>
                     <td>
-                      {contact.phone || contact.mobile ? (
+                      {contact.phone ? (
                         <div className="flex items-center gap-2 text-secondary-700">
                           <PhoneIcon className="w-4 h-4 text-secondary-400" />
-                          {contact.phone || contact.mobile}
+                          {contact.phone}
                         </div>
                       ) : (
                         <span className="text-secondary-400">—</span>

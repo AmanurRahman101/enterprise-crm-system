@@ -219,7 +219,7 @@ const ActivityListPage: React.FC = () => {
         <>
           {/* Activities List */}
           <div className="space-y-4">
-            {activities.map((activity) => (
+            {Array.isArray(activities) && activities.map((activity) => (
               <div
                 key={activity.id}
                 className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 hover:shadow-md transition-shadow"
