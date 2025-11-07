@@ -71,8 +71,12 @@ const RegisterPage: React.FC = () => {
         },
         mode === 'business' ? tenantSubdomain : undefined
       );
-      // Auth context will handle navigation after successful registration
-      navigate('/');
+      // Redirect based on user type
+      if (mode === 'customer') {
+        navigate('/customer');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
