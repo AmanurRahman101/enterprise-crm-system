@@ -59,27 +59,29 @@ const CustomerProfile: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-secondary-900 dark:text-secondary-100 mb-2">Profile</h1>
+        <p className="text-secondary-600 dark:text-secondary-400">
           Manage your personal information
         </p>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+      <div className="card overflow-hidden">
         {/* Avatar Section */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-8">
+        <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-8">
           <div className="flex items-center space-x-4">
             <div className="flex-shrink-0">
-              <UserCircleIcon className="h-24 w-24 text-white" />
+              <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <UserCircleIcon className="h-20 w-20 text-white" />
+              </div>
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white">
                 {user?.firstName} {user?.lastName}
               </h2>
-              <p className="text-blue-100">{user?.email}</p>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-800 text-blue-100 mt-2">
+              <p className="text-primary-100">{user?.email}</p>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-800/50 text-primary-100 mt-2 backdrop-blur-sm">
                 Customer Account
               </span>
             </div>
@@ -87,13 +89,13 @@ const CustomerProfile: React.FC = () => {
         </div>
 
         {/* Form Section */}
-        <div className="px-6 py-6">
+        <div className="card-body">
           {message && (
             <div
-              className={`mb-4 p-4 rounded-md ${
+              className={`mb-4 p-4 rounded-lg ${
                 message.type === 'success'
-                  ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-400'
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400'
+                  ? 'bg-success-50 dark:bg-success-900/20 text-success-800 dark:text-success-400 border border-success-200 dark:border-success-800'
+                  : 'bg-danger-50 dark:bg-danger-900/20 text-danger-800 dark:text-danger-400 border border-danger-200 dark:border-danger-800'
               }`}
             >
               {message.text}
@@ -105,7 +107,7 @@ const CustomerProfile: React.FC = () => {
               <div>
                 <label
                   htmlFor="firstName"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1"
                 >
                   First Name
                 </label>
@@ -116,14 +118,14 @@ const CustomerProfile: React.FC = () => {
                   value={formData.firstName}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+                  className="input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="lastName"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1"
                 >
                   Last Name
                 </label>
@@ -134,7 +136,7 @@ const CustomerProfile: React.FC = () => {
                   value={formData.lastName}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm disabled:bg-gray-100 dark:disabled:bg-gray-900 disabled:cursor-not-allowed"
+                  className="input disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -142,7 +144,7 @@ const CustomerProfile: React.FC = () => {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1"
               >
                 Email Address
               </label>
@@ -152,28 +154,28 @@ const CustomerProfile: React.FC = () => {
                 id="email"
                 value={formData.email}
                 disabled
-                className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 sm:text-sm cursor-not-allowed"
+                className="input opacity-50 cursor-not-allowed"
               />
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
                 Email address cannot be changed. Contact support if you need to update it.
               </p>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
               {isEditing ? (
                 <>
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={loading}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="btn-secondary disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="btn-primary disabled:opacity-50"
                   >
                     {loading ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -182,7 +184,7 @@ const CustomerProfile: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="btn-primary"
                 >
                   Edit Profile
                 </button>
@@ -193,26 +195,30 @@ const CustomerProfile: React.FC = () => {
       </div>
 
       {/* Account Info */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Account Information
-        </h3>
-        <dl className="space-y-4">
-          <div>
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Type</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-white">Customer</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-              {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">User ID</dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-white font-mono">{user?.id}</dd>
-          </div>
-        </dl>
+      <div className="card">
+        <div className="card-header">
+          <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+            Account Information
+          </h3>
+        </div>
+        <div className="card-body">
+          <dl className="space-y-4">
+            <div className="flex justify-between items-start">
+              <dt className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Account Type</dt>
+              <dd className="text-sm text-secondary-900 dark:text-secondary-100 font-medium">Customer</dd>
+            </div>
+            <div className="flex justify-between items-start border-t border-secondary-200 dark:border-secondary-700 pt-4">
+              <dt className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Member Since</dt>
+              <dd className="text-sm text-secondary-900 dark:text-secondary-100">
+                {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </dd>
+            </div>
+            <div className="flex justify-between items-start border-t border-secondary-200 dark:border-secondary-700 pt-4">
+              <dt className="text-sm font-medium text-secondary-600 dark:text-secondary-400">User ID</dt>
+              <dd className="text-sm text-secondary-900 dark:text-secondary-100 font-mono">{user?.id}</dd>
+            </div>
+          </dl>
+        </div>
       </div>
     </div>
   );

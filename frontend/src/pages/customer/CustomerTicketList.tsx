@@ -63,34 +63,34 @@ const CustomerTicketList: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'OPEN':
-        return <TicketIcon className="h-5 w-5 text-blue-500" />;
+        return <TicketIcon className="h-5 w-5 text-primary-500" />;
       case 'IN_PROGRESS':
-        return <ClockIcon className="h-5 w-5 text-yellow-500" />;
+        return <ClockIcon className="h-5 w-5 text-warning-500" />;
       case 'RESOLVED':
-        return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
+        return <CheckCircleIcon className="h-5 w-5 text-success-500" />;
       case 'CLOSED':
-        return <XCircleIcon className="h-5 w-5 text-gray-500" />;
+        return <XCircleIcon className="h-5 w-5 text-secondary-500" />;
       default:
-        return <TicketIcon className="h-5 w-5 text-gray-500" />;
+        return <TicketIcon className="h-5 w-5 text-secondary-500" />;
     }
   };
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      OPEN: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-      IN_PROGRESS: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-      RESOLVED: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-      CLOSED: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+      OPEN: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300',
+      IN_PROGRESS: 'bg-warning-100 text-warning-800 dark:bg-warning-900/30 dark:text-warning-300',
+      RESOLVED: 'bg-success-100 text-success-800 dark:bg-success-900/30 dark:text-success-300',
+      CLOSED: 'bg-secondary-100 text-secondary-800 dark:bg-secondary-900/30 dark:text-secondary-300',
     };
     return styles[status as keyof typeof styles] || styles.OPEN;
   };
 
   const getPriorityBadge = (priority: string) => {
     const styles = {
-      LOW: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      MEDIUM: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-      HIGH: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-      URGENT: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+      LOW: 'bg-secondary-100 text-secondary-800 dark:bg-secondary-700 dark:text-secondary-300',
+      MEDIUM: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300',
+      HIGH: 'bg-warning-100 text-warning-800 dark:bg-warning-900/30 dark:text-warning-300',
+      URGENT: 'bg-danger-100 text-danger-800 dark:bg-danger-900/30 dark:text-danger-300',
     };
     return styles[priority as keyof typeof styles] || styles.MEDIUM;
   };
@@ -104,8 +104,11 @@ const CustomerTicketList: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+          <p className="text-sm text-secondary-600 dark:text-secondary-400">Loading tickets...</p>
+        </div>
       </div>
     );
   }
@@ -115,14 +118,14 @@ const CustomerTicketList: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Tickets</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-secondary-100">My Tickets</h1>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
             View and manage your support tickets
           </p>
         </div>
         <Link
           to="/customer/tickets/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="btn-primary"
         >
           <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
           New Ticket
@@ -130,79 +133,83 @@ const CustomerTicketList: React.FC = () => {
       </div>
 
       {/* Filter */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
-        <div className="flex space-x-4">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
-              filter === 'all'
-                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            All Tickets ({tickets.length})
-          </button>
-          <button
-            onClick={() => setFilter('open')}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
-              filter === 'open'
-                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            Open ({tickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length})
-          </button>
-          <button
-            onClick={() => setFilter('resolved')}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
-              filter === 'resolved'
-                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            Resolved ({tickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length})
-          </button>
+      <div className="card">
+        <div className="card-body">
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                filter === 'all'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                  : 'text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-700'
+              }`}
+            >
+              All Tickets ({tickets.length})
+            </button>
+            <button
+              onClick={() => setFilter('open')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                filter === 'open'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                  : 'text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-700'
+              }`}
+            >
+              Open ({tickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length})
+            </button>
+            <button
+              onClick={() => setFilter('resolved')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                filter === 'resolved'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                  : 'text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-700'
+              }`}
+            >
+              Resolved ({tickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length})
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Tickets List */}
       {filteredTickets.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-12 text-center">
-          <TicketIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No tickets</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {filter === 'all'
-              ? "You haven't created any tickets yet."
-              : `No ${filter} tickets found.`}
-          </p>
-          <div className="mt-6">
-            <Link
-              to="/customer/tickets/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-              Create New Ticket
-            </Link>
+        <div className="card">
+          <div className="card-body text-center py-12">
+            <TicketIcon className="mx-auto h-12 w-12 text-secondary-400 dark:text-secondary-500" />
+            <h3 className="mt-2 text-sm font-medium text-secondary-900 dark:text-secondary-100">No tickets</h3>
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
+              {filter === 'all'
+                ? "You haven't created any tickets yet."
+                : `No ${filter} tickets found.`}
+            </p>
+            <div className="mt-6">
+              <Link
+                to="/customer/tickets/new"
+                className="btn-primary"
+              >
+                <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                Create New Ticket
+              </Link>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <div className="card overflow-hidden">
+          <ul className="divide-y divide-secondary-200 dark:divide-secondary-700">
             {filteredTickets.map((ticket) => (
               <li key={ticket.id}>
                 <Link
                   to={`/customer/tickets/${ticket.id}`}
-                  className="block hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                  className="block hover:bg-secondary-50 dark:hover:bg-secondary-700/50 transition"
                 >
                   <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 flex-1">
                         {getStatusIcon(ticket.status)}
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
                             {ticket.subject}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-secondary-600 dark:text-secondary-400">
                             Created {new Date(ticket.createdAt).toLocaleDateString()}
                           </p>
                         </div>
