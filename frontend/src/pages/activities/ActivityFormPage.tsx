@@ -47,11 +47,15 @@ const ActivityFormPage: React.FC = () => {
         api.get('/tickets?limit=100'),
       ]);
 
-      setContacts(contactsRes.data.data || contactsRes.data.contacts || []);
-      setDeals(dealsRes.data.data || dealsRes.data.deals || []);
-      setTickets(ticketsRes.data.data || ticketsRes.data.tickets || []);
+      setContacts(contactsRes.data.data || contactsRes.data.contacts || contactsRes.data.items || []);
+      setDeals(dealsRes.data.data || dealsRes.data.deals || dealsRes.data.items || []);
+      setTickets(ticketsRes.data.data || ticketsRes.data.tickets || ticketsRes.data.items || []);
     } catch (err) {
       console.error('Error fetching dropdown data:', err);
+      // Set empty arrays on error to prevent crashes
+      setContacts([]);
+      setDeals([]);
+      setTickets([]);
     }
   };
 
@@ -238,7 +242,7 @@ const ActivityFormPage: React.FC = () => {
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a contact</option>
-              {contacts.map((contact) => (
+              {Array.isArray(contacts) && contacts.map((contact) => (
                 <option key={contact.id} value={contact.id}>
                   {contact.firstName} {contact.lastName} {contact.email && `(${contact.email})`}
                 </option>
@@ -258,7 +262,7 @@ const ActivityFormPage: React.FC = () => {
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">None</option>
-              {deals.map((deal) => (
+              {Array.isArray(deals) && deals.map((deal) => (
                 <option key={deal.id} value={deal.id}>
                   {deal.title} (${deal.value})
                 </option>
@@ -278,7 +282,7 @@ const ActivityFormPage: React.FC = () => {
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">None</option>
-              {tickets.map((ticket) => (
+              {Array.isArray(tickets) && tickets.map((ticket) => (
                 <option key={ticket.id} value={ticket.id}>
                   {ticket.subject} ({ticket.status})
                 </option>

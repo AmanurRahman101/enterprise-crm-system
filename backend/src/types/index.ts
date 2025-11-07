@@ -42,7 +42,6 @@ export interface CreateContactDTO {
   lastName: string;
   email?: string;
   phone?: string;
-  mobile?: string;
   jobTitle?: string;
   department?: string;
   linkedinUrl?: string;

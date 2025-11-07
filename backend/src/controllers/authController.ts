@@ -18,10 +18,18 @@ export class AuthController {
    */
   static async register(req: Request, res: Response): Promise<void> {
     try {
+      // Check if this is a customer registration
+      const { isCustomer } = req.body;
+
+      if (isCustomer) {
+        // Customer registration doesn't require tenant
+        return await AuthController.registerCustomer(req, res);
+      }
+
       if (!req.tenant) {
         res.status(400).json({
           success: false,
-          message: 'Tenant identification required'
+          message: 'Tenant identification required for business account'
         });
         return;
       }
@@ -59,15 +67,62 @@ export class AuthController {
   }
 
   /**
+   * Register a new customer (individual account)
+   * POST /api/auth/register (with isCustomer: true)
+   */
+  static async registerCustomer(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName) {
+        res.status(400).json({
+          success: false,
+          message: 'Email, password, first name, and last name are required'
+        });
+        return;
+      }
+
+      const result = await userService.registerCustomer({
+        email,
+        password,
+        firstName,
+        lastName
+      });
+
+      logger.info(`New customer registered: ${result.user.email}`);
+
+      res.status(201).json({
+        success: true,
+        message: 'Customer account created successfully',
+        data: result
+      });
+    } catch (error) {
+      logger.error('Customer register error:', error);
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Registration failed'
+      });
+    }
+  }
+
+  /**
    * Login user
    * POST /api/auth/login
    */
   static async login(req: Request, res: Response): Promise<void> {
     try {
+      const { isCustomer } = req.body;
+
+      // Customer login doesn't require tenant
+      if (isCustomer) {
+        return await AuthController.loginCustomer(req, res);
+      }
+
       if (!req.tenant) {
         res.status(400).json({
           success: false,
-          message: 'Tenant identification required'
+          message: 'Tenant identification required for business account'
         });
         return;
       }
@@ -97,6 +152,44 @@ export class AuthController {
       });
     } catch (error) {
       logger.error('Login error:', error);
+      res.status(401).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Login failed'
+      });
+    }
+  }
+
+  /**
+   * Login customer (individual account)
+   * POST /api/auth/login (with isCustomer: true)
+   */
+  static async loginCustomer(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, password } = req.body;
+
+      // Validate required fields
+      if (!email || !password) {
+        res.status(400).json({
+          success: false,
+          message: 'Email and password are required'
+        });
+        return;
+      }
+
+      const result = await userService.loginCustomer({
+        email,
+        password
+      });
+
+      logger.info(`Customer logged in: ${result.user.email}`);
+
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        data: result
+      });
+    } catch (error) {
+      logger.error('Customer login error:', error);
       res.status(401).json({
         success: false,
         message: error instanceof Error ? error.message : 'Login failed'
@@ -415,6 +508,15 @@ export const switchTenant = async (req: Request, res: Response): Promise<void> =
 
     const targetAccount = currentUser.userProfile.tenantAccounts[0];
 
+    // Check if tenant exists and is active
+    if (!targetAccount.tenant) {
+      res.status(403).json({
+        success: false,
+        message: 'Target tenant not found'
+      });
+      return;
+    }
+
     if (!targetAccount.tenant.isActive) {
       res.status(403).json({
         success: false,
@@ -426,7 +528,7 @@ export const switchTenant = async (req: Request, res: Response): Promise<void> =
     // Generate new tokens for the target tenant
     const tokens = AuthUtils.generateTokens({
       userId: targetAccount.id,
-      tenantId: targetAccount.tenantId,
+      tenantId: targetAccount.tenantId || null,
       email: targetAccount.email,
       role: targetAccount.role,
     });

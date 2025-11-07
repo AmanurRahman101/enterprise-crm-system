@@ -5,7 +5,6 @@ export interface Contact {
   lastName: string;
   email?: string;
   phone?: string;
-  mobile?: string;
   jobTitle?: string;
   department?: string;
   linkedinUrl?: string;
@@ -41,7 +40,6 @@ export interface ContactFormData {
   lastName: string;
   email?: string;
   phone?: string;
-  mobile?: string;
   jobTitle?: string;
   department?: string;
   linkedinUrl?: string;

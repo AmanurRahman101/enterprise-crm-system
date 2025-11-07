@@ -7,8 +7,9 @@ const LoginPage = () => {
   const location = useLocation();
   const { login } = useAuth();
 
+  const [mode, setMode] = useState<'business' | 'customer'>('business');
   const [formData, setFormData] = useState({
-    tenant: '',
+    tenant: 'acme',
     email: '',
     password: '',
   });
@@ -36,8 +37,9 @@ const LoginPage = () => {
         {
           email: formData.email,
           password: formData.password,
+          isCustomer: mode === 'customer',
         },
-        formData.tenant
+        mode === 'business' ? formData.tenant : undefined
       );
       navigate(from, { replace: true });
     } catch (err: any) {
@@ -65,6 +67,44 @@ const LoginPage = () => {
               Sign in to your account
             </h2>
 
+            {/* Mode Toggle */}
+            <div className="mb-6">
+              <div className="flex rounded-lg border border-secondary-300 dark:border-secondary-600 p-1 bg-secondary-50 dark:bg-secondary-900">
+                <button
+                  type="button"
+                  onClick={() => setMode('business')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    mode === 'business'
+                      ? 'bg-white dark:bg-secondary-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                      : 'text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Business
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('customer')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                    mode === 'customer'
+                      ? 'bg-white dark:bg-secondary-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                      : 'text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-secondary-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Customer
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Error Alert */}
             {error && (
               <div className="alert-danger mb-6">
@@ -79,22 +119,24 @@ const LoginPage = () => {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Tenant Field */}
-              <div className="input-group">
-                <label htmlFor="tenant">
-                  Organization / Tenant
-                </label>
-                <input
-                  id="tenant"
-                  name="tenant"
-                  type="text"
-                  required
-                  value={formData.tenant}
-                  onChange={handleChange}
-                  className="block w-full px-4 py-2.5 border border-secondary-300 dark:border-secondary-600 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors dark:bg-secondary-800 dark:text-secondary-100"
-                  placeholder="Enter your organization name"
-                />
-              </div>
+              {/* Tenant Field - Only for Business Mode */}
+              {mode === 'business' && (
+                <div className="input-group">
+                  <label htmlFor="tenant">
+                    Organization / Tenant
+                  </label>
+                  <input
+                    id="tenant"
+                    name="tenant"
+                    type="text"
+                    required
+                    value={formData.tenant}
+                    onChange={handleChange}
+                    className="block w-full px-4 py-2.5 border border-secondary-300 dark:border-secondary-600 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors dark:bg-secondary-800 dark:text-secondary-100"
+                    placeholder="Enter your organization name"
+                  />
+                </div>
+              )}
 
               {/* Email Field */}
               <div className="input-group">
@@ -192,24 +234,26 @@ const LoginPage = () => {
             </form>
           </div>
 
-          {/* Demo Credentials */}
-          <div className="px-8 py-5 bg-secondary-50 dark:bg-secondary-900/50 border-t border-secondary-200 dark:border-secondary-700 rounded-b-lg">
-            <div className="text-xs text-secondary-600 dark:text-secondary-400 mb-2 font-medium">Demo Credentials:</div>
-            <div className="grid grid-cols-1 gap-1 text-xs">
-              <div className="flex items-center">
-                <span className="text-secondary-500 dark:text-secondary-400 w-24">Tenant:</span>
-                <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">acme</code>
-              </div>
-              <div className="flex items-center">
-                <span className="text-secondary-500 dark:text-secondary-400 w-24">Email:</span>
-                <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">john.sales@tawasol.com</code>
-              </div>
-              <div className="flex items-center">
-                <span className="text-secondary-500 dark:text-secondary-400 w-24">Password:</span>
-                <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">Password123!</code>
+          {/* Demo Credentials - Only for Business Mode */}
+          {mode === 'business' && (
+            <div className="px-8 py-5 bg-secondary-50 dark:bg-secondary-900/50 border-t border-secondary-200 dark:border-secondary-700 rounded-b-lg">
+              <div className="text-xs text-secondary-600 dark:text-secondary-400 mb-2 font-medium">Demo Credentials:</div>
+              <div className="grid grid-cols-1 gap-1 text-xs">
+                <div className="flex items-center">
+                  <span className="text-secondary-500 dark:text-secondary-400 w-24">Tenant:</span>
+                  <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">acme</code>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-secondary-500 dark:text-secondary-400 w-24">Email:</span>
+                  <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">john.sales@tawasol.com</code>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-secondary-500 dark:text-secondary-400 w-24">Password:</span>
+                  <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">Password123!</code>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}

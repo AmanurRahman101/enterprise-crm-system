@@ -243,7 +243,7 @@ const CompanyListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {companies.map((company) => (
+                {Array.isArray(companies) && companies.map((company) => (
                   <tr
                     key={company.id}
                     onClick={() => navigate(`/companies/${company.id}`)}

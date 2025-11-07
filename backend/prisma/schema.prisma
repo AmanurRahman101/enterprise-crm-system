@@ -63,7 +63,7 @@ model UserProfile {
 // User model for authentication and authorization
 model User {
   id            String    @id @default(uuid())
-  tenantId      String
+  tenantId      String?   // Optional for customer accounts
   userProfileId String    // Links to master UserProfile
   email         String
   password      String
@@ -71,12 +71,13 @@ model User {
   lastName      String
   role          UserRole  @default(SALES)
   isActive      Boolean   @default(true)
+  isCustomer    Boolean   @default(false) // True for individual customers
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userProfile       UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
   assignedContacts  Contact[]   @relation("ContactOwner")
   assignedDeals     Deal[]     @relation("DealOwner")
@@ -90,6 +91,7 @@ model User {
   @@index([tenantId])
   @@index([email])
   @@index([userProfileId])
+  @@index([isCustomer])
   @@map("users")
 }
 
@@ -154,7 +156,6 @@ model Contact {
   lastName    String
   email       String?
   phone       String?
-  mobile      String?
   jobTitle    String?
   department  String?
   linkedinUrl String?

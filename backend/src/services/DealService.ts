@@ -224,7 +224,6 @@ export class DealService {
             lastName: true,
             email: true,
             phone: true,
-            mobile: true,
             jobTitle: true,
           },
         },

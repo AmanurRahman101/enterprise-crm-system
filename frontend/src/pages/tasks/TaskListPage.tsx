@@ -265,7 +265,7 @@ const TaskListPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTasks.map((task) => {
+                    {Array.isArray(filteredTasks) && filteredTasks.map((task) => {
                       const dueDateStatus = getDueDateStatus(task);
                       const overdue = isTaskOverdue(task);
 

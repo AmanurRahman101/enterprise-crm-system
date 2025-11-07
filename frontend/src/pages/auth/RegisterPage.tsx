@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlusIcon, EnvelopeIcon, LockClosedIcon, UserIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, EnvelopeIcon, LockClosedIcon, UserIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const [mode, setMode] = useState<'business' | 'customer'>('business');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -13,7 +14,7 @@ const RegisterPage: React.FC = () => {
     password: '',
     confirmPassword: '',
   });
-  const [tenantSubdomain, setTenantSubdomain] = useState('');
+  const [tenantSubdomain, setTenantSubdomain] = useState('acme');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +54,7 @@ const RegisterPage: React.FC = () => {
       setError('Passwords do not match');
       return;
     }
-    if (!tenantSubdomain.trim()) {
+    if (mode === 'business' && !tenantSubdomain.trim()) {
       setError('Organization subdomain is required');
       return;
     }
@@ -66,8 +67,9 @@ const RegisterPage: React.FC = () => {
           lastName: formData.lastName,
           email: formData.email,
           password: formData.password,
+          isCustomer: mode === 'customer',
         },
-        tenantSubdomain
+        mode === 'business' ? tenantSubdomain : undefined
       );
       // Auth context will handle navigation after successful registration
       navigate('/');
@@ -92,12 +94,43 @@ const RegisterPage: React.FC = () => {
             Create your account
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Join Tawasol CRM and start managing your business
+            {mode === 'business' ? 'Join Tawasol CRM and start managing your business' : 'Create a customer account'}
           </p>
         </div>
 
         {/* Registration Form */}
-        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8">
+        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg">
+          {/* Mode Toggle */}
+          <div className="px-8 pt-6 pb-4">
+            <div className="flex items-center justify-center space-x-4 border border-gray-200 dark:border-gray-600 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setMode('business')}
+                className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  mode === 'business'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                <BuildingOfficeIcon className="h-5 w-5" />
+                <span>Business</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('customer')}
+                className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all ${
+                  mode === 'customer'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+                }`}
+              >
+                <UserIcon className="h-5 w-5" />
+                <span>Customer</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="px-8 pb-8">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Error Message */}
             {error && (
@@ -106,7 +139,8 @@ const RegisterPage: React.FC = () => {
               </div>
             )}
 
-            {/* Organization Subdomain */}
+            {/* Organization Subdomain - Only for Business Mode */}
+            {mode === 'business' && (
             <div>
               <label htmlFor="tenantSubdomain" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Organization Subdomain
@@ -127,9 +161,10 @@ const RegisterPage: React.FC = () => {
                 </div>
               </div>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                This will be your organization's unique URL
+                Use "acme" for demo/testing. This will be your organization's unique URL
               </p>
             </div>
+            )}
 
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
@@ -283,6 +318,7 @@ const RegisterPage: React.FC = () => {
               </p>
             </div>
           </form>
+          </div>
         </div>
 
         {/* Sign In Link */}

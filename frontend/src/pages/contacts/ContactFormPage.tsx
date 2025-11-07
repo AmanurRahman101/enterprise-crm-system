@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import { ContactFormData } from '../../types/contact';
 import { contactService } from '../../services/contactService';
+import companyService from '../../services/companyService';
 
 const ContactFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,12 +12,12 @@ const ContactFormPage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
   const [formData, setFormData] = useState<ContactFormData>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    mobile: '',
     jobTitle: '',
     department: '',
     linkedinUrl: '',
@@ -28,14 +29,27 @@ const ContactFormPage: React.FC = () => {
     language: 'en',
     isCustomer: false,
     tags: [],
+    companyId: '',
   });
 
   useEffect(() => {
     if (isEditMode && id) {
       fetchContact();
     }
+    fetchCompanies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await companyService.getCompanies(1, 100);
+      const companiesList = response.data || [];
+      setCompanies(Array.isArray(companiesList) ? companiesList : []);
+    } catch (err) {
+      console.error('Error fetching companies:', err);
+      setCompanies([]);
+    }
+  };
 
   const fetchContact = async () => {
     if (!id) return;
@@ -48,7 +62,6 @@ const ContactFormPage: React.FC = () => {
         lastName: contact.lastName,
         email: contact.email || '',
         phone: contact.phone || '',
-        mobile: contact.mobile || '',
         jobTitle: contact.jobTitle || '',
         department: contact.department || '',
         linkedinUrl: contact.linkedinUrl || '',
@@ -60,7 +73,7 @@ const ContactFormPage: React.FC = () => {
         language: contact.language || 'en',
         isCustomer: contact.isCustomer,
         tags: contact.tags,
-        companyId: contact.companyId,
+        companyId: contact.companyId || '',
       });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load contact');
@@ -198,12 +211,13 @@ const ContactFormPage: React.FC = () => {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-secondary-700 mb-2">
-                  Email
+                  Email {formData.isCustomer && <span className="text-danger-600">*</span>}
                 </label>
                 <input
                   type="email"
                   id="email"
                   name="email"
+                  required={formData.isCustomer}
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -226,50 +240,59 @@ const ContactFormPage: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label htmlFor="mobile" className="block text-sm font-medium text-secondary-700 mb-2">
-                  Mobile
-                </label>
-                <input
-                  type="tel"
-                  id="mobile"
-                  name="mobile"
-                  value={formData.mobile}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="+1 (555) 987-6543"
-                />
-              </div>
+              {!formData.isCustomer && (
+                <>
+                  <div>
+                    <label htmlFor="companyId" className="block text-sm font-medium text-secondary-700 mb-2">
+                      Company
+                    </label>
+                    <select
+                      id="companyId"
+                      name="companyId"
+                      value={formData.companyId}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">Select a company...</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label htmlFor="jobTitle" className="block text-sm font-medium text-secondary-700 mb-2">
-                  Job Title
-                </label>
-                <input
-                  type="text"
-                  id="jobTitle"
-                  name="jobTitle"
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Sales Manager"
-                />
-              </div>
+                  <div>
+                    <label htmlFor="jobTitle" className="block text-sm font-medium text-secondary-700 mb-2">
+                      Job Title
+                    </label>
+                    <input
+                      type="text"
+                      id="jobTitle"
+                      name="jobTitle"
+                      value={formData.jobTitle}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Sales Manager"
+                    />
+                  </div>
 
-              <div>
-                <label htmlFor="department" className="block text-sm font-medium text-secondary-700 mb-2">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  id="department"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Sales"
-                />
-              </div>
+                  <div>
+                    <label htmlFor="department" className="block text-sm font-medium text-secondary-700 mb-2">
+                      Department
+                    </label>
+                    <input
+                      type="text"
+                      id="department"
+                      name="department"
+                      value={formData.department}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Sales"
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label htmlFor="language" className="block text-sm font-medium text-secondary-700 mb-2">
@@ -301,6 +324,7 @@ const ContactFormPage: React.FC = () => {
                   className="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
                 />
                 <span className="text-sm font-medium text-secondary-700">Mark as Customer</span>
+                <span className="text-xs text-secondary-500">(Customer mode requires only name, phone, and email)</span>
               </label>
             </div>
           </div>

@@ -6,8 +6,8 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (credentials: LoginCredentials, tenantSubdomain: string) => Promise<void>;
-  register: (data: RegisterData, tenantSubdomain: string) => Promise<void>;
+  login: (credentials: LoginCredentials, tenantSubdomain?: string) => Promise<void>;
+  register: (data: RegisterData, tenantSubdomain?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<AuthUser>) => void;
 }
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initialize();
   }, []);
 
-  const login = async (credentials: LoginCredentials, tenantSubdomain: string) => {
+  const login = async (credentials: LoginCredentials, tenantSubdomain?: string) => {
     setLoading(true);
     try {
       const response = await authService.login(credentials, tenantSubdomain);
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (data: RegisterData, tenantSubdomain: string) => {
+  const register = async (data: RegisterData, tenantSubdomain?: string) => {
     setLoading(true);
     try {
       const response = await authService.register(data, tenantSubdomain);

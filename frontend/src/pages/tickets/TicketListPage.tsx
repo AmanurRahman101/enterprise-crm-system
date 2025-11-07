@@ -260,7 +260,7 @@ const TicketListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {tickets.map((ticket) => (
+                {Array.isArray(tickets) && tickets.map((ticket) => (
                   <tr
                     key={ticket.id}
                     onClick={() => navigate(`/tickets/${ticket.id}`)}

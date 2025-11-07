@@ -191,7 +191,6 @@ export class TaskService {
             lastName: true,
             email: true,
             phone: true,
-            mobile: true,
             jobTitle: true,
           },
         },

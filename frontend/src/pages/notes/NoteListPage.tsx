@@ -58,9 +58,9 @@ const NoteListPage = () => {
 
       const response = await api.get<NotesResponse>('/notes', { params });
 
-      setNotes(response.data.items);
-      setTotalPages(response.data.pagination.totalPages);
-      setTotalNotes(response.data.pagination.total);
+      setNotes(response.data.items || []);
+      setTotalPages(response.data.pagination?.totalPages || 1);
+      setTotalNotes(response.data.pagination?.total || 0);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load notes');
     } finally {
@@ -124,7 +124,7 @@ const NoteListPage = () => {
       );
     }
 
-    return badges;
+    return badges.length > 0 ? badges : null;
   };
 
   // Format date
@@ -243,7 +243,7 @@ const NoteListPage = () => {
           <>
             {/* Notes Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {notes.map((note) => (
+              {Array.isArray(notes) && notes.map((note) => (
                 <div
                   key={note.id}
                   className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"

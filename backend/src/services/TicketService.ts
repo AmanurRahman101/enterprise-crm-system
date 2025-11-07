@@ -135,7 +135,6 @@ export class TicketService {
             lastName: true,
             email: true,
             phone: true,
-            mobile: true,
             jobTitle: true,
             company: {
               select: {
