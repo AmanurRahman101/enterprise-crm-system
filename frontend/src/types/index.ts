@@ -30,12 +30,13 @@ export interface User {
 
 export interface AuthUser {
   id: string;
-  tenantId: string;
+  tenantId?: string | null;
   email: string;
   firstName: string;
   lastName: string;
   role: UserRole;
   avatar?: string | null;
+  isCustomer?: boolean;
 }
 
 export interface AuthResponse {

@@ -2,9 +2,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
+import CustomerLayout from './components/layout/CustomerLayout';
+import HomePage from './pages/home/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import CustomerDashboard from './pages/customer/CustomerDashboard';
+import CustomerTicketList from './pages/customer/CustomerTicketList';
+import CustomerProfile from './pages/customer/CustomerProfile';
 import ContactListPage from './pages/contacts/ContactListPage';
 import ContactDetailPage from './pages/contacts/ContactDetailPage';
 import ContactFormPage from './pages/contacts/ContactFormPage';
@@ -39,6 +44,7 @@ function App() {
     <AuthProvider>
       <Routes>
         {/* Public routes */}
+        <Route path="/home" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         
@@ -128,8 +134,22 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
         </Route>
 
-        {/* Catch all - redirect to dashboard */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Customer Portal Routes */}
+        <Route
+          path="/customer"
+          element={
+            <ProtectedRoute requireCustomer>
+              <CustomerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<CustomerDashboard />} />
+          <Route path="tickets" element={<CustomerTicketList />} />
+          <Route path="profile" element={<CustomerProfile />} />
+        </Route>
+
+        {/* Catch all - redirect to home page */}
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </AuthProvider>
   );

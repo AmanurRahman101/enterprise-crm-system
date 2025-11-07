@@ -41,7 +41,12 @@ const LoginPage = () => {
         },
         mode === 'business' ? formData.tenant : undefined
       );
-      navigate(from, { replace: true });
+      // Redirect based on user type
+      if (mode === 'customer') {
+        navigate('/customer', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
