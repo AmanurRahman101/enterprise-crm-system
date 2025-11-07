@@ -1,0 +1,398 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenant model for multi-tenancy
+model Tenant {
+  id          String    @id @default(uuid())
+  name        String    // Organization name
+  subdomain   String    @unique // e.g., "acme" for acme.tawasol.com
+  domain      String?   // Custom domain (optional)
+  email       String    // Primary contact email
+  phone       String?
+  logo        String?
+  timezone    String    @default("UTC")
+  settings    Json?     // Tenant-specific settings
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  users       User[]
+  companies   Company[]
+  contacts    Contact[]
+  deals       Deal[]
+  dealStages  DealStage[]
+  tasks       Task[]
+  tickets     Ticket[]
+  activities  Activity[]
+  notes       Note[]
+
+  @@index([subdomain])
+  @@index([isActive])
+  @@map("tenants")
+}
+
+// UserProfile - Master user identity across tenants
+// One person can have accounts in multiple tenant organizations
+model UserProfile {
+  id            String    @id @default(uuid())
+  email         String    @unique // Global unique email
+  firstName     String
+  lastName      String
+  avatar        String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations - one profile can have multiple tenant accounts
+  tenantAccounts User[]
+
+  @@index([email])
+  @@map("user_profiles")
+}
+
+// User model for authentication and authorization
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String
+  userProfileId String    // Links to master UserProfile
+  email         String
+  password      String
+  firstName     String
+  lastName      String
+  role          UserRole  @default(SALES)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userProfile       UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  assignedContacts  Contact[]   @relation("ContactOwner")
+  assignedDeals     Deal[]     @relation("DealOwner")
+  assignedTasks     Task[]     @relation("TaskAssignee")
+  createdTasks      Task[]     @relation("TaskCreator")
+  assignedTickets   Ticket[]   @relation("TicketAssignee")
+  activities        Activity[]
+  notes             Note[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+  @@index([userProfileId])
+  @@map("users")
+}
+
+// Company model
+model Company {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String
+  website     String?
+  industry    String?
+  size        String?
+  phone       String?
+  email       String?
+  address     String?
+  city        String?
+  country     String?
+  description String?
+  logo        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts    Contact[]
+  deals       Deal[]
+
+  @@index([tenantId])
+  @@index([name])
+  @@map("companies")
+}
+
+// DealStage model - Customizable pipeline stages per tenant
+model DealStage {
+  id          String    @id @default(uuid())
+  tenantId    String
+  name        String    // e.g., "Lead", "Qualified", "Proposal"
+  order       Int       // Display order (0-based)
+  color       String    @default("secondary") // UI color: primary, secondary, success, danger, warning
+  probability Int       @default(10) // Default win probability %
+  isActive    Boolean   @default(true)
+  isDefault   Boolean   @default(false) // Default stage for new deals
+  isWon       Boolean   @default(false) // Marks deal as won
+  isLost      Boolean   @default(false) // Marks deal as lost
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deals       Deal[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, order])
+  @@map("deal_stages")
+}
+
+// Contact model - Central to CRM
+model Contact {
+  id          String    @id @default(uuid())
+  tenantId    String
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  jobTitle    String?
+  department  String?
+  linkedinUrl String?
+  twitterUrl  String?
+  address     String?
+  city        String?
+  country     String?
+  timezone    String?
+  language    String?   @default("en")
+  avatar      String?
+  isCustomer  Boolean   @default(false)
+  tags        String[]  @default([])
+  customFields Json?
+  companyId   String?
+  ownerId     String
+  lastContactedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company     Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner       User        @relation("ContactOwner", fields: [ownerId], references: [id])
+  deals       Deal[]
+  tickets     Ticket[]
+  activities  Activity[]
+  notes       Note[]
+  tasks       Task[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([lastName])
+  @@map("contacts")
+}
+
+// Deal model for sales pipeline
+model Deal {
+  id            String      @id @default(uuid())
+  tenantId      String
+  title         String
+  value         Float
+  currency      String      @default("USD")
+  stageId       String      // Reference to DealStage
+  probability   Int         @default(10)
+  priority      TicketPriority @default(MEDIUM)
+  source        String?     // e.g., "Website", "Referral", "Cold Call"
+  description   String?
+  expectedCloseDate DateTime?
+  contactId     String
+  companyId     String?
+  ownerId       String
+  lostReason    String?     // Reason if CLOSED_LOST
+  closedAt      DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stage         DealStage   @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  contact       Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  company       Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner         User        @relation("DealOwner", fields: [ownerId], references: [id])
+  activities    Activity[]
+  tasks         Task[]
+  notes         Note[]
+
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([contactId])
+  @@index([stageId])
+  @@index([expectedCloseDate])
+  @@map("deals")
+}
+
+// Task model
+model Task {
+  id          String      @id @default(uuid())
+  tenantId    String
+  title       String
+  description String?
+  status      TaskStatus  @default(TODO)
+  priority    TicketPriority @default(MEDIUM)
+  dueDate     DateTime?
+  contactId   String?
+  dealId      String?
+  assigneeId  String
+  creatorId   String
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact?    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal        Deal?       @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  assignee    User        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creator     User        @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  @@index([tenantId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+// Ticket model for helpdesk
+model Ticket {
+  id          String        @id @default(uuid())
+  tenantId    String
+  ticketNumber Int         @default(autoincrement())
+  subject     String
+  description String
+  status      TicketStatus  @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category    String?       // e.g., "Technical", "Billing", "General"
+  source      String        @default("EMAIL") // EMAIL, PHONE, TELEGRAM, APP
+  tags        String[]      @default([])
+  slaDeadline DateTime?    // SLA deadline for response/resolution
+  contactId   String
+  assigneeId  String?
+  resolvedAt  DateTime?
+  closedAt    DateTime?
+  firstResponseAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignee    User?         @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  activities  Activity[]
+  notes       Note[]
+
+  @@unique([tenantId, ticketNumber])
+  @@index([tenantId])
+  @@index([contactId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([ticketNumber])
+  @@map("tickets")
+}
+
+// Activity model - logs all interactions
+model Activity {
+  id          String        @id @default(uuid())
+  tenantId    String
+  type        ActivityType
+  subject     String
+  description String?
+  duration    Int?          // in minutes
+  outcome     String?       // e.g., "Connected", "Left Voicemail", "No Answer"
+  recordingUrl String?      // For call recordings
+  emailMessageId String?    // Gmail message ID
+  metadata    Json?         // Additional structured data
+  contactId   String
+  dealId      String?
+  ticketId    String?
+  userId      String
+  occurredAt  DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
+  // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal        Deal?         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  ticket      Ticket?       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([contactId])
+  @@index([userId])
+  @@index([type])
+  @@index([occurredAt])
+  @@map("activities")
+}
+
+// Note model - for internal notes
+model Note {
+  id          String    @id @default(uuid())
+  tenantId    String
+  content     String
+  contactId   String?
+  dealId      String?
+  ticketId    String?
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal        Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  ticket      Ticket?   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id])
+
+  @@index([tenantId])
+  @@index([authorId])
+  @@map("notes")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  SALES
+  SUPPORT
+  CUSTOMER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  NOTE
+  TASK
+}
