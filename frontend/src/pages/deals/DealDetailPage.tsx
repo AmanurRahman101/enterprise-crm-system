@@ -385,7 +385,7 @@ const DealDetailPage: React.FC = () => {
             <div className="card-body space-y-4">
               {deal.owner && (
                 <div>
-                  <div className="text-sm text-secondary-500">Owner</div>
+                  <div className="text-sm text-secondary-500">Created by</div>
                   <div className="mt-1 text-sm text-secondary-900">
                     {deal.owner.firstName} {deal.owner.lastName}
                   </div>

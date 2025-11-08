@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initialize = async () => {
       try {
         const storedUser = authService.getStoredUser();
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         
         if (storedUser && token) {
           // Trust stored user data initially for faster load
@@ -78,10 +78,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.login(credentials, tenantSubdomain);
       setUser(response.data.user);
       
-      // Connect to Socket.IO
-      const token = localStorage.getItem('token');
+      // Connect to Socket.IO - use the correct key 'accessToken'
+      const token = localStorage.getItem('accessToken');
+      console.log('🔵 [AUTH CONTEXT] Token retrieved:', token ? 'Yes' : 'No');
       if (token) {
+        console.log('🔵 [AUTH CONTEXT] Calling socketService.connect()');
         socketService.connect(token);
+        console.log('✅ [AUTH CONTEXT] socketService.connect() called');
+      } else {
+        console.error('❌ [AUTH CONTEXT] No token found, cannot connect socket');
       }
     } catch (error) {
       throw error;
@@ -96,8 +101,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authService.register(data, tenantSubdomain);
       setUser(response.data.user);
       
-      // Connect to Socket.IO
-      const token = localStorage.getItem('token');
+      // Connect to Socket.IO - use the correct key 'accessToken'
+      const token = localStorage.getItem('accessToken');
       if (token) {
         socketService.connect(token);
       }

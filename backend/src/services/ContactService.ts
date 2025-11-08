@@ -42,7 +42,8 @@ export class ContactService {
     }
 
     // If companyId provided, validate it belongs to the same tenant
-    if (data.companyId) {
+    // Handle empty string as undefined
+    if (data.companyId && data.companyId.trim() !== '') {
       const company = await prisma.company.findFirst({
         where: {
           id: data.companyId,
@@ -53,6 +54,9 @@ export class ContactService {
       if (!company) {
         throw new Error('Company not found or does not belong to this tenant');
       }
+    } else {
+      // Convert empty string to undefined (will be null in DB)
+      data.companyId = undefined;
     }
 
     // Check for duplicate email within tenant
@@ -72,7 +76,7 @@ export class ContactService {
     return await prisma.contact.create({
       data: {
         tenantId: data.tenantId,
-        companyId: data.companyId,
+        companyId: data.companyId || undefined, // Set to undefined if not provided or empty
         ownerId: data.ownerId,
         firstName: data.firstName,
         lastName: data.lastName,

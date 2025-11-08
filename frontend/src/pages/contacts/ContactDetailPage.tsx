@@ -329,7 +329,7 @@ const ContactDetailPage: React.FC = () => {
                 <div>
                   <dt className="text-sm font-medium text-secondary-500 mb-1 flex items-center gap-2">
                     <UserIcon className="w-4 h-4" />
-                    Owner
+                    Created by
                   </dt>
                   <dd className="text-sm text-secondary-900">
                     {contact.owner ? `${contact.owner.firstName} ${contact.owner.lastName}` : 'Not assigned'}

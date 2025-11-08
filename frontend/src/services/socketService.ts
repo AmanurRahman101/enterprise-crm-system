@@ -132,10 +132,16 @@ class SocketService {
    * Connect and authenticate with token
    */
   public connect(token: string): void {
+    console.log('🔵 [SOCKET SERVICE] connect() called');
     this.token = token;
     
     if (this.socket && !this.socket.connected) {
+      console.log('🔵 [SOCKET SERVICE] Socket exists and not connected, calling socket.connect()');
       this.socket.connect();
+    } else if (this.socket && this.socket.connected) {
+      console.log('⚠️ [SOCKET SERVICE] Socket already connected');
+    } else {
+      console.error('❌ [SOCKET SERVICE] Socket is null!');
     }
   }
 

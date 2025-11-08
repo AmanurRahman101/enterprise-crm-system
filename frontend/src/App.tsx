@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CallManager } from './components/common/CallManager';
+import { CallDiagnostics } from './components/common/CallDiagnostics';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import CustomerLayout from './components/layout/CustomerLayout';
@@ -77,6 +78,7 @@ function App() {
   return (
     <AuthProvider>
       <CallManager />
+      <CallDiagnostics />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public routes */}
