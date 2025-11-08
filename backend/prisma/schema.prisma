@@ -27,6 +27,7 @@ model Tenant {
 
   // Relations
   users       User[]
+  userTenants UserTenant[] // Many-to-many with users
   companies   Company[]
   contacts    Contact[]
   deals       Deal[]
@@ -55,9 +56,30 @@ model UserProfile {
 
   // Relations - one profile can have multiple tenant accounts
   tenantAccounts User[]
+  userTenants    UserTenant[] // Direct access to tenants
 
   @@index([email])
   @@map("user_profiles")
+}
+
+// UserTenant - Junction table for many-to-many User <-> Tenant
+model UserTenant {
+  id              String    @id @default(uuid())
+  userProfileId   String
+  tenantId        String
+  role            UserRole  @default(CUSTOMER)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  userProfile  UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userProfileId, tenantId])
+  @@index([userProfileId])
+  @@index([tenantId])
+  @@map("user_tenants")
 }
 
 // User model for authentication and authorization

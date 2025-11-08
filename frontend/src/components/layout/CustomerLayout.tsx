@@ -10,6 +10,7 @@ import {
   XMarkIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/outline';
+import TenantSwitcher from '../common/TenantSwitcher';
 
 interface MenuItem {
   text: string;
@@ -191,6 +192,7 @@ const CustomerLayout: React.FC = () => {
               
               {/* Desktop User Info */}
               <div className="hidden lg:flex items-center gap-4">
+                <TenantSwitcher />
                 <div className="text-right">
                   <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
                     {user?.firstName} {user?.lastName}

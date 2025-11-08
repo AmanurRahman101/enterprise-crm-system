@@ -37,6 +37,12 @@ export interface AuthUser {
   role: UserRole;
   avatar?: string | null;
   isCustomer?: boolean;
+  accessibleTenants?: Array<{
+    id: string;
+    subdomain: string;
+    name: string;
+    isPrimary: boolean;
+  }>;
 }
 
 export interface AuthResponse {

@@ -250,7 +250,7 @@ export class UserService {
   }
 
   /**
-   * Login user
+   * Login user with multi-tenant support
    */
   async login(data: LoginDTO & { tenantId: string | null }): Promise<{
     user: {
@@ -260,6 +260,12 @@ export class UserService {
       firstName: string;
       lastName: string;
       role: string;
+      accessibleTenants?: Array<{
+        id: string;
+        subdomain: string;
+        name: string;
+        isPrimary: boolean;
+      }>;
     };
     tokens: TokenResponse;
   }> {
@@ -272,9 +278,21 @@ export class UserService {
       whereClause.tenantId = data.tenantId;
     }
     
-    // Find user by email and optionally tenantId
+    // Find user by email and optionally tenantId with profile and tenant relationships
     const user = await prisma.user.findFirst({
-      where: whereClause
+      where: whereClause,
+      include: {
+        userProfile: {
+          include: {
+            userTenants: {
+              include: {
+                tenant: true
+              }
+            }
+          }
+        },
+        tenant: true
+      }
     });
 
     if (!user) {
@@ -296,18 +314,52 @@ export class UserService {
       throw new Error('Invalid email or password');
     }
 
+    // Build list of accessible tenants
+    const accessibleTenants: Array<{
+      id: string;
+      subdomain: string;
+      name: string;
+      isPrimary: boolean;
+    }> = [];
+
+    // Add primary tenant if exists
+    if (user.tenant) {
+      accessibleTenants.push({
+        id: user.tenant.id,
+        subdomain: user.tenant.subdomain,
+        name: user.tenant.name,
+        isPrimary: true
+      });
+    }
+
+    // Add additional tenants from UserTenant relationships
+    if (user.userProfile && user.userProfile.userTenants) {
+      for (const ut of user.userProfile.userTenants) {
+        // Don't duplicate primary tenant
+        if (ut.tenantId !== user.tenantId) {
+          accessibleTenants.push({
+            id: ut.tenant.id,
+            subdomain: ut.tenant.subdomain,
+            name: ut.tenant.name,
+            isPrimary: false
+          });
+        }
+      }
+    }
+
     // Update last login
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() }
     });
 
-    // Generate tokens
+    // Generate tokens with accessible tenants
     const tokens = AuthUtils.generateTokens({
       userId: user.id,
       tenantId: user.tenantId,
       email: user.email,
-      role: user.role
+      role: user.role,
+      accessibleTenants: accessibleTenants.map(t => ({ id: t.id, subdomain: t.subdomain }))
     });
 
     return {
@@ -317,7 +369,8 @@ export class UserService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        accessibleTenants
       },
       tokens
     };

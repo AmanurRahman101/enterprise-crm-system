@@ -7,6 +7,7 @@ export interface JWTPayload {
   tenantId: string | null;
   email: string;
   role: string;
+  accessibleTenants?: Array<{ id: string; subdomain: string }>;
 }
 
 // Token Response Interface

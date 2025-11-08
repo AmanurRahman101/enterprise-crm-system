@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { TenantService } from '../services/TenantService';
+import { AuthUtils } from '../utils/auth';
 
 const tenantService = new TenantService();
 
@@ -23,6 +24,8 @@ declare global {
  * 1. X-Tenant-ID header (for API clients)
  * 2. X-Tenant-Subdomain header
  * 3. Host subdomain (e.g., acme.tawasol.com)
+ * 
+ * Also validates user has access to requested tenant (multi-tenant security)
  */
 export const tenantMiddleware = async (
   req: Request,
@@ -57,15 +60,16 @@ export const tenantMiddleware = async (
     }
 
     // Get tenant by subdomain or ID
+    let tenant: any = null;
     if (subdomain) {
-      const tenant = await tenantService.getTenantBySubdomain(subdomain);
+      tenant = await tenantService.getTenantBySubdomain(subdomain);
       req.tenant = {
         id: tenant.id,
         name: tenant.name,
         subdomain: tenant.subdomain,
       };
     } else if (tenantId) {
-      const tenant = await tenantService.getTenantById(tenantId);
+      tenant = await tenantService.getTenantById(tenantId);
       req.tenant = {
         id: tenant.id,
         name: tenant.name,
@@ -74,6 +78,42 @@ export const tenantMiddleware = async (
     } else {
       // No tenant identified - this is okay for some routes
       // Individual routes can enforce tenant requirement
+      return next();
+    }
+
+    // SECURITY: Validate user has access to this tenant (if authenticated)
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = AuthUtils.extractToken(authHeader);
+      if (token) {
+        try {
+          const decoded = AuthUtils.verifyAccessToken(token);
+          
+          // Check if user has access to this tenant
+          const requestedSubdomain = tenant.subdomain;
+          const hasAccess = 
+            decoded.tenantId === tenant.id || // Primary tenant matches
+            decoded.accessibleTenants?.some(t => t.subdomain === requestedSubdomain); // Or in accessible list
+
+          if (!hasAccess) {
+            console.error(
+              `🚨 [SECURITY] User ${decoded.userId} (${decoded.email}) attempted to access tenant "${requestedSubdomain}" ` +
+              `but only has access to: ${decoded.accessibleTenants?.map(t => t.subdomain).join(', ') || decoded.tenantId}`
+            );
+            res.status(403).json({
+              success: false,
+              message: 'Access denied: You do not have permission to access this tenant',
+              accessibleTenants: decoded.accessibleTenants?.map(t => t.subdomain) || []
+            });
+            return;
+          }
+          
+          console.log(`✅ [SECURITY] User ${decoded.userId} verified for tenant ${requestedSubdomain}`);
+        } catch (error) {
+          // Invalid token - let auth middleware handle it
+          console.warn('⚠️ [SECURITY] Invalid token in tenant middleware:', error);
+        }
+      }
     }
 
     next();
