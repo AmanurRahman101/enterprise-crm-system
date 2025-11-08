@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '../services/authService';
+import { socketService } from '../services/socketService';
 import { AuthUser, LoginCredentials, RegisterData } from '../types';
 
 interface AuthContextType {
@@ -35,25 +36,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initialize = async () => {
       try {
         const storedUser = authService.getStoredUser();
-        if (storedUser && authService.isAuthenticated()) {
+        const token = localStorage.getItem('token');
+        
+        if (storedUser && token) {
+          // Trust stored user data initially for faster load
           setUser(storedUser);
+          setLoading(false);
+
+          // Connect to Socket.IO for real-time features
+          socketService.connect(token);
           
-          // Optionally verify with backend
-          try {
-            const currentUser = await authService.getMe();
-            setUser(currentUser);
-            localStorage.setItem('user', JSON.stringify(currentUser));
-          } catch (error) {
-            // If verification fails, clear stored data
-            console.error('User verification failed:', error);
-            await authService.logout();
-            setUser(null);
-          }
+          // Verify token in background (optional, non-blocking)
+          authService.getMe()
+            .then(currentUser => {
+              setUser(currentUser);
+              localStorage.setItem('user', JSON.stringify(currentUser));
+            })
+            .catch(error => {
+              // If verification fails, clear stored data
+              console.error('Background user verification failed:', error);
+              authService.logout();
+              setUser(null);
+              socketService.disconnect();
+            });
+        } else {
+          setLoading(false);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         setUser(null);
-      } finally {
         setLoading(false);
       }
     };
@@ -66,6 +77,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.login(credentials, tenantSubdomain);
       setUser(response.data.user);
+      
+      // Connect to Socket.IO
+      const token = localStorage.getItem('token');
+      if (token) {
+        socketService.connect(token);
+      }
     } catch (error) {
       throw error;
     } finally {
@@ -78,6 +95,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authService.register(data, tenantSubdomain);
       setUser(response.data.user);
+      
+      // Connect to Socket.IO
+      const token = localStorage.getItem('token');
+      if (token) {
+        socketService.connect(token);
+      }
     } catch (error) {
       throw error;
     } finally {
@@ -90,6 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authService.logout();
       setUser(null);
+      socketService.disconnect();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

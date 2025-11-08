@@ -1,52 +1,88 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { CallManager } from './components/common/CallManager';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import CustomerLayout from './components/layout/CustomerLayout';
-import HomePage from './pages/home/HomePage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import CustomerDashboard from './pages/customer/CustomerDashboard';
-import CustomerTicketList from './pages/customer/CustomerTicketList';
-import CustomerProfile from './pages/customer/CustomerProfile';
-import ContactListPage from './pages/contacts/ContactListPage';
-import ContactDetailPage from './pages/contacts/ContactDetailPage';
-import ContactFormPage from './pages/contacts/ContactFormPage';
-import CompanyListPage from './pages/companies/CompanyListPage';
-import CompanyDetailPage from './pages/companies/CompanyDetailPage';
-import CompanyFormPage from './pages/companies/CompanyFormPage';
-import DealListPage from './pages/deals/DealListPage';
-import DealDetailPage from './pages/deals/DealDetailPage';
-import DealFormPage from './pages/deals/DealFormPage';
-import DealKanbanPage from './pages/deals/DealKanbanPage';
-import TicketListPage from './pages/tickets/TicketListPage';
-import TicketDetailPage from './pages/tickets/TicketDetailPage';
-import TicketFormPage from './pages/tickets/TicketFormPage';
-import TaskListPage from './pages/tasks/TaskListPage';
-import TaskDetailPage from './pages/tasks/TaskDetailPage';
-import TaskFormPage from './pages/tasks/TaskFormPage';
-import StageManagementPage from './pages/settings/StageManagementPage';
-import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
-import ProfilePage from './pages/settings/ProfilePage';
-import NoteListPage from './pages/notes/NoteListPage';
-import NoteFormPage from './pages/notes/NoteFormPage';
-import NoteDetailPage from './pages/notes/NoteDetailPage';
-import ActivityListPage from './pages/activities/ActivityListPage';
-import ActivityFormPage from './pages/activities/ActivityFormPage';
-import ActivityDetailPage from './pages/activities/ActivityDetailPage';
-import UserListPage from './pages/users/UserListPage';
-import UserFormPage from './pages/users/UserFormPage';
-import UserDetailPage from './pages/users/UserDetailPage';
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+      <p className="text-sm text-secondary-600 dark:text-secondary-400">Loading...</p>
+    </div>
+  </div>
+);
+
+// Lazy load pages (loaded on-demand)
+const HomePage = lazy(() => import('./pages/home/HomePage'));
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
+
+// Customer Portal
+const CustomerDashboard = lazy(() => import('./pages/customer/CustomerDashboard'));
+const CustomerTicketList = lazy(() => import('./pages/customer/CustomerTicketList'));
+const CustomerProfile = lazy(() => import('./pages/customer/CustomerProfile'));
+
+// Contacts
+const ContactListPage = lazy(() => import('./pages/contacts/ContactListPage'));
+const ContactDetailPage = lazy(() => import('./pages/contacts/ContactDetailPage'));
+const ContactFormPage = lazy(() => import('./pages/contacts/ContactFormPage'));
+
+// Companies
+const CompanyListPage = lazy(() => import('./pages/companies/CompanyListPage'));
+const CompanyDetailPage = lazy(() => import('./pages/companies/CompanyDetailPage'));
+const CompanyFormPage = lazy(() => import('./pages/companies/CompanyFormPage'));
+
+// Deals
+const DealListPage = lazy(() => import('./pages/deals/DealListPage'));
+const DealDetailPage = lazy(() => import('./pages/deals/DealDetailPage'));
+const DealFormPage = lazy(() => import('./pages/deals/DealFormPage'));
+const DealKanbanPage = lazy(() => import('./pages/deals/DealKanbanPage'));
+
+// Tickets
+const TicketListPage = lazy(() => import('./pages/tickets/TicketListPage'));
+const TicketDetailPage = lazy(() => import('./pages/tickets/TicketDetailPage'));
+const TicketFormPage = lazy(() => import('./pages/tickets/TicketFormPage'));
+
+// Tasks
+const TaskListPage = lazy(() => import('./pages/tasks/TaskListPage'));
+const TaskDetailPage = lazy(() => import('./pages/tasks/TaskDetailPage'));
+const TaskFormPage = lazy(() => import('./pages/tasks/TaskFormPage'));
+
+// Settings
+const StageManagementPage = lazy(() => import('./pages/settings/StageManagementPage'));
+const GeneralSettingsPage = lazy(() => import('./pages/settings/GeneralSettingsPage'));
+const ProfilePage = lazy(() => import('./pages/settings/ProfilePage'));
+
+// Notes
+const NoteListPage = lazy(() => import('./pages/notes/NoteListPage'));
+const NoteFormPage = lazy(() => import('./pages/notes/NoteFormPage'));
+const NoteDetailPage = lazy(() => import('./pages/notes/NoteDetailPage'));
+
+// Activities
+const ActivityListPage = lazy(() => import('./pages/activities/ActivityListPage'));
+const ActivityFormPage = lazy(() => import('./pages/activities/ActivityFormPage'));
+const ActivityDetailPage = lazy(() => import('./pages/activities/ActivityDetailPage'));
+
+// Users
+const UserListPage = lazy(() => import('./pages/users/UserListPage'));
+const UserFormPage = lazy(() => import('./pages/users/UserFormPage'));
+const UserDetailPage = lazy(() => import('./pages/users/UserDetailPage'));
 
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+      <CallManager />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         
         {/* Protected routes with layout */}
         <Route
@@ -150,7 +186,8 @@ function App() {
 
         {/* Catch all - redirect to home page */}
         <Route path="*" element={<Navigate to="/home" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </AuthProvider>
   );
 }

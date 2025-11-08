@@ -2,25 +2,28 @@ import { Router } from 'express';
 import { AuthController } from '../controllers/authController';
 import { getMyTenants, switchTenant } from '../controllers/authController';
 import { authenticate, validateRefreshToken } from '../middleware/auth';
-import { tenantMiddleware, requireTenant } from '../middleware/tenant';
+import { tenantMiddleware } from '../middleware/tenant';
 
 const router = Router();
 
 /**
  * Authentication Routes
  * Base path: /api/auth
- * All routes require tenant identification via:
+ * 
+ * Business routes require tenant identification via:
  * - X-Tenant-Subdomain header (e.g., "acme")
  * - X-Tenant-ID header
  * - Host subdomain (e.g., acme.tawasol.com)
+ * 
+ * Customer routes do NOT require tenant
  */
 
-// Apply tenant middleware to all auth routes
+// Apply tenant middleware to all auth routes (but don't require it yet)
 router.use(tenantMiddleware);
 
-// Public routes (require tenant)
-router.post('/register', requireTenant, AuthController.register);
-router.post('/login', requireTenant, AuthController.login);
+// Public routes - check isCustomer flag to determine if tenant is required
+router.post('/register', AuthController.register);
+router.post('/login', AuthController.login);
 router.post('/refresh', validateRefreshToken, AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
 

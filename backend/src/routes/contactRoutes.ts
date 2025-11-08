@@ -21,6 +21,7 @@ router.post('/', ContactController.createContact);
 router.get('/', ContactController.getContacts);
 router.get('/stats', ContactController.getContactStats);
 router.get('/:id', ContactController.getContact);
+router.get('/:id/user-info', ContactController.getContactUserInfo);
 router.put('/:id', ContactController.updateContact);
 router.delete('/:id', ContactController.deleteContact);
 

@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/UserService';
+import { ContactService } from '../services/ContactService';
 import { CreateUserDTO, UpdateUserDTO, LoginDTO } from '../types';
 import logger from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
 import { AuthUtils } from '../utils/auth';
 
 const userService = new UserService();
+const contactService = new ContactService();
 const prisma = new PrismaClient();
 
 /**
@@ -89,6 +91,12 @@ export class AuthController {
         firstName,
         lastName
       });
+
+      // Auto-link any existing contacts with this email
+      const linkedCount = await contactService.autoLinkContactByEmail(email, result.user.id);
+      if (linkedCount > 0) {
+        logger.info(`Auto-linked ${linkedCount} contact(s) to user ${result.user.id}`);
+      }
 
       logger.info(`New customer registered: ${result.user.email}`);
 

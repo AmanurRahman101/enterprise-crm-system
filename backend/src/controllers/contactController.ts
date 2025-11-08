@@ -278,4 +278,35 @@ export class ContactController {
       });
     }
   }
+
+  /**
+   * Get contact user info (registration and online status)
+   * GET /api/contacts/:id/user-info
+   */
+  static async getContactUserInfo(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.tenant) {
+        res.status(401).json({
+          success: false,
+          message: 'Tenant identification required',
+        });
+        return;
+      }
+
+      const { id } = req.params;
+      const userInfo = await contactService.getContactUserInfo(req.tenant.id, id);
+
+      res.status(200).json({
+        success: true,
+        data: userInfo,
+      });
+    } catch (error) {
+      logger.error('Get contact user info error:', error);
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get contact user info',
+      });
+    }
+  }
 }
+

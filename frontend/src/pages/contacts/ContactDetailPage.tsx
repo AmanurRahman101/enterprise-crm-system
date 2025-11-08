@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Contact } from '../../types/contact';
 import { contactService } from '../../services/contactService';
+import { CallButton } from '../../components/common/CallButton';
 
 const ContactDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -100,6 +101,18 @@ const ContactDetailPage: React.FC = () => {
           Back
         </button>
         <div className="flex gap-2">
+          {/* VoIP Call Button */}
+          <CallButton
+            contactId={contact.id}
+            contactName={`${contact.firstName} ${contact.lastName}`}
+            contactEmail={contact.email}
+            showVideo={true}
+            onCallComplete={(duration) => {
+              console.log(`Call completed: ${duration} seconds`);
+              // Optionally refresh contact data to show new call log
+              fetchContact();
+            }}
+          />
           <button
             onClick={() => navigate(`/contacts/${id}/edit`)}
             className="btn-secondary flex items-center gap-2"

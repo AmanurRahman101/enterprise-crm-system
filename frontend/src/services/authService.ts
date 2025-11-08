@@ -11,14 +11,22 @@ export const authService = {
    * Login user
    */
   async login(credentials: LoginCredentials, tenantSubdomain?: string): Promise<AuthResponse> {
+    console.log('🔵 [AUTH SERVICE] Login called');
+    console.log('🔵 [AUTH SERVICE] Is Customer:', credentials.isCustomer);
+    console.log('🔵 [AUTH SERVICE] Tenant:', tenantSubdomain || 'N/A');
+    
     // Only set tenant for business mode
     if (!credentials.isCustomer && tenantSubdomain) {
+      console.log('🔵 [AUTH SERVICE] Setting tenant:', tenantSubdomain);
       setTenant(tenantSubdomain);
     }
     
+    console.log('🔵 [AUTH SERVICE] Making API request to /auth/login');
     const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+    console.log('✅ [AUTH SERVICE] Login API response received');
     
     if (response.data.success && response.data.data) {
+      console.log('🔵 [AUTH SERVICE] Storing tokens and user data');
       // Store tokens and user
       localStorage.setItem('accessToken', response.data.data.tokens.accessToken);
       localStorage.setItem('refreshToken', response.data.data.tokens.refreshToken);

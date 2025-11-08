@@ -73,4 +73,16 @@ export const contactService = {
     const response = await apiClient.get('/contacts/stats');
     return response.data.data;
   },
+
+  /**
+   * Get contact user info (check if registered and online)
+   */
+  async getContactUserInfo(id: string): Promise<{
+    isRegistered: boolean;
+    userId: string | null;
+    isOnline?: boolean;
+  }> {
+    const response = await apiClient.get(`/contacts/${id}/user-info`);
+    return response.data.data;
+  },
 };

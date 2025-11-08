@@ -461,4 +461,127 @@ export class ContactService {
       recentlyAdded,
     };
   }
+
+  /**
+   * Link a contact to a customer user account
+   */
+  async linkContactToUser(
+    tenantId: string,
+    contactId: string,
+    userId: string
+  ): Promise<any> {
+    // Verify contact exists and belongs to tenant
+    const contact = await prisma.contact.findFirst({
+      where: {
+        id: contactId,
+        tenantId,
+      },
+    });
+
+    if (!contact) {
+      throw new Error('Contact not found');
+    }
+
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Link the contact to the user
+    return await prisma.contact.update({
+      where: { id: contactId },
+      data: {
+        customerUserId: userId,
+        isRegistered: true,
+      },
+    });
+  }
+
+  /**
+   * Auto-link contact by email when user registers
+   */
+  async autoLinkContactByEmail(email: string, userId: string): Promise<number> {
+    // Find all contacts with this email across tenants
+    const contacts = await prisma.contact.findMany({
+      where: {
+        email: email.toLowerCase(),
+        isRegistered: false, // Only link unlinked contacts
+      },
+    });
+
+    if (contacts.length === 0) {
+      return 0;
+    }
+
+    // Link all matching contacts to this user
+    await prisma.contact.updateMany({
+      where: {
+        email: email.toLowerCase(),
+        isRegistered: false,
+      },
+      data: {
+        customerUserId: userId,
+        isRegistered: true,
+      },
+    });
+
+    return contacts.length;
+  }
+
+  /**
+   * Check if a contact is registered and get their user ID
+   */
+  async getContactUserInfo(
+    tenantId: string,
+    contactId: string
+  ): Promise<{ isRegistered: boolean; userId: string | null; isOnline?: boolean }> {
+    const contact = await prisma.contact.findFirst({
+      where: {
+        id: contactId,
+        tenantId,
+      },
+      select: {
+        isRegistered: true,
+        customerUserId: true,
+      },
+    });
+
+    if (!contact) {
+      throw new Error('Contact not found');
+    }
+
+    return {
+      isRegistered: contact.isRegistered,
+      userId: contact.customerUserId,
+    };
+  }
+
+  /**
+   * Unlink a contact from user account
+   */
+  async unlinkContactFromUser(tenantId: string, contactId: string): Promise<any> {
+    const contact = await prisma.contact.findFirst({
+      where: {
+        id: contactId,
+        tenantId,
+      },
+    });
+
+    if (!contact) {
+      throw new Error('Contact not found');
+    }
+
+    return await prisma.contact.update({
+      where: { id: contactId },
+      data: {
+        customerUserId: null,
+        isRegistered: false,
+      },
+    });
+  }
 }
+

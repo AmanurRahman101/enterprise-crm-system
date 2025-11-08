@@ -33,6 +33,13 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      // Debug logging for troubleshooting
+      console.log('🔵 [LOGIN] Starting login attempt...');
+      console.log('🔵 [LOGIN] Mode:', mode);
+      console.log('🔵 [LOGIN] Email:', formData.email);
+      console.log('🔵 [LOGIN] Tenant:', mode === 'business' ? formData.tenant : 'N/A (customer)');
+      console.log('🔵 [LOGIN] Backend URL:', window.location.protocol + '//' + window.location.hostname + ':5000/api');
+      
       await login(
         {
           email: formData.email,
@@ -41,6 +48,9 @@ const LoginPage = () => {
         },
         mode === 'business' ? formData.tenant : undefined
       );
+      
+      console.log('✅ [LOGIN] Login successful!');
+      
       // Redirect based on user type
       if (mode === 'customer') {
         navigate('/customer', { replace: true });
@@ -48,9 +58,17 @@ const LoginPage = () => {
         navigate(from, { replace: true });
       }
     } catch (err: any) {
+      console.error('❌ [LOGIN] Login failed:', err);
+      console.error('❌ [LOGIN] Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        stack: err.stack
+      });
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
+      console.log('🔵 [LOGIN] Login attempt completed');
     }
   };
 

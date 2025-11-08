@@ -21,10 +21,23 @@ const getTenantSubdomain = (): string | null => {
   return null;
 };
 
+// Dynamically determine the backend URL
+const getBackendURL = (): string => {
+  // If explicitly set in .env, use that
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // Otherwise, use the same host as the frontend but port 5000
+  const protocol = window.location.protocol; // http: or https:
+  const hostname = window.location.hostname; // localhost or 192.168.1.7
+  return `${protocol}//${hostname}:5000/api`;
+};
+
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
-  timeout: 30000,
+  baseURL: getBackendURL(),
+  timeout: 10000, // Reduced from 30s to 10s - faster failure detection
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,21 +46,30 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: any) => {
+    console.log('🔵 [API] Making request:', config.method?.toUpperCase(), config.url);
+    console.log('🔵 [API] Base URL:', config.baseURL);
+    console.log('🔵 [API] Full URL:', config.baseURL + config.url);
+    
     // Add authentication token
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔵 [API] Added Authorization header');
     }
     
     // Add tenant header
     const tenant = getTenantSubdomain();
     if (tenant) {
       config.headers['X-Tenant-Subdomain'] = tenant;
+      console.log('🔵 [API] Added X-Tenant-Subdomain:', tenant);
     }
+    
+    console.log('🔵 [API] Request headers:', JSON.stringify(config.headers, null, 2));
     
     return config;
   },
   (error) => {
+    console.error('❌ [API] Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -55,10 +77,20 @@ apiClient.interceptors.request.use(
 // Response interceptor
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    console.log('✅ [API] Response received:', response.status, response.config.url);
     return response;
   },
   async (error) => {
+    console.error('❌ [API] Response error:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data
+    });
+    
     if (error.response?.status === 401) {
+      console.log('❌ [API] Unauthorized - clearing auth data');
       // Handle unauthorized - clear auth and redirect to login
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -66,6 +98,7 @@ apiClient.interceptors.response.use(
       
       // Don't redirect if already on login page
       if (!window.location.pathname.includes('/login')) {
+        console.log('❌ [API] Redirecting to login page');
         window.location.href = '/login';
       }
     }
