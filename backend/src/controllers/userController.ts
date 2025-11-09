@@ -13,7 +13,7 @@ const userService = new UserService();
  */
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
     
     if (!tenantId) {
       res.status(400).json({
@@ -54,7 +54,7 @@ export const getUsers = async (req: Request, res: Response) => {
 export const getUserById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -94,7 +94,7 @@ export const getUserById = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
     const requestingUserId = req.user?.userId;
 
     if (!tenantId) {
@@ -159,7 +159,7 @@ export const updateUser = async (req: Request, res: Response) => {
 export const deactivateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
     const requestingUserId = req.user?.userId;
 
     if (!tenantId) {
@@ -219,7 +219,7 @@ export const deactivateUser = async (req: Request, res: Response) => {
 export const reactivateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -266,7 +266,7 @@ export const reactivateUser = async (req: Request, res: Response) => {
  */
 export const getUserStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -296,7 +296,7 @@ export const getUserStats = async (req: Request, res: Response) => {
  */
 export const getTeamMembers = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -327,7 +327,7 @@ export const getTeamMembers = async (req: Request, res: Response) => {
 export const getUserActivity = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -667,7 +667,7 @@ export const getNotificationPreferences = async (req: Request, res: Response) =>
 export const approveUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -686,14 +686,15 @@ export const approveUser = async (req: Request, res: Response) => {
       return;
     }
 
-    // Update user status
+    // Update user status - approved but inactive by default
     const user = await prisma.user.update({
       where: {
         id,
         tenantId
       },
       data: {
-        status: 'APPROVED'
+        status: 'APPROVED',
+        isActive: false  // User needs to be manually activated after approval
       },
       select: {
         id: true,
@@ -701,11 +702,12 @@ export const approveUser = async (req: Request, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
-        status: true
+        status: true,
+        isActive: true
       }
     });
 
-    logger.info(`User ${id} approved by admin ${req.user.userId}`);
+    logger.info(`User ${id} approved by admin ${req.user.userId} (set to inactive, requires activation)`);
 
     res.json({
       success: true,
@@ -729,7 +731,7 @@ export const approveUser = async (req: Request, res: Response) => {
 export const rejectUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
+    const tenantId = req.tenant?.id;
 
     if (!tenantId) {
       res.status(400).json({
@@ -748,14 +750,15 @@ export const rejectUser = async (req: Request, res: Response) => {
       return;
     }
 
-    // Update user status
+    // Update user status - rejected and set to inactive
     const user = await prisma.user.update({
       where: {
         id,
         tenantId
       },
       data: {
-        status: 'REJECTED'
+        status: 'REJECTED',
+        isActive: false  // Rejected users are also inactive
       },
       select: {
         id: true,
@@ -763,7 +766,8 @@ export const rejectUser = async (req: Request, res: Response) => {
         firstName: true,
         lastName: true,
         role: true,
-        status: true
+        status: true,
+        isActive: true
       }
     });
 

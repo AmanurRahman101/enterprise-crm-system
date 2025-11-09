@@ -9,7 +9,7 @@ const LoginPage = () => {
 
   const [mode, setMode] = useState<'business' | 'customer'>('business');
   const [formData, setFormData] = useState({
-    tenant: 'acme',
+    tenant: '',
     email: '',
     password: '',
   });
@@ -257,26 +257,7 @@ const LoginPage = () => {
             </form>
           </div>
 
-          {/* Demo Credentials - Only for Business Mode */}
-          {mode === 'business' && (
-            <div className="px-8 py-5 bg-secondary-50 dark:bg-secondary-900/50 border-t border-secondary-200 dark:border-secondary-700 rounded-b-lg">
-              <div className="text-xs text-secondary-600 dark:text-secondary-400 mb-2 font-medium">Demo Credentials:</div>
-              <div className="grid grid-cols-1 gap-1 text-xs">
-                <div className="flex items-center">
-                  <span className="text-secondary-500 dark:text-secondary-400 w-24">Tenant:</span>
-                  <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">acme</code>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-secondary-500 dark:text-secondary-400 w-24">Email:</span>
-                  <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">john.sales@tawasol.com</code>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-secondary-500 dark:text-secondary-400 w-24">Password:</span>
-                  <code className="bg-white dark:bg-secondary-800 px-2 py-1 rounded border border-secondary-200 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 font-mono">Password123!</code>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Footer - Removed Demo Credentials */}
         </div>
 
         {/* Footer */}

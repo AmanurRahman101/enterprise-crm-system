@@ -6,11 +6,6 @@ const getTenantSubdomain = (): string | null => {
   const storedTenant = localStorage.getItem('tenantSubdomain');
   if (storedTenant) return storedTenant;
   
-  // For development, use a default tenant
-  if (process.env.NODE_ENV === 'development') {
-    return 'acme'; // Default dev tenant
-  }
-  
   // In production, extract from subdomain
   const hostname = window.location.hostname;
   const parts = hostname.split('.');
