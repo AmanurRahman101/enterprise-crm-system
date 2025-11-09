@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlusIcon, EnvelopeIcon, LockClosedIcon, UserIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
+
+interface Tenant {
+  id: string;
+  name: string;
+  subdomain: string;
+}
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,14 +20,59 @@ const RegisterPage: React.FC = () => {
     password: '',
     confirmPassword: '',
   });
-  const [tenantSubdomain, setTenantSubdomain] = useState('acme');
+  
+  // NEW: Tenant selection states
+  const [availableTenants, setAvailableTenants] = useState<Tenant[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState('');
+  const [loadingTenants, setLoadingTenants] = useState(true);
+  const [isCreatingNewTenant, setIsCreatingNewTenant] = useState(false);
+  const [newTenantData, setNewTenantData] = useState({
+    name: '',
+    subdomain: ''
+  });
+  
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Fetch available tenants on component mount
+  useEffect(() => {
+    const fetchTenants = async () => {
+      try {
+        setLoadingTenants(true);
+        const response = await fetch('http://localhost:5000/api/tenants/public');
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+          setAvailableTenants(data.data);
+          setSelectedTenant(data.data[0].subdomain);
+        } else {
+          // If no tenants exist, fallback to create mode
+          setIsCreatingNewTenant(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch tenants:', error);
+        // On error, allow creation of new tenant
+        setIsCreatingNewTenant(true);
+      } finally {
+        setLoadingTenants(false);
+      }
+    };
+
+    fetchTenants();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
+    });
+  };
+
+  // Auto-generate subdomain from company name
+  const handleCompanyNameChange = (value: string) => {
+    setNewTenantData({
+      name: value,
+      subdomain: value.toLowerCase().replace(/[^a-z0-9]/g, '')
     });
   };
 
@@ -54,9 +105,28 @@ const RegisterPage: React.FC = () => {
       setError('Passwords do not match');
       return;
     }
-    if (mode === 'business' && !tenantSubdomain.trim()) {
-      setError('Organization subdomain is required');
-      return;
+    
+    // Business mode validations
+    if (mode === 'business') {
+      if (isCreatingNewTenant) {
+        if (!newTenantData.name.trim()) {
+          setError('Company name is required');
+          return;
+        }
+        if (!newTenantData.subdomain.trim()) {
+          setError('Subdomain is required');
+          return;
+        }
+        if (!/^[a-z0-9-]+$/.test(newTenantData.subdomain)) {
+          setError('Subdomain can only contain lowercase letters, numbers, and hyphens');
+          return;
+        }
+      } else {
+        if (!selectedTenant) {
+          setError('Please select an organization');
+          return;
+        }
+      }
     }
 
     try {
@@ -69,7 +139,8 @@ const RegisterPage: React.FC = () => {
           password: formData.password,
           isCustomer: mode === 'customer',
         },
-        mode === 'business' ? tenantSubdomain : undefined
+        isCreatingNewTenant ? undefined : selectedTenant,
+        isCreatingNewTenant ? newTenantData : undefined
       );
       // Redirect based on user type
       if (mode === 'customer') {
@@ -78,7 +149,7 @@ const RegisterPage: React.FC = () => {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -143,31 +214,143 @@ const RegisterPage: React.FC = () => {
               </div>
             )}
 
-            {/* Organization Subdomain - Only for Business Mode */}
+            {/* Organization Selection - Only for Business Mode */}
             {mode === 'business' && (
-            <div>
-              <label htmlFor="tenantSubdomain" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Organization Subdomain
-              </label>
-              <div className="relative">
-                <input
-                  id="tenantSubdomain"
-                  name="tenantSubdomain"
-                  type="text"
-                  required
-                  value={tenantSubdomain}
-                  onChange={(e) => setTenantSubdomain(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                  placeholder="yourcompany"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-gray-500 dark:text-gray-400 sm:text-sm">.tawasol.app</span>
-                </div>
+              <div className="space-y-4">
+                {/* Radio buttons: Join existing OR Create new */}
+                {!loadingTenants && availableTenants.length > 0 && (
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <input
+                        type="radio"
+                        checked={!isCreatingNewTenant}
+                        onChange={() => setIsCreatingNewTenant(false)}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          Join Existing Organization
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Select from available organizations
+                        </div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <input
+                        type="radio"
+                        checked={isCreatingNewTenant}
+                        onChange={() => setIsCreatingNewTenant(true)}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          Create New Organization
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Start your own organization
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Show dropdown if joining existing */}
+                {!loadingTenants && !isCreatingNewTenant && (
+                  <div>
+                    <label htmlFor="tenant" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <BuildingOfficeIcon className="h-4 w-4 inline-block mr-2" />
+                      Select Organization
+                    </label>
+                    <select
+                      id="tenant"
+                      value={selectedTenant}
+                      onChange={(e) => setSelectedTenant(e.target.value)}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                      required
+                    >
+                      <option value="">Select an organization</option>
+                      {availableTenants.map((tenant) => (
+                        <option key={tenant.id} value={tenant.subdomain}>
+                          {tenant.name} ({tenant.subdomain})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Show form if creating new */}
+                {isCreatingNewTenant && (
+                  <div className="space-y-4 p-4 bg-blue-50 dark:bg-gray-700 rounded-lg border border-blue-200 dark:border-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300 font-medium">
+                      <BuildingOfficeIcon className="h-5 w-5" />
+                      <span>Create Your Organization</span>
+                    </div>
+                    
+                    {/* Company Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Company Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newTenantData.name}
+                        onChange={(e) => handleCompanyNameChange(e.target.value)}
+                        className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white sm:text-sm"
+                        placeholder="Acme Corp"
+                        required
+                      />
+                    </div>
+
+                    {/* Subdomain */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Subdomain *
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newTenantData.subdomain}
+                          onChange={(e) => setNewTenantData({
+                            ...newTenantData,
+                            subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+                          })}
+                          className="flex-1 appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white sm:text-sm"
+                          placeholder="acmecorp"
+                          pattern="[a-z0-9-]+"
+                          required
+                        />
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">
+                          .tawasol-crm.com
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        This will be your organization's unique identifier
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-2 mt-3">
+                      <input
+                        type="checkbox"
+                        id="terms"
+                        required={isCreatingNewTenant}
+                        className="mt-1"
+                      />
+                      <label htmlFor="terms" className="text-xs text-gray-600 dark:text-gray-400">
+                        I agree that by creating an organization, I will be the admin and responsible for managing it.
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {loadingTenants && (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading organizations...</p>
+                  </div>
+                )}
               </div>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Use "acme" for demo/testing. This will be your organization's unique URL
-              </p>
-            </div>
             )}
 
             {/* Name Fields */}
@@ -291,7 +474,7 @@ const RegisterPage: React.FC = () => {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || loadingTenants}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 {loading ? (
@@ -300,10 +483,10 @@ const RegisterPage: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Creating account...
+                    {isCreatingNewTenant ? 'Creating organization...' : 'Creating account...'}
                   </>
                 ) : (
-                  'Create account'
+                  isCreatingNewTenant ? 'Create Organization & Account' : 'Create Account'
                 )}
               </button>
             </div>

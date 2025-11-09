@@ -7,55 +7,37 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
-
-interface Ticket {
-  id: string;
-  subject: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  createdAt: string;
-  updatedAt: string;
-}
+import { customerTicketService, CustomerTicket } from '../../services/customerTicketService';
 
 const CustomerTicketList: React.FC = () => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [tickets, setTickets] = useState<CustomerTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+  }, [filter]);
 
   const fetchTickets = async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await ticketService.getMyTickets();
-      // setTickets(response.data);
+      setLoading(true);
+      setError(null);
       
-      // Mock data for now
-      setTimeout(() => {
-        setTickets([
-          {
-            id: '1',
-            subject: 'Unable to login to my account',
-            status: 'OPEN',
-            priority: 'HIGH',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            subject: 'Question about billing',
-            status: 'RESOLVED',
-            priority: 'MEDIUM',
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            updatedAt: new Date(Date.now() - 43200000).toISOString(),
-          },
-        ]);
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error('Error fetching tickets:', error);
+      const statusFilter = filter === 'all' ? undefined : 
+                          filter === 'open' ? 'OPEN' : 'RESOLVED';
+      
+      const response = await customerTicketService.getMyTickets({ status: statusFilter });
+      
+      if (response.success) {
+        setTickets(response.data.tickets);
+      } else {
+        setError(response.error || 'Failed to fetch tickets');
+      }
+    } catch (err: any) {
+      console.error('Error fetching tickets:', err);
+      setError(err.response?.data?.error || 'Failed to fetch tickets');
+    } finally {
       setLoading(false);
     }
   };
@@ -95,12 +77,7 @@ const CustomerTicketList: React.FC = () => {
     return styles[priority as keyof typeof styles] || styles.MEDIUM;
   };
 
-  const filteredTickets = tickets.filter((ticket) => {
-    if (filter === 'all') return true;
-    if (filter === 'open') return ticket.status === 'OPEN' || ticket.status === 'IN_PROGRESS';
-    if (filter === 'resolved') return ticket.status === 'RESOLVED' || ticket.status === 'CLOSED';
-    return true;
-  });
+  const filteredTickets = tickets;  // Filtering now done by API
 
   if (loading) {
     return (
@@ -108,6 +85,25 @@ const CustomerTicketList: React.FC = () => {
         <div className="flex flex-col items-center gap-3">
           <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           <p className="text-sm text-secondary-600 dark:text-secondary-400">Loading tickets...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-red-600 dark:text-red-400 mb-4">
+            <XCircleIcon className="h-12 w-12 mx-auto" />
+          </div>
+          <p className="text-sm text-secondary-600 dark:text-secondary-400">{error}</p>
+          <button
+            onClick={fetchTickets}
+            className="mt-4 btn-primary"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );

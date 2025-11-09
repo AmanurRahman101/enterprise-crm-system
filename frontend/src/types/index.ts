@@ -14,6 +14,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;

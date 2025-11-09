@@ -92,6 +92,7 @@ model User {
   firstName     String
   lastName      String
   role          UserRole  @default(SALES)
+  status        UserStatus @default(PENDING) // Approval status
   isActive      Boolean   @default(true)
   isCustomer    Boolean   @default(false) // True for individual customers
   lastLoginAt   DateTime?
@@ -392,6 +393,12 @@ enum UserRole {
   SALES
   SUPPORT
   CUSTOMER
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum TaskStatus {

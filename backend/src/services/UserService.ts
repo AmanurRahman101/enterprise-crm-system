@@ -58,6 +58,9 @@ export class UserService {
     // Hash password
     const hashedPassword = await AuthUtils.hashPassword(data.password);
 
+    // Determine status: APPROVED for role explicitly set (like ADMIN from new org creation), PENDING for regular signups
+    const userStatus = data.role === 'ADMIN' ? 'APPROVED' : 'PENDING';
+
     // Create user linked to the profile
     const user = await prisma.user.create({
       data: {
@@ -67,7 +70,8 @@ export class UserService {
         password: hashedPassword,
         firstName: data.firstName,
         lastName: data.lastName,
-        role: (data.role || 'SALES') as any
+        role: (data.role || 'SALES') as any,
+        status: userStatus as any
       },
       select: {
         id: true,
@@ -75,7 +79,8 @@ export class UserService {
         email: true,
         firstName: true,
         lastName: true,
-        role: true
+        role: true,
+        status: true
       }
     });
 
@@ -146,7 +151,7 @@ export class UserService {
     // Hash password
     const hashedPassword = await AuthUtils.hashPassword(data.password);
 
-    // Create customer user without tenant
+    // Create customer user without tenant (customers are auto-approved)
     const user = await prisma.user.create({
       data: {
         userProfileId: userProfile.id,
@@ -155,7 +160,8 @@ export class UserService {
         firstName: data.firstName,
         lastName: data.lastName,
         role: 'CUSTOMER',
-        isCustomer: true
+        isCustomer: true,
+        status: 'APPROVED' as any // Customers don't need approval
       },
       select: {
         id: true,
@@ -172,7 +178,8 @@ export class UserService {
       userId: user.id,
       tenantId: null as any,
       email: user.email,
-      role: user.role
+      role: user.role,
+      isCustomer: true
     });
 
     return { user, tokens };
@@ -233,7 +240,8 @@ export class UserService {
       userId: user.id,
       tenantId: null as any,
       email: user.email,
-      role: user.role
+      role: user.role,
+      isCustomer: true
     });
 
     return {
@@ -302,6 +310,15 @@ export class UserService {
     // Check if user is active
     if (!user.isActive) {
       throw new Error('Account is deactivated');
+    }
+
+    // Check if user is approved (only for business users, not customers)
+    if (!user.isCustomer && user.status === 'PENDING') {
+      throw new Error('Your account is pending approval by an administrator');
+    }
+
+    if (!user.isCustomer && user.status === 'REJECTED') {
+      throw new Error('Your account has been rejected. Please contact the administrator');
     }
 
     // Verify password

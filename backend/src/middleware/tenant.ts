@@ -33,6 +33,12 @@ export const tenantMiddleware = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    // Special case: Skip tenant validation for new tenant registration
+    if (req.path === '/register' && req.body.newTenant) {
+      console.log('🔵 [TENANT] Skipping tenant middleware for new tenant registration');
+      return next();
+    }
+
     let tenantId: string | undefined;
     let subdomain: string | undefined;
 
@@ -62,19 +68,38 @@ export const tenantMiddleware = async (
     // Get tenant by subdomain or ID
     let tenant: any = null;
     if (subdomain) {
-      tenant = await tenantService.getTenantBySubdomain(subdomain);
-      req.tenant = {
-        id: tenant.id,
-        name: tenant.name,
-        subdomain: tenant.subdomain,
-      };
+      try {
+        tenant = await tenantService.getTenantBySubdomain(subdomain);
+        req.tenant = {
+          id: tenant.id,
+          name: tenant.name,
+          subdomain: tenant.subdomain,
+        };
+      } catch (error) {
+        // Tenant not found - this is an error for most routes
+        console.error(`❌ [TENANT] Tenant not found for subdomain: ${subdomain}`);
+        res.status(404).json({
+          success: false,
+          message: `Organization '${subdomain}' not found. Please check the subdomain or create a new organization.`,
+        });
+        return;
+      }
     } else if (tenantId) {
-      tenant = await tenantService.getTenantById(tenantId);
-      req.tenant = {
-        id: tenant.id,
-        name: tenant.name,
-        subdomain: tenant.subdomain,
-      };
+      try {
+        tenant = await tenantService.getTenantById(tenantId);
+        req.tenant = {
+          id: tenant.id,
+          name: tenant.name,
+          subdomain: tenant.subdomain,
+        };
+      } catch (error) {
+        console.error(`❌ [TENANT] Tenant not found for ID: ${tenantId}`);
+        res.status(404).json({
+          success: false,
+          message: 'Organization not found',
+        });
+        return;
+      }
     } else {
       // No tenant identified - this is okay for some routes
       // Individual routes can enforce tenant requirement

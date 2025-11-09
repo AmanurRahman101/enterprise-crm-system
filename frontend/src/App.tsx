@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CallManager } from './components/common/CallManager';
-import { CallDiagnostics } from './components/common/CallDiagnostics';
+// import { CallDiagnostics } from './components/common/CallDiagnostics';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import CustomerLayout from './components/layout/CustomerLayout';
@@ -26,6 +26,7 @@ const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 // Customer Portal
 const CustomerDashboard = lazy(() => import('./pages/customer/CustomerDashboard'));
 const CustomerTicketList = lazy(() => import('./pages/customer/CustomerTicketList'));
+const CustomerTicketCreate = lazy(() => import('./pages/customer/CustomerTicketCreate'));
 const CustomerProfile = lazy(() => import('./pages/customer/CustomerProfile'));
 
 // Contacts
@@ -78,7 +79,7 @@ function App() {
   return (
     <AuthProvider>
       <CallManager />
-      <CallDiagnostics />
+      {/* <CallDiagnostics /> */}
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public routes */}
@@ -183,6 +184,7 @@ function App() {
         >
           <Route index element={<CustomerDashboard />} />
           <Route path="tickets" element={<CustomerTicketList />} />
+          <Route path="tickets/new" element={<CustomerTicketCreate />} />
           <Route path="profile" element={<CustomerProfile />} />
         </Route>
 

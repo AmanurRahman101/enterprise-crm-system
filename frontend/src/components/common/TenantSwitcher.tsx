@@ -42,7 +42,7 @@ export default function TenantSwitcher() {
 
   // Fallback: If no accessible tenants from API, show current tenant from localStorage
   const displayName = currentTenantData?.name || currentTenant || 'No Tenant';
-  const displayTenants = accessibleTenants.length > 0 ? accessibleTenants : [
+  const tenantsToDisplay = accessibleTenants.length > 0 ? accessibleTenants : [
     { id: '1', subdomain: currentTenant || 'unknown', name: currentTenant || 'Current Tenant', isPrimary: true }
   ];
 
@@ -81,12 +81,12 @@ export default function TenantSwitcher() {
                 Switch Organization
               </p>
               <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-1">
-                You have access to {accessibleTenants.length} organizations
+                You have access to {tenantsToDisplay.length} organizations
               </p>
             </div>
             
             <div className="max-h-80 overflow-y-auto">
-              {accessibleTenants.map((tenant) => (
+              {tenantsToDisplay.map((tenant) => (
                 <button
                   key={tenant.id}
                   onClick={() => switchTenant(tenant.subdomain)}

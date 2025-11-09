@@ -659,3 +659,127 @@ export const getNotificationPreferences = async (req: Request, res: Response) =>
     });
   }
 };
+
+/**
+ * Approve a pending user (Admin only)
+ * POST /api/users/:id/approve
+ */
+export const approveUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    if (!tenantId) {
+      res.status(400).json({
+        success: false,
+        message: 'Tenant ID is required'
+      });
+      return;
+    }
+
+    // Check if requesting user is admin
+    if (req.user?.role !== 'ADMIN') {
+      res.status(403).json({
+        success: false,
+        message: 'Only administrators can approve users'
+      });
+      return;
+    }
+
+    // Update user status
+    const user = await prisma.user.update({
+      where: {
+        id,
+        tenantId
+      },
+      data: {
+        status: 'APPROVED'
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true
+      }
+    });
+
+    logger.info(`User ${id} approved by admin ${req.user.userId}`);
+
+    res.json({
+      success: true,
+      data: user,
+      message: 'User approved successfully'
+    });
+  } catch (error: any) {
+    logger.error('Approve user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to approve user',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Reject a pending user (Admin only)
+ * POST /api/users/:id/reject
+ */
+export const rejectUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    if (!tenantId) {
+      res.status(400).json({
+        success: false,
+        message: 'Tenant ID is required'
+      });
+      return;
+    }
+
+    // Check if requesting user is admin
+    if (req.user?.role !== 'ADMIN') {
+      res.status(403).json({
+        success: false,
+        message: 'Only administrators can reject users'
+      });
+      return;
+    }
+
+    // Update user status
+    const user = await prisma.user.update({
+      where: {
+        id,
+        tenantId
+      },
+      data: {
+        status: 'REJECTED'
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true
+      }
+    });
+
+    logger.info(`User ${id} rejected by admin ${req.user.userId}`);
+
+    res.json({
+      success: true,
+      data: user,
+      message: 'User rejected successfully'
+    });
+  } catch (error: any) {
+    logger.error('Reject user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reject user',
+      error: error.message
+    });
+  }
+};

@@ -8,7 +8,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials, tenantSubdomain?: string) => Promise<void>;
-  register: (data: RegisterData, tenantSubdomain?: string) => Promise<void>;
+  register: (data: RegisterData, tenantSubdomain?: string, newTenant?: { name: string; subdomain: string }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<AuthUser>) => void;
 }
@@ -95,10 +95,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (data: RegisterData, tenantSubdomain?: string) => {
+  const register = async (data: RegisterData, tenantSubdomain?: string, newTenant?: { name: string; subdomain: string }) => {
     setLoading(true);
     try {
-      const response = await authService.register(data, tenantSubdomain);
+      const response = await authService.register(data, tenantSubdomain, newTenant);
       setUser(response.data.user);
       
       // Connect to Socket.IO - use the correct key 'accessToken'

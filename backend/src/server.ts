@@ -19,6 +19,8 @@ import activityRoutes from './routes/activityRoutes';
 import noteRoutes from './routes/noteRoutes';
 import userRoutes from './routes/userRoutes';
 import callRoutes from './routes/callRoutes';
+import tenantRoutes from './routes/tenantRoutes';
+import customerRoutes from './routes/customerRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -146,6 +148,12 @@ app.use('/api/users', userRoutes);
 
 // Call/VoIP routes
 app.use('/api/calls', callRoutes);
+
+// Tenant routes (public)
+app.use('/api/tenants', tenantRoutes);
+
+// Customer routes (authenticated customers)
+app.use('/api/customer', customerRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

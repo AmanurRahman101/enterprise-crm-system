@@ -21,17 +21,23 @@ export class AuthController {
   static async register(req: Request, res: Response): Promise<void> {
     try {
       // Check if this is a customer registration
-      const { isCustomer } = req.body;
+      const { isCustomer, newTenant, tenantSubdomain } = req.body;
 
       if (isCustomer) {
         // Customer registration doesn't require tenant
         return await AuthController.registerCustomer(req, res);
       }
 
-      if (!req.tenant) {
+      // Handle new tenant creation
+      if (newTenant) {
+        return await AuthController.registerWithNewTenant(req, res);
+      }
+
+      // Handle joining existing tenant
+      if (!req.tenant && !tenantSubdomain) {
         res.status(400).json({
           success: false,
-          message: 'Tenant identification required for business account'
+          message: 'Either select an existing organization or provide new organization details'
         });
         return;
       }
@@ -49,18 +55,130 @@ export class AuthController {
 
       const result = await userService.register({
         ...data,
-        tenantId: req.tenant.id
+        tenantId: req.tenant!.id
       });
 
-      logger.info(`New user registered: ${result.user.email} (Tenant: ${req.tenant.name})`);
+      logger.info(`New user registered: ${result.user.email} (Tenant: ${req.tenant!.name}) - Status: ${(result.user as any).status}`);
+
+      // Check if user needs approval
+      const needsApproval = (result.user as any).status === 'PENDING';
 
       res.status(201).json({
         success: true,
-        message: 'User registered successfully',
-        data: result
+        message: needsApproval 
+          ? 'Registration successful! Your account is pending approval by an administrator.' 
+          : 'User registered successfully',
+        data: result,
+        needsApproval
       });
     } catch (error) {
       logger.error('Register error:', error);
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Registration failed'
+      });
+    }
+  }
+
+  /**
+   * Register a new user with a new tenant/organization
+   * POST /api/auth/register (with newTenant object)
+   */
+  static async registerWithNewTenant(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, password, firstName, lastName, newTenant } = req.body;
+
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName) {
+        res.status(400).json({
+          success: false,
+          message: 'Email, password, first name, and last name are required'
+        });
+        return;
+      }
+
+      if (!newTenant || !newTenant.name || !newTenant.subdomain) {
+        res.status(400).json({
+          success: false,
+          message: 'New organization must have name and subdomain'
+        });
+        return;
+      }
+
+      // Validate subdomain format (lowercase letters, numbers, hyphens only)
+      const subdomainRegex = /^[a-z0-9-]+$/;
+      if (!subdomainRegex.test(newTenant.subdomain)) {
+        res.status(400).json({
+          success: false,
+          message: 'Subdomain can only contain lowercase letters, numbers, and hyphens'
+        });
+        return;
+      }
+
+      // Check if subdomain already exists
+      const existingTenant = await prisma.tenant.findUnique({
+        where: { subdomain: newTenant.subdomain }
+      });
+
+      if (existingTenant) {
+        res.status(400).json({
+          success: false,
+          message: 'Organization subdomain already exists. Please choose a different one.'
+        });
+        return;
+      }
+
+      // Check if user email already exists
+      const existingUser = await prisma.userProfile.findUnique({
+        where: { email }
+      });
+
+      if (existingUser) {
+        res.status(400).json({
+          success: false,
+          message: 'User with this email already exists'
+        });
+        return;
+      }
+
+      // Create new tenant
+      const tenant = await prisma.tenant.create({
+        data: {
+          name: newTenant.name,
+          subdomain: newTenant.subdomain,
+          email: email, // Use user's email as primary contact
+          isActive: true
+        }
+      });
+
+      logger.info(`New tenant created: ${tenant.name} (${tenant.subdomain})`);
+
+      // Create user as ADMIN of the new tenant
+      const result = await userService.register({
+        email,
+        password,
+        firstName,
+        lastName,
+        tenantId: tenant.id,
+        role: 'ADMIN' // User who creates organization becomes admin
+      });
+
+      logger.info(`New admin user registered: ${result.user.email} for tenant: ${tenant.name}`);
+
+      res.status(201).json({
+        success: true,
+        message: 'Organization and account created successfully',
+        data: {
+          ...result,
+          tenant: {
+            id: tenant.id,
+            name: tenant.name,
+            subdomain: tenant.subdomain
+          }
+        }
+      });
+    } catch (error) {
+      logger.error('Register with new tenant error:', error);
       res.status(400).json({
         success: false,
         message: error instanceof Error ? error.message : 'Registration failed'

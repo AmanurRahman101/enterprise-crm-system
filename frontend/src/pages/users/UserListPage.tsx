@@ -11,9 +11,11 @@ import {
   UserGroupIcon,
   PhoneIcon,
   EnvelopeIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { User, UserRole } from '../../types';
 import api from '../../services/api';
+import { userService } from '../../services/userService';
 
 const UserListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -62,6 +64,28 @@ const UserListPage: React.FC = () => {
       fetchUsers();
     } catch (err: any) {
       alert(err.response?.data?.message || `Failed to ${currentStatus ? 'deactivate' : 'activate'} user`);
+    }
+  };
+
+  const handleApproveUser = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to approve this user?')) return;
+    
+    try {
+      await userService.approveUser(userId);
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to approve user');
+    }
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to reject this user? They will not be able to login.')) return;
+    
+    try {
+      await userService.rejectUser(userId);
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to reject user');
     }
   };
 
@@ -303,17 +327,35 @@ const UserListPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {user.isActive ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                          <CheckCircleIcon className="h-3 w-3 mr-1" />
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-                          <XMarkIcon className="h-3 w-3 mr-1" />
-                          Inactive
-                        </span>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {/* Account Status */}
+                        {user.status === 'PENDING' ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                            <ClockIcon className="h-3 w-3 mr-1" />
+                            Pending Approval
+                          </span>
+                        ) : user.status === 'REJECTED' ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                            <XMarkIcon className="h-3 w-3 mr-1" />
+                            Rejected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            <CheckCircleIcon className="h-3 w-3 mr-1" />
+                            Approved
+                          </span>
+                        )}
+                        {/* Active/Inactive Status */}
+                        {user.isActive ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                            Inactive
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(user.lastLoginAt)}
@@ -329,6 +371,26 @@ const UserListPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
+                        {/* Approve/Reject buttons for pending users */}
+                        {user.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleApproveUser(user.id)}
+                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                              title="Approve User"
+                            >
+                              <CheckCircleIcon className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleRejectUser(user.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              title="Reject User"
+                            >
+                              <XMarkIcon className="h-5 w-5" />
+                            </button>
+                          </>
+                        )}
+                        {/* Standard action buttons */}
                         <button
                           onClick={() => navigate(`/users/${user.id}`)}
                           className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"

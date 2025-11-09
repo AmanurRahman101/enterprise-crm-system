@@ -12,7 +12,9 @@ import {
   updateProfile,
   changePassword,
   getNotificationPreferences,
-  updateNotificationPreferences
+  updateNotificationPreferences,
+  approveUser,
+  rejectUser
 } from '../controllers/userController';
 import { authenticate, authorize } from '../middleware/auth';
 import { tenantMiddleware, requireTenant } from '../middleware/tenant';
@@ -78,6 +80,12 @@ router.post('/:id/deactivate', authorize('ADMIN', 'MANAGER'), deactivateUser);
 
 // Reactivate user
 router.post('/:id/reactivate', authorize('ADMIN', 'MANAGER'), reactivateUser);
+
+// Approve pending user (Admin only)
+router.post('/:id/approve', authorize('ADMIN'), approveUser);
+
+// Reject pending user (Admin only)
+router.post('/:id/reject', authorize('ADMIN'), rejectUser);
 
 // Get user activity summary
 router.get('/:id/activity', authorize('ADMIN', 'MANAGER'), getUserActivity);

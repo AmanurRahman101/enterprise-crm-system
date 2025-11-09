@@ -44,13 +44,40 @@ export const authService = {
   /**
    * Register new user
    */
-  async register(data: RegisterData, tenantSubdomain?: string): Promise<AuthResponse> {
-    // Only set tenant for business mode
-    if (!data.isCustomer && tenantSubdomain) {
+  async register(
+    data: RegisterData, 
+    tenantSubdomain?: string,
+    newTenant?: { name: string; subdomain: string }
+  ): Promise<AuthResponse> {
+    // Clear any existing tenant from localStorage when creating new tenant
+    // This prevents the API client from sending X-Tenant-Subdomain header
+    if (newTenant) {
+      console.log('🔵 [AUTH SERVICE] Creating new tenant, clearing localStorage tenant');
+      localStorage.removeItem('tenantSubdomain');
+      localStorage.removeItem('tenant');
+    }
+    
+    // Only set tenant for business mode when joining existing org
+    if (!data.isCustomer && tenantSubdomain && !newTenant) {
+      console.log('🔵 [AUTH SERVICE] Joining existing tenant:', tenantSubdomain);
       setTenant(tenantSubdomain);
     }
     
-    const response = await apiClient.post<AuthResponse>('/auth/register', data);
+    // Add newTenant to request body if provided
+    const requestData = {
+      ...data,
+      tenantSubdomain,
+      newTenant
+    };
+    
+    console.log('🔵 [AUTH SERVICE] Registration data:', {
+      isCustomer: data.isCustomer,
+      tenantSubdomain,
+      hasNewTenant: !!newTenant,
+      newTenantSubdomain: newTenant?.subdomain
+    });
+    
+    const response = await apiClient.post<AuthResponse>('/auth/register', requestData);
     
     if (response.data.success && response.data.data) {
       // Store tokens and user
@@ -58,9 +85,12 @@ export const authService = {
       localStorage.setItem('refreshToken', response.data.data.tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(response.data.data.user));
       
-      // Store tenant for business mode
-      if (!data.isCustomer && tenantSubdomain) {
-        localStorage.setItem('tenantSubdomain', tenantSubdomain);
+      // Store tenant subdomain
+      const tenant = newTenant ? newTenant.subdomain : tenantSubdomain;
+      if (!data.isCustomer && tenant) {
+        localStorage.setItem('tenantSubdomain', tenant);
+        localStorage.setItem('tenant', tenant); // Also store as 'tenant' for consistency
+        console.log('✅ [AUTH SERVICE] Stored tenant:', tenant);
       }
     }
     
