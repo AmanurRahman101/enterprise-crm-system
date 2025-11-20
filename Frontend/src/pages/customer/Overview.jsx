@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import toast from 'react-hot-toast'
 
 const CustomerOverview = () => {
   const navigate = useNavigate()
+  const [incomingCall, setIncomingCall] = useState(null)
+  const [jitsiModal, setJitsiModal] = useState({ open: false, room: '' })
 
   const customer = useMemo(() => {
     const userData = localStorage.getItem('user')
@@ -19,6 +21,72 @@ const CustomerOverview = () => {
       navigate('/auth/signin-customer')
     }
   }, [navigate])
+
+  // Poll for incoming Jitsi calls
+  useEffect(() => {
+    if (!customer?.id) return;
+
+    console.log('Customer listening for calls. Customer ID:', customer.id, 'Email:', customer.email);
+
+    const checkIncomingCalls = () => {
+      const callData = localStorage.getItem('jitsi_call_invitation')
+      if (callData) {
+        try {
+          const call = JSON.parse(callData)
+          console.log('Call invitation found:', call);
+          console.log('Checking: call.customerId =', call.customerId, 'customer.id =', customer.id);
+          console.log('Call age:', Date.now() - call.timestamp, 'ms');
+          
+          // Check if call is for this customer and is recent (within 60 seconds)
+          if (call.customerId == customer.id && Date.now() - call.timestamp < 60000) {
+            console.log('Call is for this customer! Showing notification.');
+            setIncomingCall(call)
+            toast.success(`Incoming call from ${call.companyName}!`);
+          }
+        } catch (e) {
+          console.error('Error parsing call invitation:', e);
+        }
+      }
+    }
+
+    // Listen for storage changes (works across tabs)
+    const handleStorageChange = (e) => {
+      if (e.key === 'jitsi_call_invitation') {
+        console.log('Storage event detected for call invitation');
+        checkIncomingCalls();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(checkIncomingCalls, 1000)
+    checkIncomingCalls() // Check immediately
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', handleStorageChange);
+    }
+  }, [customer])
+
+  const acceptCall = () => {
+    if (incomingCall) {
+      console.log('Customer accepting call:', incomingCall);
+      toast.success('Joining call...');
+      setJitsiModal({ open: true, room: incomingCall.roomName })
+      setIncomingCall(null)
+      localStorage.removeItem('jitsi_call_invitation')
+    }
+  }
+
+  const declineCall = () => {
+    console.log('Customer declining call:', incomingCall);
+    setIncomingCall(null)
+    localStorage.removeItem('jitsi_call_invitation')
+    toast.error('Call declined')
+  }
+
+  const closeJitsiCall = () => {
+    setJitsiModal({ open: false, room: '' })
+  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -170,6 +238,57 @@ const CustomerOverview = () => {
           </div>
         </div>
       </div>
+
+      {/* Incoming Call Notification */}
+      {incomingCall && (
+        <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-2xl p-6 max-w-sm z-50 border-2 border-green-500 animate-pulse">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">Incoming Call</h3>
+              <p className="text-sm text-gray-600">{incomingCall.companyName}</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={acceptCall}
+              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
+            >
+              Accept
+            </button>
+            <button
+              onClick={declineCall}
+              className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Jitsi Meet Modal */}
+      {jitsiModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-xl font-bold">Jitsi Call: {jitsiModal.room}</h2>
+              <button onClick={closeJitsiCall} className="text-red-600 hover:text-red-900 font-bold text-2xl">&times;</button>
+            </div>
+            <div className="flex-1">
+              <iframe
+                src={`https://meet.jit.si/${encodeURIComponent(jitsiModal.room)}`}
+                allow="camera; microphone; fullscreen; display-capture"
+                style={{ width: '100%', height: '600px', border: 'none' }}
+                title="Jitsi Meet"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

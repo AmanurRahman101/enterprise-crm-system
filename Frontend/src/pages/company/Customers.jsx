@@ -2,6 +2,34 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 const Customers = () => {
+    const [jitsiModal, setJitsiModal] = useState({ open: false, room: '' });
+
+    const openJitsiCall = (roomName, customerId, customerEmail) => {
+      const companyUser = JSON.parse(localStorage.getItem('user'));
+      const callInvitation = {
+        roomName: roomName,
+        customerId: customerId,
+        customerEmail: customerEmail,
+        timestamp: Date.now(),
+        companyName: companyUser?.company_name || 'Company'
+      };
+      
+      console.log('Company initiating call:', callInvitation);
+      localStorage.setItem('jitsi_call_invitation', JSON.stringify(callInvitation));
+      
+      // Trigger storage event manually for same tab
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'jitsi_call_invitation',
+        newValue: JSON.stringify(callInvitation)
+      }));
+      
+      setJitsiModal({ open: true, room: roomName });
+      toast.success(`Calling customer... (ID: ${customerId})`);
+    };
+
+    const closeJitsiCall = () => {
+      setJitsiModal({ open: false, room: '' });
+    };
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -12,7 +40,7 @@ const Customers = () => {
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
-    phone: '',
+    jitsi_voip: '1',
     password: '',
     status: 'active',
     notes: ''
@@ -139,7 +167,7 @@ const Customers = () => {
       setFormData({
         full_name: customer.full_name,
         email: customer.email,
-        phone: customer.phone || '',
+        jitsi_voip: customer.jitsi_voip || '',
         password: '',
         status: customer.status,
         notes: customer.notes || ''
@@ -149,7 +177,7 @@ const Customers = () => {
       setFormData({
         full_name: '',
         email: '',
-        phone: '',
+        jitsi_voip: '',
         password: '',
         status: 'active',
         notes: ''
@@ -260,7 +288,7 @@ const Customers = () => {
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
+                  Jitsi VoIP
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -301,7 +329,7 @@ const Customers = () => {
                       <div className="text-sm text-gray-600">{customer.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{customer.phone || '-'}</div>
+                      <div className="text-sm text-gray-600">{customer.jitsi_voip || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[customer.status]}`}>
@@ -327,7 +355,32 @@ const Customers = () => {
                         >
                           Remove
                         </button>
+                        <button
+                          onClick={() => openJitsiCall(customer.jitsi_voip || `customer-${customer.id}`, customer.id, customer.email)}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Jitsi Call
+                        </button>
                       </div>
+                          {/* Jitsi Meet Modal */}
+                          {jitsiModal.open && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                              <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto flex flex-col">
+                                <div className="flex justify-between items-center p-4 border-b">
+                                  <h2 className="text-xl font-bold">Jitsi Call: {jitsiModal.room}</h2>
+                                  <button onClick={closeJitsiCall} className="text-red-600 hover:text-red-900 font-bold">X</button>
+                                </div>
+                                <div className="flex-1">
+                                  <iframe
+                                    src={`https://meet.jit.si/${encodeURIComponent(jitsiModal.room)}`}
+                                    allow="camera; microphone; fullscreen; display-capture"
+                                    style={{ width: '100%', height: '600px', border: 'none' }}
+                                    title="Jitsi Meet"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
                     </td>
                   </tr>
                 ))
@@ -378,12 +431,12 @@ const Customers = () => {
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone
+                          Jitsi VoIP
                         </label>
                         <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          type="text"
+                          value={formData.jitsi_voip}
+                          onChange={(e) => setFormData({...formData, jitsi_voip: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>

@@ -8,7 +8,7 @@ const getCompanyCustomers = async (req, res) => {
     
     const [customers] = await db.query(
       `SELECT 
-        c.id, c.full_name, c.email, c.phone, c.created_at,
+        c.id, c.full_name, c.email, c.phone, c.jitsi_voip, c.created_at,
         ccr.status, ccr.notes, ccr.created_at as relationship_created
       FROM customers c
       INNER JOIN company_customer_relationship ccr ON c.id = ccr.customer_id
@@ -35,7 +35,7 @@ const getCompanyCustomers = async (req, res) => {
 const addCustomer = async (req, res) => {
   try {
     const companyId = req.user.id;
-    const { full_name, email, phone, password, notes } = req.body;
+    const { full_name, email, phone, jitsi_voip, password, notes } = req.body;
 
     // Validate required fields
     if (!full_name || !email || !password) {
@@ -79,10 +79,9 @@ const addCustomer = async (req, res) => {
     } else {
       // Create new customer
       const hashedPassword = await bcrypt.hash(password, 10);
-      
       const [result] = await db.query(
-        'INSERT INTO customers (full_name, email, password, phone) VALUES (?, ?, ?, ?)',
-        [full_name, email, hashedPassword, phone]
+        'INSERT INTO customers (full_name, email, password, phone, jitsi_voip) VALUES (?, ?, ?, ?, ?)',
+        [full_name, email, hashedPassword, phone, jitsi_voip]
       );
       customerId = result.insertId;
     }
@@ -98,7 +97,7 @@ const addCustomer = async (req, res) => {
     // Fetch the customer details
     const [customers] = await db.query(
       `SELECT 
-        c.id, c.full_name, c.email, c.phone, c.created_at,
+        c.id, c.full_name, c.email, c.phone, c.jitsi_voip, c.created_at,
         ccr.status, ccr.notes, ccr.created_at as relationship_created
       FROM customers c
       INNER JOIN company_customer_relationship ccr ON c.id = ccr.customer_id
