@@ -1,0 +1,7 @@
+# Uploads Directory
+
+This directory stores uploaded files organized by organization ID.
+Files are uploaded via multer and stored in organization-specific subdirectories.
+
+Structure: Backend/uploads/{organizationId}/{filename}
+

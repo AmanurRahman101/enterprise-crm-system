@@ -4,10 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Tawasol CRM</title>
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- Agora RTC SDK - MUST load BEFORE React app for mobile compatibility -->
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.21.0.js"></script>
+    
+    <!-- React App -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

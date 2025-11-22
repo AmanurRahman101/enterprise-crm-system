@@ -1,7 +1,21 @@
-import React from 'react'
-import { Link } from 'react-router'
+import React, { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router'
+import ApiService from '../services/api'
 
 const Home = () => {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = ApiService.getToken()
+    const user = ApiService.getUser()
+    
+    if (token && user) {
+      // User is logged in - redirect to client portal (default)
+      navigate('/dashboard/client')
+    }
+  }, [navigate])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Hero Section */}
@@ -17,28 +31,28 @@ const Home = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link 
-              to="/auth/signup-company" 
+              to="/auth/signup" 
               className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg"
             >
-              Get Started as Company
+              Get Started
             </Link>
             <Link 
-              to="/auth/signup-customer" 
+              to="/auth/signin" 
               className="px-8 py-3 bg-white text-indigo-600 border-2 border-indigo-600 rounded-lg font-semibold hover:bg-indigo-50 transition-colors shadow-lg"
             >
-              Join as Customer
+              Sign In
             </Link>
           </div>
 
           <div className="mt-6 text-sm text-gray-600">
-            Already have an account? 
-            <Link to="/auth/signin-company" className="text-indigo-600 hover:underline ml-1">
-              Company Sign In
-            </Link>
-            {' '}/{' '}
-            <Link to="/auth/signin-customer" className="text-indigo-600 hover:underline">
-              Customer Sign In
-            </Link>
+            <p>Already have an account?{' '}
+              <Link to="/auth/signin" className="text-indigo-600 hover:underline font-medium">
+                Sign In
+              </Link>
+            </p>
+            <p className="mt-2 text-xs text-gray-500">
+              Use the same login for both Internal Users (Organization Dashboard) and Client Portal access
+            </p>
           </div>
         </div>
       </section>
@@ -71,7 +85,7 @@ const Home = () => {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure Authentication</h3>
               <p className="text-gray-600">
-                JWT-based authentication ensures your data is protected. Separate authentication flows for companies and customers.
+                JWT-based authentication ensures your data is protected. Unified authentication with organization-aware access control.
               </p>
             </div>
 

@@ -41,3 +41,15 @@ temp/
 
 # Documentation backups
 *.md.backup
+
+# Uploads (keep directory structure but ignore files)
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+
+# SSL Certificates (should not be committed)
+Backend/cert/*.crt
+Backend/cert/*.key
+Frontend/cert/*.crt
+Frontend/cert/*.key
+!Backend/cert/.gitkeep
+!Frontend/cert/.gitkeep
