@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../../services/api';
+import SocketService from '../../services/socketService';
 import { hasPermission, canDelete } from '../../utils/permissions';
 
 // Click outside to close dropdown
@@ -29,7 +30,7 @@ const Tabs = ({ activeTab, onChange }) => {
 
   return (
     <div className="border-b border-gray-200">
-      <nav className="-mb-px flex space-x-8">
+      <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -52,19 +53,33 @@ const Tabs = ({ activeTab, onChange }) => {
 };
 
 // Person Card Component
-const PersonCard = ({ person, onEdit, onDelete, onCall, canDeleteContact }) => {
+const PersonCard = ({ person, onEdit, onDelete, onCall, canEditContact, canDeleteContact }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {person.firstName} {person.lastName}
-          </h3>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
+              {person.firstName} {person.lastName}
+            </h3>
+            {person.userId && (
+              <div className="flex items-center">
+                {person.isOnline ? (
+                  <span className="relative flex h-2 w-2" title="Online">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                ) : (
+                  <span className="flex h-2 w-2 rounded-full bg-gray-300" title="Offline"></span>
+                )}
+              </div>
+            )}
+          </div>
           {person.jobTitle && (
             <p className="text-sm text-gray-600 mt-1">{person.jobTitle}</p>
           )}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
           {person.userId && onCall && (
             <button
               onClick={() => onCall(person)}
@@ -76,15 +91,17 @@ const PersonCard = ({ person, onEdit, onDelete, onCall, canDeleteContact }) => {
               </svg>
             </button>
           )}
-          <button
-            onClick={() => onEdit(person)}
-            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-            title="Edit"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
+          {canEditContact && (
+            <button
+              onClick={() => onEdit(person)}
+              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title="Edit"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
           {canDeleteContact && (
             <button
               onClick={() => onDelete(person.id)}
@@ -132,12 +149,12 @@ const PersonCard = ({ person, onEdit, onDelete, onCall, canDeleteContact }) => {
 };
 
 // Organization Card Component
-const OrganizationCard = ({ organization, onEdit, onDelete, onCall, canDeleteContact }) => {
+const OrganizationCard = ({ organization, onEdit, onDelete, onCall, canEditContact, canDeleteContact }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900">{organization.name}</h3>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{organization.name}</h3>
           {organization.website && (
             <a
               href={organization.website}
@@ -149,7 +166,7 @@ const OrganizationCard = ({ organization, onEdit, onDelete, onCall, canDeleteCon
             </a>
           )}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
           {organization.linkedOrganizationId && onCall && (
             <button
               onClick={() => onCall(organization)}
@@ -161,15 +178,17 @@ const OrganizationCard = ({ organization, onEdit, onDelete, onCall, canDeleteCon
               </svg>
             </button>
           )}
-          <button
-            onClick={() => onEdit(organization)}
-            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-            title="Edit"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
+          {canEditContact && (
+            <button
+              onClick={() => onEdit(organization)}
+              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              title="Edit"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+          )}
           {canDeleteContact && (
             <button
               onClick={() => onDelete(organization.id)}
@@ -239,6 +258,7 @@ const PersonModal = ({ person, onClose, onSave }) => {
     jobTitle: person?.jobTitle || '',
     notes: person?.notes || ''
   });
+  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useClickOutside(dropdownRef, () => setShowDropdown(false));
@@ -282,11 +302,35 @@ const PersonModal = ({ person, onClose, onSave }) => {
     setShowDropdown(false);
   };
 
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!selectedUserId && !person) {
       toast.error('Please select a user from the system');
+      return;
+    }
+
+    // Validate form
+    const validationErrors = {};
+    const jobTitleResult = validators.jobTitle(formData.jobTitle, false);
+    if (!jobTitleResult.valid) {
+      validationErrors.jobTitle = jobTitleResult.message;
+    }
+    const notesResult = validators.text(formData.notes, false, 'Notes');
+    if (!notesResult.valid) {
+      validationErrors.notes = notesResult.message;
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error(Object.values(validationErrors)[0]);
       return;
     }
 
@@ -378,11 +422,17 @@ const PersonModal = ({ person, onClose, onSave }) => {
             </label>
             <input
               type="text"
+              maxLength={255}
               value={formData.jobTitle}
-              onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+              onChange={(e) => handleChange('jobTitle', e.target.value)}
               placeholder="e.g., Manager, Developer"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.jobTitle ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.jobTitle && (
+              <p className="mt-1 text-xs text-red-600">{errors.jobTitle}</p>
+            )}
           </div>
 
           <div>
@@ -390,12 +440,18 @@ const PersonModal = ({ person, onClose, onSave }) => {
               Notes (Optional)
             </label>
             <textarea
+              maxLength={65535}
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) => handleChange('notes', e.target.value)}
               rows={4}
               placeholder="Additional notes about this contact..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.notes ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.notes && (
+              <p className="mt-1 text-xs text-red-600">{errors.notes}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -432,6 +488,7 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
     organizationId: null,
     notes: organization?.notes || ''
   });
+  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useClickOutside(dropdownRef, () => setShowDropdown(false));
@@ -474,11 +531,31 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
     setShowDropdown(false);
   };
 
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!selectedOrgId && !organization) {
       toast.error('Please select an organization from the system');
+      return;
+    }
+
+    // Validate form
+    const validationErrors = {};
+    const notesResult = validators.text(formData.notes, false, 'Notes');
+    if (!notesResult.valid) {
+      validationErrors.notes = notesResult.message;
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error(Object.values(validationErrors)[0]);
       return;
     }
 
@@ -575,12 +652,18 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
               Notes (Optional)
             </label>
             <textarea
+              maxLength={65535}
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) => handleChange('notes', e.target.value)}
               rows={4}
               placeholder="Additional notes about this organization..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.notes ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.notes && (
+              <p className="mt-1 text-xs text-red-600">{errors.notes}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -615,7 +698,7 @@ const Contacts = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [user] = useState(() => ApiService.getUser());
-  const [currentOrg] = useState(() => ApiService.getCurrentOrganization());
+  const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization());
   const userRole = currentOrg?.role || 'viewer';
 
   useEffect(() => {
@@ -627,7 +710,66 @@ const Contacts = () => {
     }
 
     loadData();
-  }, [navigate]);
+  }, [navigate, currentOrg?.id]);
+
+  // Listen for organization changes
+  useEffect(() => {
+    const handleOrganizationChange = (event) => {
+      const newOrg = event.detail || ApiService.getCurrentOrganization();
+      setCurrentOrg(newOrg);
+      loadData(); // Refresh data when organization changes
+    };
+
+    window.addEventListener('organizationChanged', handleOrganizationChange);
+    window.addEventListener('organizationRefresh', handleOrganizationChange);
+
+    return () => {
+      window.removeEventListener('organizationChanged', handleOrganizationChange);
+      window.removeEventListener('organizationRefresh', handleOrganizationChange);
+    };
+  }, []);
+
+  // Listen for online/offline status updates
+  useEffect(() => {
+    // Only listen if we have a current organization
+    if (!currentOrg?.id) return;
+
+    const handleUserOnline = (data) => {
+      // Only update if the event is for the current organization
+      if (data.userId && data.organizationId === currentOrg.id) {
+        console.log('🟢 User came online:', data.userId, 'in organization:', data.organizationId);
+        setPeople(prevPeople => 
+          prevPeople.map(person => 
+            person.userId === data.userId 
+              ? { ...person, isOnline: true }
+              : person
+          )
+        );
+      }
+    };
+
+    const handleUserOffline = (data) => {
+      // Only update if the event is for the current organization
+      if (data.userId && data.organizationId === currentOrg.id) {
+        console.log('🔴 User went offline:', data.userId, 'in organization:', data.organizationId);
+        setPeople(prevPeople => 
+          prevPeople.map(person => 
+            person.userId === data.userId 
+              ? { ...person, isOnline: false }
+              : person
+          )
+        );
+      }
+    };
+
+    const unsubscribeOnline = SocketService.on('user_online', handleUserOnline);
+    const unsubscribeOffline = SocketService.on('user_offline', handleUserOffline);
+
+    return () => {
+      if (unsubscribeOnline) unsubscribeOnline();
+      if (unsubscribeOffline) unsubscribeOffline();
+    };
+  }, [currentOrg?.id]); // Re-subscribe when organization changes
 
   const loadData = async () => {
     try {
@@ -827,24 +969,24 @@ const Contacts = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Contacts</h1>
-            <p className="text-sm md:text-base text-gray-600 mt-2">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Contacts</h1>
+            <p className="text-xs sm:text-sm md:text-base text-gray-600 mt-1 sm:mt-2">
               Manage your contact people and organizations
             </p>
           </div>
           {hasPermission(userRole, 'CREATE_CONTACT') && (
             <button
               onClick={activeTab === 'people' ? handleCreatePerson : handleCreateOrganization}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+              className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center sm:justify-start shrink-0"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-            Add {activeTab === 'people' ? 'Person' : 'Organization'}
+            <span className="whitespace-nowrap">Add {activeTab === 'people' ? 'Person' : 'Organization'}</span>
           </button>
           )}
         </div>
@@ -873,7 +1015,7 @@ const Contacts = () => {
       </div>
 
       {activeTab === 'people' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredPeople.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-500">
               {searchQuery ? 'No people found matching your search' : 'No people yet. Create your first contact!'}
@@ -886,6 +1028,7 @@ const Contacts = () => {
                 onEdit={handleEditPerson}
                 onDelete={handleDeletePerson}
                 onCall={userRole !== 'viewer' ? handleCallContact : null}
+                canEditContact={hasPermission(userRole, 'UPDATE_CONTACT')}
                 canDeleteContact={canDelete(userRole, 'DELETE_CONTACT', person.createdByUserId, user.userId)}
               />
             ))
@@ -894,7 +1037,7 @@ const Contacts = () => {
       )}
 
       {activeTab === 'organizations' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredOrganizations.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-500">
               {searchQuery ? 'No organizations found matching your search' : 'No organizations yet. Create your first organization!'}
@@ -907,6 +1050,7 @@ const Contacts = () => {
                 onEdit={handleEditOrganization}
                 onDelete={handleDeleteOrganization}
                 onCall={userRole !== 'viewer' ? handleCallContact : null}
+                canEditContact={hasPermission(userRole, 'UPDATE_CONTACT')}
                 canDeleteContact={canDelete(userRole, 'DELETE_CONTACT', org.createdByUserId, user.userId)}
               />
             ))

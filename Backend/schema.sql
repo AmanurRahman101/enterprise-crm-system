@@ -106,21 +106,23 @@ CREATE TABLE contacts_organizations (
 -- Deal Stages (Global stages)
 CREATE TABLE deal_stages (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
     order_index INT NOT NULL,
     color VARCHAR(50) DEFAULT '#6B7280',
+    default_probability INT DEFAULT 0 CHECK (default_probability >= 0 AND default_probability <= 100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_order (order_index)
+    INDEX idx_order (order_index),
+    INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Insert default deal stages
-INSERT INTO deal_stages (name, order_index, color) VALUES
-('Lead', 1, '#3B82F6'),
-('Qualified', 2, '#8B5CF6'),
-('Proposal', 3, '#F59E0B'),
-('Negotiation', 4, '#EF4444'),
-('Won', 5, '#10B981'),
-('Lost', 6, '#6B7280');
+-- Insert default deal stages with typical probability values
+INSERT INTO deal_stages (name, order_index, color, default_probability) VALUES
+('Lead', 1, '#3B82F6', 10),
+('Qualified', 2, '#8B5CF6', 25),
+('Proposal', 3, '#F59E0B', 50),
+('Negotiation', 4, '#EF4444', 75),
+('Won', 5, '#10B981', 100),
+('Lost', 6, '#6B7280', 0);
 
 -- Deals Table
 CREATE TABLE deals (

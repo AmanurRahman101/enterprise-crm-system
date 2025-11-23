@@ -14,7 +14,6 @@ const CallInterface = () => {
 
   const [receiverOrgName, setReceiverOrgName] = useState('');
   
-  // Debug: Log receiverOrgName changes
   useEffect(() => {
     if (receiverOrgName) {
       console.log('🏢 receiverOrgName updated:', receiverOrgName);

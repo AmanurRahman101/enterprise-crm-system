@@ -9,7 +9,7 @@ const CallHistory = () => {
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user] = useState(() => ApiService.getUser());
-  const [currentOrg] = useState(() => ApiService.getCurrentOrganization());
+  const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization());
 
   useEffect(() => {
     const token = ApiService.getToken();
@@ -27,7 +27,25 @@ const CallHistory = () => {
 
     loadCallHistory();
     loadStatistics();
-  }, [navigate, user, currentOrg]);
+  }, [navigate, user, currentOrg?.id]);
+
+  // Listen for organization changes
+  useEffect(() => {
+    const handleOrganizationChange = (event) => {
+      const newOrg = event.detail || ApiService.getCurrentOrganization();
+      setCurrentOrg(newOrg);
+      loadCallHistory(); // Refresh data when organization changes
+      loadStatistics();
+    };
+
+    window.addEventListener('organizationChanged', handleOrganizationChange);
+    window.addEventListener('organizationRefresh', handleOrganizationChange);
+
+    return () => {
+      window.removeEventListener('organizationChanged', handleOrganizationChange);
+      window.removeEventListener('organizationRefresh', handleOrganizationChange);
+    };
+  }, []);
 
   const loadCallHistory = async () => {
     try {

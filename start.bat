@@ -15,7 +15,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 REM Check if MySQL is running
-echo [1/5] Checking MySQL connection...
+echo [1/6] Checking MySQL connection...
 mysql -u root -e "SELECT 1" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     echo [WARNING] MySQL is not running or not accessible!
@@ -26,7 +26,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 REM Check if database exists
-echo [2/5] Checking database...
+echo [2/6] Checking database...
 mysql -u root -e "USE tawasol_crm;" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     echo [WARNING] Database 'tawasol_crm' does not exist!
@@ -43,8 +43,39 @@ if %ERRORLEVEL% NEQ 0 (
     echo Database created successfully!
 )
 
+REM Check if SSL certificates exist, generate if missing
+echo [3/6] Checking SSL certificates...
+if not exist "Backend\cert\localhost.crt" (
+    echo SSL certificates not found. Generating...
+    echo.
+    echo This will create self-signed certificates for HTTPS.
+    echo You may see security warnings in browsers - this is normal for development.
+    echo.
+    cd Backend
+    if not exist "cert\" mkdir cert
+    cd ..
+    cd Frontend
+    if not exist "cert\" mkdir cert
+    powershell -ExecutionPolicy Bypass -File "generate-cert.ps1"
+    cd ..
+    echo.
+    echo Copying certificates to Backend...
+    if exist "Frontend\cert\localhost.crt" (
+        copy "Frontend\cert\localhost.crt" "Backend\cert\localhost.crt" >nul
+        copy "Frontend\cert\localhost.key" "Backend\cert\localhost.key" >nul
+        echo Certificates generated and copied successfully!
+    ) else (
+        echo WARNING: Certificate generation may have failed.
+        echo You can generate certificates manually by running:
+        echo   cd Frontend
+        echo   powershell -ExecutionPolicy Bypass -File generate-cert.ps1
+        echo   Then copy cert\*.crt and cert\*.key to Backend\cert\
+    )
+    echo.
+)
+
 REM Check if backend dependencies are installed
-echo [3/5] Checking Backend dependencies...
+echo [4/6] Checking Backend dependencies...
 if not exist "Backend\node_modules\" (
     echo Installing Backend dependencies...
     cd Backend
@@ -56,7 +87,7 @@ if not exist "Backend\node_modules\" (
 )
 
 REM Check if frontend dependencies are installed
-echo [4/5] Checking Frontend dependencies...
+echo [5/6] Checking Frontend dependencies...
 if not exist "Frontend\node_modules\" (
     echo Installing Frontend dependencies...
     cd Frontend
@@ -67,39 +98,6 @@ if not exist "Frontend\node_modules\" (
     echo Frontend dependencies already installed.
 )
 
-REM Check if .env file exists
-echo [5/5] Checking configuration...
-if not exist "Backend\.env" (
-    echo [WARNING] Backend/.env file not found!
-    if exist "Backend\.env.example" (
-        echo Creating Backend/.env from .env.example...
-        copy "Backend\.env.example" "Backend\.env"
-        echo.
-        echo [IMPORTANT] Please edit Backend/.env and update the following:
-        echo   - DB_PASSWORD (your MySQL password)
-        echo   - JWT_SECRET (change to a random string)
-        echo   - AGORA_APP_ID (get from https://console.agora.io/)
-        echo   - AGORA_APP_CERTIFICATE (get from https://console.agora.io/)
-        echo.
-        timeout /t 5 /nobreak >nul
-    ) else (
-        echo Please create Backend/.env file manually.
-        echo See README.md for required environment variables.
-        echo.
-        choice /C YN /M "Continue without .env file (may cause errors)"
-        if errorlevel 2 exit /b 1
-    )
-)
-if not exist "Frontend\.env" (
-    echo [WARNING] Frontend/.env file not found!
-    if exist "Frontend\.env.example" (
-        echo Creating Frontend/.env from .env.example...
-        copy "Frontend\.env.example" "Frontend\.env"
-        echo Frontend/.env created with default localhost settings.
-        echo Update it if you need LAN/mobile access.
-        echo.
-    )
-)
 
 echo.
 echo ========================================
@@ -139,7 +137,7 @@ echo Opening browser in 5 seconds...
 timeout /t 5 /nobreak >nul
 
 REM Open browser
-start http://localhost:5173
+start https://localhost:5173
 
 echo.
 echo System is running! Press any key to return...

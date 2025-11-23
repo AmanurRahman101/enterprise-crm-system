@@ -29,6 +29,8 @@ build/
 # Logs
 logs/
 *.log
+backend.log
+frontend.log
 
 # Database
 *.sql.backup

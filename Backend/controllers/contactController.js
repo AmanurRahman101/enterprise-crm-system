@@ -1,6 +1,13 @@
 // Contact Controller
 const db = require('../db/connection');
 const { hasPermission } = require('../utils/permissions');
+const { validators, validateRequest } = require('../utils/validation');
+
+// Get socket service instance to check online status
+let socketServiceInstance = null;
+const setSocketService = (instance) => {
+  socketServiceInstance = instance;
+};
 
 // Get all contacts (people and organizations) for current organization
 const getContacts = async (req, res) => {
@@ -18,9 +25,10 @@ const getContacts = async (req, res) => {
         [organizationId]
       );
 
-      return res.status(200).json({
-        success: true,
-        contacts: contacts.map(contact => ({
+      // Check online status for contacts with userId
+      const contactsWithStatus = contacts.map(contact => {
+        const isOnline = contact.user_id && socketServiceInstance && socketServiceInstance.isUserOnline(contact.user_id);
+        return {
           id: contact.id,
           userId: contact.user_id,
           firstName: contact.first_name,
@@ -31,9 +39,15 @@ const getContacts = async (req, res) => {
           notes: contact.notes,
           createdByUserId: contact.created_by_user_id,
           createdBy: contact.created_by_name,
+          isOnline: isOnline || false,
           createdAt: contact.created_at,
           updatedAt: contact.updated_at
-        }))
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        contacts: contactsWithStatus
       });
     } else if (type === 'organizations') {
       const [contacts] = await db.query(
@@ -82,9 +96,10 @@ const getContacts = async (req, res) => {
         [organizationId]
       );
 
-      return res.status(200).json({
-        success: true,
-        people: people.map(contact => ({
+      // Check online status for contacts with userId
+      const peopleWithStatus = people.map(contact => {
+        const isOnline = contact.user_id && socketServiceInstance && socketServiceInstance.isUserOnline(contact.user_id);
+        return {
           id: contact.id,
           userId: contact.user_id,
           firstName: contact.first_name,
@@ -95,9 +110,15 @@ const getContacts = async (req, res) => {
           notes: contact.notes,
           createdByUserId: contact.created_by_user_id,
           createdBy: contact.created_by_name,
+          isOnline: isOnline || false,
           createdAt: contact.created_at,
           updatedAt: contact.updated_at
-        })),
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        people: peopleWithStatus,
         organizations: organizations.map(contact => ({
           id: contact.id,
           linkedOrganizationId: contact.linked_organization_id,
@@ -133,8 +154,6 @@ const createContactPerson = async (req, res) => {
     const createdByUserId = req.user.userId;
     const role = req.user.role;
 
-    // Debug: Log the role and organization ID
-    console.log('Create contact person - User:', createdByUserId, 'Role:', role, 'OrganizationId:', organizationId);
 
     // Check if user has organization context
     if (!organizationId) {
@@ -160,6 +179,14 @@ const createContactPerson = async (req, res) => {
         message: `Access denied. Your role (${role}) does not have permission to create contacts.`
       });
     }
+
+    // Validate request body
+    const validationError = validateRequest(req, res, {
+      userId: (v) => validators.integer(v, true, 'User ID'),
+      jobTitle: (v) => validators.jobTitle(v, false),
+      notes: (v) => validators.text(v, false, 'Notes')
+    });
+    if (validationError) return validationError;
 
     if (!userId) {
       return res.status(400).json({
@@ -324,8 +351,13 @@ const createContactOrganization = async (req, res) => {
     const userId = req.user.userId;
     const role = req.user.role;
 
-    // Debug: Log the role and organization ID
-    console.log('Create contact organization - User:', userId, 'Role:', role, 'OrganizationId:', organizationId);
+    // Validate request body
+    const validationError = validateRequest(req, res, {
+      organizationId: (v) => validators.integer(v, true, 'Organization ID'),
+      notes: (v) => validators.text(v, false, 'Notes')
+    });
+    if (validationError) return validationError;
+
 
     // Check if user has organization context
     if (!organizationId) {
@@ -487,6 +519,17 @@ const updateContactPerson = async (req, res) => {
     const role = req.user.role;
     const userId = req.user.userId;
 
+    // Validate request body
+    const validationError = validateRequest(req, res, {
+      firstName: (v) => validators.name(v, false, 'First name', 255),
+      lastName: (v) => validators.name(v, false, 'Last name', 255),
+      email: (v) => validators.email(v, false),
+      phone: (v) => validators.phone(v, false),
+      jobTitle: (v) => validators.jobTitle(v, false),
+      notes: (v) => validators.text(v, false, 'Notes')
+    });
+    if (validationError) return validationError;
+
     // Check permission: Only owner, admin, manager, agent can update contacts
     if (!hasPermission(role, 'UPDATE_CONTACT')) {
       return res.status(403).json({
@@ -546,6 +589,17 @@ const updateContactOrganization = async (req, res) => {
     const organizationId = req.user.organizationId;
     const role = req.user.role;
     const userId = req.user.userId;
+
+    // Validate request body
+    const validationError = validateRequest(req, res, {
+      name: (v) => validators.name(v, false, 'Name', 255),
+      email: (v) => validators.email(v, false),
+      phone: (v) => validators.phone(v, false),
+      address: (v) => validators.text(v, false, 'Address'),
+      website: (v) => validators.website(v, false),
+      notes: (v) => validators.text(v, false, 'Notes')
+    });
+    if (validationError) return validationError;
 
     // Check permission: Only owner, admin, manager, agent can update contacts
     if (!hasPermission(role, 'UPDATE_CONTACT')) {
@@ -717,23 +771,16 @@ const deleteContactOrganization = async (req, res) => {
 const getAvailableUsers = async (req, res) => {
   try {
     const { search } = req.query;
-    const currentOrganizationId = req.user.organizationId;
     const currentUserId = req.user.userId;
 
-    // Build query to exclude:
-    // 1. Current user (can't add themselves)
-    // 2. Users who are already members of the current organization
+    // Build query to exclude only the current user (can't add themselves)
+    // Allow adding any other user, even if they're already in the organization
     let query = `
       SELECT DISTINCT u.id, u.email, u.full_name, u.phone 
       FROM users u
       WHERE u.id != ?
-        AND NOT EXISTS (
-          SELECT 1 FROM user_organizations uo 
-          WHERE uo.user_id = u.id 
-            AND uo.organization_id = ?
-        )
     `;
-    const params = [currentUserId, currentOrganizationId];
+    const params = [currentUserId];
 
     if (search) {
       query += ' AND (u.email LIKE ? OR u.full_name LIKE ?)';
@@ -806,6 +853,7 @@ const getAvailableOrganizations = async (req, res) => {
 };
 
 module.exports = {
+  setSocketService,
   getContacts,
   getAvailableUsers,
   getAvailableOrganizations,

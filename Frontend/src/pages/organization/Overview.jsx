@@ -11,8 +11,7 @@ const OrgOverview = () => {
     contactsCount: 0,
     issuesCount: 0,
     activitiesCount: 0,
-    dealsByStage: {},
-    recentActivities: []
+    dealsByStage: {}
   });
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(() => ApiService.getUser());
@@ -50,8 +49,7 @@ const OrgOverview = () => {
         contactsCount: people.length + organizations.length,
         issuesCount: issues.length,
         activitiesCount: activities.length,
-        dealsByStage,
-        recentActivities: activities.slice(0, 5)
+        dealsByStage
       });
     } catch (error) {
       toast.error(error.message || 'Failed to load overview');
@@ -122,7 +120,7 @@ const OrgOverview = () => {
                 </svg>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome, {user?.fullName || 'User'}!
+                {user?.fullName || 'User'}
               </h1>
               <p className="text-gray-600 mb-6">
                 You need to create or join an organization to get started.
@@ -189,75 +187,64 @@ const OrgOverview = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-          Welcome back, {user?.fullName || 'User'}!
-        </h1>
-        <p className="text-sm md:text-base text-gray-600 mt-2">
-          Here's what's happening in <strong>{currentOrg?.name || 'your organization'}</strong> today.
-        </p>
-      </div>
-
-
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <Link to="/dashboard/organization/deals" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
+        <Link to="/dashboard/organization/deals" className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Deals</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.dealsCount}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Deals</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.dealsCount}</p>
             </div>
-            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">💼</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0 ml-2">
+              <span className="text-xl sm:text-2xl">💼</span>
             </div>
           </div>
         </Link>
 
-        <Link to="/dashboard/organization/contacts" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <Link to="/dashboard/organization/contacts" className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Contacts</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.contactsCount}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Contacts</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.contactsCount}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">👥</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 ml-2">
+              <span className="text-xl sm:text-2xl">👥</span>
             </div>
           </div>
         </Link>
 
-        <Link to="/dashboard/organization/issues" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <Link to="/dashboard/organization/issues" className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Open Issues</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.issuesCount}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Open Issues</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.issuesCount}</p>
             </div>
-            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🐛</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center shrink-0 ml-2">
+              <span className="text-xl sm:text-2xl">🐛</span>
             </div>
           </div>
         </Link>
 
-        <Link to="/dashboard/organization/activities" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+        <Link to="/dashboard/organization/activities" className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Today's Activities</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activitiesCount}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Today's Activities</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.activitiesCount}</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📝</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center shrink-0 ml-2">
+              <span className="text-xl sm:text-2xl">📝</span>
             </div>
           </div>
         </Link>
       </div>
 
       {/* Organization Info and Quick Actions Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
         {/* Organization Information Card */}
         {currentOrg && (
-          <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Organization Information</h2>
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
+            <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Organization Information</h2>
             <div className="space-y-3 md:space-y-4">
               <div className="flex items-start">
                 <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 mr-3 shrink-0"></div>
@@ -307,8 +294,8 @@ const OrgOverview = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
-          <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
+          <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <button
               onClick={() => navigate('/dashboard/organization/deals')}
@@ -365,37 +352,6 @@ const OrgOverview = () => {
         </div>
       </div>
 
-      {/* Recent Activities */}
-      {stats.recentActivities.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h2>
-          <div className="space-y-3">
-            {stats.recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
-                  <span className="text-sm">📝</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-semibold">{activity.user?.name || 'Unknown'}</span>
-                    {' '}
-                    <span className="text-gray-600">{activity.description || activity.action_type}</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(activity.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Link
-            to="/dashboard/organization/activities"
-            className="mt-4 inline-block text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-          >
-            View all activities →
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

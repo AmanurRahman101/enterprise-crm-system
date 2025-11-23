@@ -36,15 +36,6 @@ const ClientOverview = () => {
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-          Welcome back, {user?.fullName || 'Client'}!
-        </h1>
-        <p className="text-sm md:text-base text-gray-600 mt-2">
-          Here's your Client Portal overview.
-        </p>
-      </div>
-
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

@@ -323,7 +323,7 @@ const Team = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [user] = useState(() => ApiService.getUser());
-  const [currentOrg] = useState(() => ApiService.getCurrentOrganization());
+  const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization());
   const [canManage, setCanManage] = useState(false);
 
   useEffect(() => {
@@ -339,7 +339,25 @@ const Team = () => {
     setCanManage(['owner', 'admin'].includes(userRole));
 
     loadMembers();
-  }, [navigate, user, currentOrg]);
+  }, [navigate, user, currentOrg?.id]);
+
+  // Listen for organization changes
+  useEffect(() => {
+    const handleOrganizationChange = (event) => {
+      const newOrg = event.detail || ApiService.getCurrentOrganization();
+      if (newOrg) {
+        setCurrentOrg(newOrg);
+      }
+    };
+
+    window.addEventListener('organizationChanged', handleOrganizationChange);
+    window.addEventListener('organizationRefresh', handleOrganizationChange);
+
+    return () => {
+      window.removeEventListener('organizationChanged', handleOrganizationChange);
+      window.removeEventListener('organizationRefresh', handleOrganizationChange);
+    };
+  }, []);
 
   const loadMembers = async () => {
     try {

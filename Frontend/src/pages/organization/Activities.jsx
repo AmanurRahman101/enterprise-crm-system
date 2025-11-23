@@ -26,7 +26,15 @@ const ActivityIcon = ({ entityType, actionType }) => {
 // Activity Card Component
 const ActivityCard = ({ activity }) => {
   const formatDate = (dateString) => {
+    if (!dateString) return 'Invalid date';
+    
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -64,20 +72,24 @@ const ActivityCard = ({ activity }) => {
       call_ended: 'ended a call'
     };
 
-    return labels[actionType] || actionType.replace(/_/g, ' ');
+    if (!actionType) {
+      return 'performed an action';
+    }
+
+    return labels[actionType] || (typeof actionType === 'string' ? actionType.replace(/_/g, ' ') : 'performed an action');
   };
 
   return (
     <div className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors">
-      <ActivityIcon entityType={activity.entity_type} actionType={activity.action_type} />
+      <ActivityIcon entityType={activity.entityType || activity.entity_type} actionType={activity.actionType || activity.action_type} />
       
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <p className="text-sm text-gray-900">
-              <span className="font-semibold">{activity.user?.name || 'Unknown User'}</span>
+              <span className="font-semibold">{activity.userName || activity.userEmail || 'Unknown User'}</span>
               {' '}
-              <span className="text-gray-600">{getActionLabel(activity.entity_type, activity.action_type)}</span>
+              <span className="text-gray-600">{getActionLabel(activity.entityType, activity.actionType)}</span>
             </p>
             
             {activity.description && (
@@ -102,7 +114,7 @@ const ActivityCard = ({ activity }) => {
           </div>
           
           <time className="text-xs text-gray-500 whitespace-nowrap ml-4">
-            {formatDate(activity.created_at)}
+            {formatDate(activity.createdAt || activity.created_at)}
           </time>
         </div>
       </div>
@@ -138,6 +150,7 @@ const Activities = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('all'); // all, today, week, month
   const [user] = useState(() => ApiService.getUser());
+  const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization());
 
   useEffect(() => {
     const token = ApiService.getToken();
@@ -148,7 +161,24 @@ const Activities = () => {
     }
 
     loadData();
-  }, [navigate, filterEntityType, filterUserId, dateRange]);
+  }, [navigate, filterEntityType, filterUserId, dateRange, currentOrg?.id]);
+
+  // Listen for organization changes
+  useEffect(() => {
+    const handleOrganizationChange = (event) => {
+      const newOrg = event.detail || ApiService.getCurrentOrganization();
+      setCurrentOrg(newOrg);
+      loadData(); // Refresh data when organization changes
+    };
+
+    window.addEventListener('organizationChanged', handleOrganizationChange);
+    window.addEventListener('organizationRefresh', handleOrganizationChange);
+
+    return () => {
+      window.removeEventListener('organizationChanged', handleOrganizationChange);
+      window.removeEventListener('organizationRefresh', handleOrganizationChange);
+    };
+  }, []);
 
   const loadData = async () => {
     try {
@@ -195,8 +225,9 @@ const Activities = () => {
   const filteredActivities = activities.filter(activity => {
     const matchesSearch = searchQuery === '' ||
       activity.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activity.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      activity.action_type.toLowerCase().includes(searchQuery.toLowerCase());
+      activity.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      activity.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (activity.actionType || activity.action_type)?.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesSearch;
   });
@@ -207,10 +238,16 @@ const Activities = () => {
 
     return {
       total: activities.length,
-      today: activities.filter(a => new Date(a.created_at) >= today).length,
-      deals: activities.filter(a => a.entity_type === 'deal').length,
-      contacts: activities.filter(a => a.entity_type === 'contact_person' || a.entity_type === 'contact_org').length,
-      calls: activities.filter(a => a.entity_type === 'call').length
+      today: activities.filter(a => {
+        const date = new Date(a.createdAt || a.created_at);
+        return !isNaN(date.getTime()) && date >= today;
+      }).length,
+      deals: activities.filter(a => (a.entityType || a.entity_type) === 'deal').length,
+      contacts: activities.filter(a => {
+        const entityType = a.entityType || a.entity_type;
+        return entityType === 'contact_person' || entityType === 'contact_org';
+      }).length,
+      calls: activities.filter(a => (a.entityType || a.entity_type) === 'call').length
     };
   };
 

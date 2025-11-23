@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router'
 import toast from 'react-hot-toast'
 import OrganizationSwitcher from '../components/OrganizationSwitcher'
+import DashboardNavbar from '../components/DashboardNavbar'
 import Chatbot, { ChatbotToggle } from '../components/Chatbot'
 import CallInterface from '../components/CallInterface'
 import ApiService from '../services/api'
@@ -10,10 +11,26 @@ import SocketService from '../services/socketService'
 const DashboardLayout = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  // Sidebar collapsed state (for desktop) - false = expanded, true = collapsed
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  // Sidebar open state (for mobile) - false = closed, true = open
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [chatbotOpen, setChatbotOpen] = useState(false)
   const [user, setUser] = useState(() => ApiService.getUser())
   const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization())
+  
+  // Handle window resize to adjust sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      // On mobile, close sidebar if open
+      if (window.innerWidth < 1024 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
   
   // Sync user and org from localStorage on mount and when location changes
   useEffect(() => {
@@ -46,7 +63,7 @@ const DashboardLayout = () => {
   // Initialize WebSocket connection
   useEffect(() => {
     const token = ApiService.getToken()
-    if (token && user) {
+    if (token && user && currentOrg) {
       SocketService.connect()
       
       // Listen for notifications
@@ -59,7 +76,32 @@ const DashboardLayout = () => {
         SocketService.disconnect()
       }
     }
-  }, [user])
+  }, [user, currentOrg?.id])
+
+  // Reconnect WebSocket when organization changes
+  useEffect(() => {
+    const handleOrganizationChange = () => {
+      // Disconnect and reconnect with new organization context
+      SocketService.disconnect()
+      const token = ApiService.getToken()
+      const user = ApiService.getUser()
+      const currentOrg = ApiService.getCurrentOrganization()
+      if (token && user && currentOrg) {
+        // Wait a bit before reconnecting to ensure clean disconnect
+        setTimeout(() => {
+          if (!SocketService.isConnected()) {
+            SocketService.connect()
+          }
+        }, 1000)
+      }
+    }
+
+    window.addEventListener('organizationRefresh', handleOrganizationChange)
+
+    return () => {
+      window.removeEventListener('organizationRefresh', handleOrganizationChange)
+    }
+  }, [])
 
   const handleLogout = () => {
     SocketService.disconnect()
@@ -147,24 +189,16 @@ const DashboardLayout = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all hover:shadow-xl"
-        aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-        aria-expanded={isSidebarOpen}
-      >
-        <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isSidebarOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
-      </button>
+    <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
+      {/* Top Navbar - Full Width */}
+      <DashboardNavbar 
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        isSidebarOpen={isSidebarOpen}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isSidebarCollapsed={isSidebarCollapsed}
+      />
 
-      {/* Overlay */}
+      {/* Overlay - Only show on mobile when sidebar is open */}
       {isSidebarOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
@@ -172,33 +206,29 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-40
-        w-64 bg-gradient-to-b from-white to-gray-50 shadow-xl flex flex-col
-        transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {/* Logo Section */}
-        <div className="p-3 border-b border-gray-200 bg-white">
-          <Link to="/" className="flex items-center mb-1" onClick={() => setIsSidebarOpen(false)}>
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-2">
-              <span className="text-white font-bold text-base">T</span>
-            </div>
-            <div>
-              <span className="text-lg font-bold text-gray-900">Tawasol</span>
-              <span className="text-lg font-light text-gray-600 ml-1">CRM</span>
-            </div>
-          </Link>
-          <p className="text-xs text-gray-500 font-medium">{getDashboardTitle()}</p>
-        </div>
+      {/* Main Container: Sidebar + Content */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Sidebar */}
+        <aside className={`
+          fixed top-14 left-0 bottom-0 z-40
+          ${isSidebarCollapsed ? 'lg:w-16' : 'w-64 sm:w-72 lg:w-64'}
+          bg-gradient-to-b from-white to-gray-50 shadow-xl flex flex-col
+          transform transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
 
         {/* User Profile Section - Clickable to Client Portal */}
-        <div className="p-3 border-b border-gray-200 bg-white">
+        <div className={`p-3 border-b border-gray-200 bg-white ${isSidebarCollapsed ? 'lg:px-2' : ''}`}>
           <Link
             to="/dashboard/client"
-            onClick={() => setIsSidebarOpen(false)}
-            className="flex items-center mb-2 cursor-pointer hover:opacity-80 transition-opacity group focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-lg p-1 -m-1"
+            onClick={() => {
+              // Only auto-close on mobile
+              if (window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
+            className={`flex items-center mb-2 cursor-pointer hover:opacity-80 transition-opacity group focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-lg p-1 -m-1 ${isSidebarCollapsed ? 'lg:justify-center' : ''}`}
             title="Go to Client Portal"
             aria-label="Go to Client Portal"
           >
@@ -207,43 +237,52 @@ const DashboardLayout = () => {
                 {user?.fullName?.[0]?.toUpperCase() || currentOrg?.name?.[0]?.toUpperCase() || 'U'}
               </span>
             </div>
-            <div className="ml-2 flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
-                {user?.fullName || currentOrg?.name || 'User'}
-              </p>
-              <p className="text-xs text-gray-500 truncate group-hover:text-indigo-500 transition-colors">{user?.email}</p>
-            </div>
-            <svg 
-              className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors ml-1.5 shrink-0" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
+            {!isSidebarCollapsed && (
+              <>
+                <div className="ml-2 flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                    {user?.fullName || currentOrg?.name || 'User'}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate group-hover:text-indigo-500 transition-colors">{user?.email}</p>
+                </div>
+                <svg 
+                  className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors ml-1.5 shrink-0" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </>
+            )}
           </Link>
           
           {/* Organizations Link */}
           <Link
             to="/dashboard/organization"
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => {
+              // Only auto-close on mobile
+              if (window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
             className={`flex items-center px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
               location.pathname.startsWith('/dashboard/organization')
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-gray-700 hover:bg-gray-100'
-            }`}
+            } ${isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''}`}
             title="Go to Organizations"
             aria-label="Go to Organizations"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-4 h-4 ${isSidebarCollapsed ? '' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            Organizations
+            {!isSidebarCollapsed && <span>Organizations</span>}
           </Link>
         </div>
 
         {/* Organization Switcher (show when in organization mode and has org) */}
-        {location.pathname.startsWith('/dashboard/organization') && currentOrg && (
+        {location.pathname.startsWith('/dashboard/organization') && currentOrg && !isSidebarCollapsed && (
           <div className="px-3 py-2 border-b border-gray-200 bg-white">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5 px-1">Current Organization</p>
             <OrganizationSwitcher />
@@ -252,20 +291,29 @@ const DashboardLayout = () => {
 
         {/* Navigation Section - Only show if user has organization when on organization routes */}
         {!(location.pathname.startsWith('/dashboard/organization') && !currentOrg) && (
-          <nav className="flex-1 overflow-y-auto px-3 py-3">
-            <div className="mb-2 px-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                {location.pathname.startsWith('/dashboard/organization') ? 'CRM Modules' : 
-                 location.pathname.startsWith('/dashboard/client') ? 'My Portal' : 'Navigation'}
-              </p>
-            </div>
+          <nav className={`flex-1 overflow-y-auto py-3 ${isSidebarCollapsed ? 'lg:px-2' : 'px-3'}`}>
+            {!isSidebarCollapsed && (
+              <div className="mb-2 px-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {location.pathname.startsWith('/dashboard/organization') ? 'CRM Modules' : 
+                   location.pathname.startsWith('/dashboard/client') ? 'My Portal' : 'Navigation'}
+                </p>
+              </div>
+            )}
             <ul className="space-y-1">
               {navItems.map((item) => (
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    onClick={() => setIsSidebarOpen(false)}
-                    className={`flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all group relative focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    onClick={() => {
+                      // Only auto-close on mobile
+                      if (window.innerWidth < 1024) {
+                        setIsSidebarOpen(false);
+                      }
+                    }}
+                    className={`flex items-center py-2.5 rounded-lg text-sm font-medium transition-all group relative focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      isSidebarCollapsed ? 'lg:justify-center lg:px-2' : 'px-3'
+                    } ${
                       isActive(item.path)
                         ? 'bg-indigo-50 text-indigo-600 shadow-sm'
                         : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -273,7 +321,9 @@ const DashboardLayout = () => {
                     title={item.label}
                   >
                     <svg
-                      className={`w-5 h-5 mr-3 shrink-0 transition-colors ${
+                      className={`w-5 h-5 shrink-0 transition-colors ${
+                        isSidebarCollapsed ? '' : 'mr-3'
+                      } ${
                         isActive(item.path) ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'
                       }`}
                       fill="none"
@@ -282,9 +332,13 @@ const DashboardLayout = () => {
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                     </svg>
-                    <span className="truncate flex-1">{item.label}</span>
-                    {isActive(item.path) && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-600 rounded-r-full"></div>
+                    {!isSidebarCollapsed && (
+                      <>
+                        <span className="truncate flex-1">{item.label}</span>
+                        {isActive(item.path) && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-600 rounded-r-full"></div>
+                        )}
+                      </>
                     )}
                   </Link>
                 </li>
@@ -294,28 +348,36 @@ const DashboardLayout = () => {
         )}
 
         {/* Bottom Actions */}
-        <div className="p-4 border-t border-gray-200 bg-white">
+        <div className={`border-t border-gray-200 bg-white ${isSidebarCollapsed ? 'lg:p-2' : 'p-4'}`}>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center px-4 py-2.5 bg-gray-50 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all group"
+            className={`w-full flex items-center bg-gray-50 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all group ${
+              isSidebarCollapsed ? 'lg:justify-center lg:px-2 lg:py-2.5' : 'justify-center px-4 py-2.5'
+            }`}
+            title="Logout"
           >
-            <svg className="w-5 h-5 mr-2 shrink-0 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 shrink-0 group-hover:text-red-600 ${isSidebarCollapsed ? '' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            <span className="text-sm font-medium">Logout</span>
+            {!isSidebarCollapsed && <span className="text-sm font-medium">Logout</span>}
           </button>
         </div>
-      </aside>
+        </aside>
 
-      {/* Main Content */}
-      <main 
-        className="flex-1 overflow-y-auto w-full lg:w-auto focus:outline-none" 
-        tabIndex={-1}
-        id="main-content"
-        aria-label="Main content"
-      >
-        <Outlet />
-      </main>
+        {/* Main Content */}
+        <main 
+          className={`flex-1 overflow-y-auto w-full focus:outline-none bg-gray-50 transition-all duration-300 ${
+            isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          }`}
+          tabIndex={-1}
+          id="main-content"
+          aria-label="Main content"
+        >
+          <div className="min-h-full">
+            <Outlet />
+          </div>
+        </main>
+      </div>
 
       {/* Chatbot Toggle Button & Chatbot Component */}
       {user && (

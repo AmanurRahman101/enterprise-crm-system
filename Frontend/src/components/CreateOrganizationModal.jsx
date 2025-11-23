@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import ApiService from '../services/api';
 import toast from 'react-hot-toast';
+import { validators } from '../utils/validation';
 
 // Create Organization Modal Component
 const CreateOrganizationModal = ({ onClose, onSuccess }) => {
@@ -11,13 +12,45 @@ const CreateOrganizationModal = ({ onClose, onSuccess }) => {
     phone: '',
     address: ''
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.name.trim()) {
-      toast.error('Organization name is required');
+    // Validate form
+    const validationErrors = {};
+    
+    const nameResult = validators.name(formData.name, true, 'Organization name', 255);
+    if (!nameResult.valid) {
+      validationErrors.name = nameResult.message;
+    }
+    
+    const emailResult = validators.email(formData.email, false);
+    if (!emailResult.valid) {
+      validationErrors.email = emailResult.message;
+    }
+    
+    const phoneResult = validators.phone(formData.phone, false);
+    if (!phoneResult.valid) {
+      validationErrors.phone = phoneResult.message;
+    }
+    
+    const addressResult = validators.text(formData.address, false, 'Address');
+    if (!addressResult.valid) {
+      validationErrors.address = addressResult.message;
+    }
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error(Object.values(validationErrors)[0]);
       return;
     }
 
@@ -70,13 +103,19 @@ const CreateOrganizationModal = ({ onClose, onSuccess }) => {
             <input
               type="text"
               required
+              maxLength={255}
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => handleChange('name', e.target.value)}
               placeholder="Enter organization name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={loading}
               autoFocus
             />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-600">{errors.name}</p>
+            )}
           </div>
 
           <div>
@@ -85,12 +124,18 @@ const CreateOrganizationModal = ({ onClose, onSuccess }) => {
             </label>
             <input
               type="email"
+              maxLength={255}
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) => handleChange('email', e.target.value)}
               placeholder="Enter organization email"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={loading}
             />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-600">{errors.email}</p>
+            )}
           </div>
 
           <div>
@@ -99,12 +144,18 @@ const CreateOrganizationModal = ({ onClose, onSuccess }) => {
             </label>
             <input
               type="tel"
+              maxLength={50}
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) => handleChange('phone', e.target.value)}
               placeholder="Enter organization phone"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.phone ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={loading}
             />
+            {errors.phone && (
+              <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
+            )}
           </div>
 
           <div>
@@ -112,13 +163,19 @@ const CreateOrganizationModal = ({ onClose, onSuccess }) => {
               Address (Optional)
             </label>
             <textarea
+              maxLength={65535}
               value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              onChange={(e) => handleChange('address', e.target.value)}
               placeholder="Enter organization address"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none ${
+                errors.address ? 'border-red-500' : 'border-gray-300'
+              }`}
               disabled={loading}
             />
+            {errors.address && (
+              <p className="mt-1 text-xs text-red-600">{errors.address}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">

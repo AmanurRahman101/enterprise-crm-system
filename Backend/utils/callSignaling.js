@@ -196,11 +196,15 @@ function initializeWebSocket(server) {
                 // Notify when call is ended
                 else if (data.type === 'endCall') {
                     const targetUserIdNum = parseInt(data.targetUserId);
+                    console.log(`📞 Call ended notification: User ${userId} ended call, notifying user ${targetUserIdNum}`);
                     const targetWs = activeConnections.get(targetUserIdNum);
                     if (targetWs && targetWs.readyState === WebSocket.OPEN) {
                         targetWs.send(JSON.stringify({
                             type: 'callEnded'
                         }));
+                        console.log(`✅ Call ended notification sent to user ${targetUserIdNum}`);
+                    } else {
+                        console.warn(`⚠️ Cannot send call ended notification: User ${targetUserIdNum} not found or offline`);
                     }
                 }
             } catch (error) {

@@ -61,12 +61,6 @@ const validateOrganizationMembership = async (req, res, next) => {
       });
     }
 
-    // Debug logging
-    console.log('Validating organization membership:', {
-      userId: req.user.userId,
-      currentOrganizationId: req.user.currentOrganizationId,
-      path: req.path
-    });
 
     // Ensure userId and organizationId are numbers for consistent query
     const userId = parseInt(req.user.userId);
@@ -90,16 +84,6 @@ const validateOrganizationMembership = async (req, res, next) => {
       [userId, organizationId]
     );
 
-    console.log('Membership query result:', {
-      userId: userId,
-      organizationId: organizationId,
-      queryParams: [userId, organizationId],
-      queryParamsTypes: [typeof userId, typeof organizationId],
-      found: memberships.length > 0,
-      role: memberships.length > 0 ? memberships[0].role : 'not found',
-      roleType: memberships.length > 0 ? typeof memberships[0].role : 'N/A',
-      rawResult: memberships
-    });
 
     if (memberships.length === 0) {
       console.error('User not found in organization:', {
@@ -112,7 +96,6 @@ const validateOrganizationMembership = async (req, res, next) => {
         'SELECT organization_id, role FROM user_organizations WHERE user_id = ?',
         [userId]
       );
-      console.log('All user memberships:', allMemberships);
       
       return res.status(403).json({
         success: false,
@@ -142,8 +125,6 @@ const validateOrganizationMembership = async (req, res, next) => {
       // If only one member (likely the creator), set to owner, otherwise agent
       const defaultRole = (memberCount[0].count <= 1) ? 'owner' : 'agent';
       
-      console.log(`🔧 Fixing missing role in database: Setting role to '${defaultRole}' for user ${userId} in organization ${organizationId}`);
-      console.log(`   Organization has ${memberCount[0].count} member(s)`);
       
       // Update the role in database
       try {
@@ -152,7 +133,6 @@ const validateOrganizationMembership = async (req, res, next) => {
           [defaultRole, userId, organizationId]
         );
         role = defaultRole;
-        console.log(`✅ Role fixed in database: ${role}`);
       } catch (updateError) {
         console.error('❌ Error updating role in database:', updateError);
         // Still set a default role so the request can proceed
@@ -197,12 +177,7 @@ const validateOrganizationMembership = async (req, res, next) => {
       });
     }
     
-    console.log('✅ Organization membership validated:', {
-      userId: req.user.userId,
-      organizationId: req.user.organizationId,
-      role: req.user.role,
-      verified: !!req.user.role
-    });
+    // Organization membership validated
     
     next();
   } catch (error) {

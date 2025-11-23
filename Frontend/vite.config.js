@@ -23,7 +23,20 @@ export default defineConfig({
     host: '0.0.0.0', // Listen on all network interfaces
     port: 5173,
     strictPort: false,
-    // Enable HTTPS if certificates are available
+    // Enable HTTPS if certificates are available (HTTP will still be available on port 5173)
+    // To use both, you can access via http://localhost:5173 or https://localhost:5173
+    ...(hasSSL && {
+      https: {
+        key: fs.readFileSync(keyFile),
+        cert: fs.readFileSync(certFile),
+      }
+    })
+  },
+  // Configure preview server to also support both HTTP and HTTPS
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    strictPort: false,
     ...(hasSSL && {
       https: {
         key: fs.readFileSync(keyFile),

@@ -60,15 +60,19 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
         setIsOpen(false);
         
         // Update localStorage and notify parent component
-        // Use custom event instead of reload to avoid page refresh
         if (onOrganizationChange) {
           onOrganizationChange(response.currentOrganization);
-        } else {
-          // Dispatch custom event to notify other components
-          window.dispatchEvent(new CustomEvent('organizationChanged', {
-            detail: response.currentOrganization
-          }));
         }
+        
+        // Dispatch custom event to notify all components to refresh
+        window.dispatchEvent(new CustomEvent('organizationChanged', {
+          detail: response.currentOrganization
+        }));
+        
+        // Dispatch a refresh event to force all pages to reload data
+        window.dispatchEvent(new CustomEvent('organizationRefresh', {
+          detail: response.currentOrganization
+        }));
       }
     } catch (error) {
       toast.error(error.message || 'Failed to switch organization');

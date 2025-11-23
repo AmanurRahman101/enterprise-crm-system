@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../../services/api';
+import { validators } from '../../utils/validation';
 
 // Status Badge Component
 const StatusBadge = ({ status }) => {
@@ -93,9 +94,61 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
     jira_ticket_id: issue?.jira_ticket_id || '',
     jira_url: issue?.jira_url || ''
   });
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate form
+    const validationErrors = {};
+    
+    // Title validation
+    const titleResult = validators.issueTitle(formData.title, true);
+    if (!titleResult.valid) {
+      validationErrors.title = titleResult.message;
+    }
+    
+    // Description validation
+    const descriptionResult = validators.text(formData.description, false, 'Description');
+    if (!descriptionResult.valid) {
+      validationErrors.description = descriptionResult.message;
+    }
+    
+    // Jira fields validation
+    if (formData.jira_project_key) {
+      const jiraKeyResult = validators.jiraProjectKey(formData.jira_project_key, false);
+      if (!jiraKeyResult.valid) {
+        validationErrors.jira_project_key = jiraKeyResult.message;
+      }
+    }
+    
+    if (formData.jira_ticket_id) {
+      const jiraTicketResult = validators.jiraTicketId(formData.jira_ticket_id, false);
+      if (!jiraTicketResult.valid) {
+        validationErrors.jira_ticket_id = jiraTicketResult.message;
+      }
+    }
+    
+    if (formData.jira_url) {
+      const jiraUrlResult = validators.jiraUrl(formData.jira_url, false);
+      if (!jiraUrlResult.valid) {
+        validationErrors.jira_url = jiraUrlResult.message;
+      }
+    }
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error(Object.values(validationErrors)[0]);
+      return;
+    }
+    
     onSave(formData);
   };
 
@@ -121,11 +174,17 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
             <input
               type="text"
               required
+              maxLength={255}
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              onChange={(e) => handleChange('title', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.title ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="Brief description of the issue"
             />
+            {errors.title && (
+              <p className="mt-1 text-xs text-red-600">{errors.title}</p>
+            )}
           </div>
 
           <div>
@@ -133,12 +192,18 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
               Description
             </label>
             <textarea
+              maxLength={65535}
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => handleChange('description', e.target.value)}
               rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.description ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="Detailed description of the issue..."
             />
+            {errors.description && (
+              <p className="mt-1 text-xs text-red-600">{errors.description}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -192,11 +257,17 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
                 </label>
                 <input
                   type="text"
+                  maxLength={50}
                   value={formData.jira_project_key}
-                  onChange={(e) => setFormData({ ...formData, jira_project_key: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onChange={(e) => handleChange('jira_project_key', e.target.value.toUpperCase())}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.jira_project_key ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., PROJ"
                 />
+                {errors.jira_project_key && (
+                  <p className="mt-1 text-xs text-red-600">{errors.jira_project_key}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">The project key in Jira</p>
               </div>
 
@@ -206,11 +277,17 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
                 </label>
                 <input
                   type="text"
+                  maxLength={50}
                   value={formData.jira_ticket_id}
-                  onChange={(e) => setFormData({ ...formData, jira_ticket_id: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onChange={(e) => handleChange('jira_ticket_id', e.target.value.toUpperCase())}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.jira_ticket_id ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., PROJ-123"
                 />
+                {errors.jira_ticket_id && (
+                  <p className="mt-1 text-xs text-red-600">{errors.jira_ticket_id}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">The full ticket ID from Jira</p>
               </div>
 
@@ -220,11 +297,17 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
                 </label>
                 <input
                   type="url"
+                  maxLength={500}
                   value={formData.jira_url}
-                  onChange={(e) => setFormData({ ...formData, jira_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onChange={(e) => handleChange('jira_url', e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.jira_url ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="https://your-domain.atlassian.net/browse/PROJ-123"
                 />
+                {errors.jira_url && (
+                  <p className="mt-1 text-xs text-red-600">{errors.jira_url}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">Direct link to the Jira ticket</p>
               </div>
             </div>
@@ -275,6 +358,7 @@ const Issues = () => {
   const [filterPriority, setFilterPriority] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [user] = useState(() => ApiService.getUser());
+  const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization());
 
   useEffect(() => {
     const token = ApiService.getToken();
@@ -285,7 +369,24 @@ const Issues = () => {
     }
 
     loadData();
-  }, [navigate]);
+  }, [navigate, currentOrg?.id]);
+
+  // Listen for organization changes
+  useEffect(() => {
+    const handleOrganizationChange = (event) => {
+      const newOrg = event.detail || ApiService.getCurrentOrganization();
+      setCurrentOrg(newOrg);
+      loadData(); // Refresh data when organization changes
+    };
+
+    window.addEventListener('organizationChanged', handleOrganizationChange);
+    window.addEventListener('organizationRefresh', handleOrganizationChange);
+
+    return () => {
+      window.removeEventListener('organizationChanged', handleOrganizationChange);
+      window.removeEventListener('organizationRefresh', handleOrganizationChange);
+    };
+  }, []);
 
   const loadData = async () => {
     try {

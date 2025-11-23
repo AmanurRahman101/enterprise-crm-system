@@ -3,19 +3,21 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db/connection');
 const { jwtSecret, jwtExpiration } = require('../config/jwt');
+const { validators, validateRequest } = require('../utils/validation');
 
 // User Signup (creates unified user account - all users can access client portal and create/join organizations)
 const signup = async (req, res) => {
   try {
     const { email, password, fullName, phone } = req.body;
 
-    // Validate required fields
-    if (!email || !password || !fullName) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email, password, and full name are required.'
-      });
-    }
+    // Validate request body
+    const validationError = validateRequest(req, res, {
+      email: (v) => validators.email(v, true),
+      password: (v) => validators.password(v, true),
+      fullName: (v) => validators.name(v, true, 'Full name', 255),
+      phone: (v) => validators.phone(v, false)
+    });
+    if (validationError) return validationError;
 
     // Check if user already exists
     const [existingUsers] = await db.query(
@@ -65,21 +67,13 @@ const signin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Debug logging (masked for security)
-    console.log('Signin attempt:', { 
-      email: email ? email.substring(0, 3) + '***' : 'missing', 
-      hasPassword: !!password,
-      passwordLength: password ? password.length : 0
-    });
 
-    // Validate required fields
-    if (!email || !password) {
-      console.log('Signin validation failed: Missing email or password');
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required.'
-      });
-    }
+    // Validate request body
+    const validationError = validateRequest(req, res, {
+      email: (v) => validators.email(v, true),
+      password: (v) => validators.password(v, true)
+    });
+    if (validationError) return validationError;
 
     // Find user by email (case-insensitive)
     const [users] = await db.query(
@@ -88,7 +82,6 @@ const signin = async (req, res) => {
     );
 
     if (users.length === 0) {
-      console.log(`Signin attempt failed: User not found with email: ${email}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password.'
@@ -108,14 +101,11 @@ const signin = async (req, res) => {
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      console.log(`Signin attempt failed: Invalid password for user: ${user.email}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password.'
       });
     }
-
-    console.log(`Signin successful for user: ${user.email} (ID: ${user.id})`);
 
     // Get user's organizations
     const [organizations] = await db.query(

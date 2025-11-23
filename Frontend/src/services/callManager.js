@@ -22,6 +22,7 @@ class CallManager {
         this.incomingCallData = null;
         this.callStartTime = null;
         this.callTimer = null;
+        this.currentCallerId = null; // Store caller ID for receiver to notify on hangup
         
         // Event callbacks
         this.onIncomingCall = null;
@@ -397,6 +398,7 @@ class CallManager {
             
             this.currentChannel = channelName;
             this.currentReceiverId = callerId;
+            this.currentCallerId = callerId; // Store caller ID for later notification
 
             // Request Agora token for joining call
             // Include organizationId in the request header
@@ -492,12 +494,40 @@ class CallManager {
                 this.ringtone.currentTime = 0;
             }
 
+            // Determine who to notify based on call direction
+            let targetUserIdToNotify = null;
+            
+            // If we have currentCallerId, we're the receiver - notify the caller
+            if (this.currentCallerId) {
+                targetUserIdToNotify = this.currentCallerId;
+                console.log('Receiver hanging up, notifying caller:', targetUserIdToNotify);
+            }
+            // Otherwise, if we have currentReceiverId, we're the caller - notify the receiver
+            else if (this.currentReceiverId) {
+                targetUserIdToNotify = this.currentReceiverId;
+                console.log('Caller hanging up, notifying receiver:', targetUserIdToNotify);
+            }
+            // Fallback: check incoming call data if still available
+            else if (this.incomingCallData && this.incomingCallData.callerId) {
+                targetUserIdToNotify = this.incomingCallData.callerId;
+                console.log('Using incoming call data to notify caller:', targetUserIdToNotify);
+            }
+
             // Notify other party
-            if (this.currentReceiverId && this.ws && this.ws.readyState === WebSocket.OPEN) {
+            if (targetUserIdToNotify && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                console.log('📞 Sending endCall notification to user:', targetUserIdToNotify);
                 this.ws.send(JSON.stringify({
                     type: 'endCall',
-                    targetUserId: this.currentReceiverId
+                    targetUserId: targetUserIdToNotify
                 }));
+            } else {
+                console.warn('⚠️ Cannot send endCall notification:', {
+                    targetUserIdToNotify,
+                    wsReady: this.ws && this.ws.readyState === WebSocket.OPEN,
+                    hasIncomingCallData: !!this.incomingCallData,
+                    currentReceiverId: this.currentReceiverId,
+                    currentCallerId: this.currentCallerId
+                });
             }
 
             // Close local audio track
@@ -529,6 +559,7 @@ class CallManager {
             this.currentReceiverId = null;
             this.currentReceiverType = null;
             this.currentCallLogId = null;
+            this.currentCallerId = null; // Clear caller ID
             this.isMuted = false;
             this.remoteUsers = {};
             this.incomingCallData = null;
