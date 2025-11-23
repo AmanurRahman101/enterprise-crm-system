@@ -1,6 +1,5 @@
 // Organization Controller
 const db = require('../db/connection');
-const { validators, validateRequest } = require('../utils/validation');
 
 // Create Organization (creator becomes owner and switches to it)
 const createOrganization = async (req, res) => {
@@ -8,14 +7,13 @@ const createOrganization = async (req, res) => {
     const { name, email, phone, address } = req.body;
     const userId = req.user.userId;
 
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      name: (v) => validators.name(v, true, 'Organization name', 255),
-      email: (v) => validators.email(v, false),
-      phone: (v) => validators.phone(v, false),
-      address: (v) => validators.text(v, false, 'Address')
-    });
-    if (validationError) return validationError;
+    // Validate required fields
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization name is required.'
+      });
+    }
 
     // Create organization
     const [orgResult] = await db.query(

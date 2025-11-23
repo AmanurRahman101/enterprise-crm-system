@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../services/api';
-import { validators, validateForm } from '../utils/validation';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -14,7 +13,6 @@ const Signup = () => {
     phone: ''
     // userType removed - all users are unified and can access both client portal and organizations
   });
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   // Check if user is already logged in
@@ -28,40 +26,25 @@ const Signup = () => {
     }
   }, [navigate]);
 
-  const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: null });
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     // Validate form
-    const validationRules = {
-      fullName: (v) => validators.name(v, true, 'Full name', 255),
-      email: (v) => validators.email(v, true),
-      password: (v) => validators.password(v, true),
-      phone: (v) => validators.phone(v, false)
-    };
-
-    const { isValid, errors: validationErrors } = validateForm(formData, validationRules);
-
-    // Additional validation for confirm password
-    if (formData.password !== formData.confirmPassword) {
-      validationErrors.confirmPassword = 'Passwords do not match';
-      validationErrors.isValid = false;
+    if (!formData.fullName || !formData.email || !formData.password) {
+      toast.error('Please fill in all required fields');
+      setLoading(false);
+      return;
     }
 
-    if (!isValid || Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      const firstError = Object.values(validationErrors)[0];
-      if (firstError) {
-        toast.error(firstError);
-      }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
       setLoading(false);
       return;
     }
@@ -114,17 +97,11 @@ const Signup = () => {
                 type="text"
                 id="fullName"
                 required
-                maxLength={255}
                 value={formData.fullName}
-                onChange={(e) => handleChange('fullName', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.fullName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="John Doe"
               />
-              {errors.fullName && (
-                <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>
-              )}
             </div>
 
             {/* Email */}
@@ -136,17 +113,11 @@ const Signup = () => {
                 type="email"
                 id="email"
                 required
-                maxLength={255}
                 value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="john@example.com"
               />
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
-              )}
             </div>
 
             {/* Phone (Optional) */}
@@ -157,17 +128,11 @@ const Signup = () => {
               <input
                 type="tel"
                 id="phone"
-                maxLength={50}
                 value={formData.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="+1 (555) 123-4567"
               />
-              {errors.phone && (
-                <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
-              )}
             </div>
 
             {/* Password */}
@@ -179,20 +144,13 @@ const Signup = () => {
                 type="password"
                 id="password"
                 required
-                maxLength={255}
                 value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="••••••••"
                 minLength={6}
               />
-              {errors.password ? (
-                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
-              ) : (
-                <p className="text-xs text-gray-500 mt-1">At least 6 characters, max 255 characters</p>
-              )}
+              <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
             </div>
 
             {/* Confirm Password */}
@@ -204,17 +162,11 @@ const Signup = () => {
                 type="password"
                 id="confirmPassword"
                 required
-                maxLength={255}
                 value={formData.confirmPassword}
-                onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="••••••••"
               />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>
-              )}
             </div>
 
             {/* Submit Button */}

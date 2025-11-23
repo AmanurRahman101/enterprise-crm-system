@@ -258,7 +258,6 @@ const PersonModal = ({ person, onClose, onSave }) => {
     jobTitle: person?.jobTitle || '',
     notes: person?.notes || ''
   });
-  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useClickOutside(dropdownRef, () => setShowDropdown(false));
@@ -302,35 +301,11 @@ const PersonModal = ({ person, onClose, onSave }) => {
     setShowDropdown(false);
   };
 
-  const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: null });
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!selectedUserId && !person) {
       toast.error('Please select a user from the system');
-      return;
-    }
-
-    // Validate form
-    const validationErrors = {};
-    const jobTitleResult = validators.jobTitle(formData.jobTitle, false);
-    if (!jobTitleResult.valid) {
-      validationErrors.jobTitle = jobTitleResult.message;
-    }
-    const notesResult = validators.text(formData.notes, false, 'Notes');
-    if (!notesResult.valid) {
-      validationErrors.notes = notesResult.message;
-    }
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      toast.error(Object.values(validationErrors)[0]);
       return;
     }
 
@@ -422,17 +397,11 @@ const PersonModal = ({ person, onClose, onSave }) => {
             </label>
             <input
               type="text"
-              maxLength={255}
               value={formData.jobTitle}
-              onChange={(e) => handleChange('jobTitle', e.target.value)}
+              onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
               placeholder="e.g., Manager, Developer"
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.jobTitle ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
-            {errors.jobTitle && (
-              <p className="mt-1 text-xs text-red-600">{errors.jobTitle}</p>
-            )}
           </div>
 
           <div>
@@ -440,18 +409,12 @@ const PersonModal = ({ person, onClose, onSave }) => {
               Notes (Optional)
             </label>
             <textarea
-              maxLength={65535}
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
               placeholder="Additional notes about this contact..."
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.notes ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
-            {errors.notes && (
-              <p className="mt-1 text-xs text-red-600">{errors.notes}</p>
-            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -488,7 +451,6 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
     organizationId: null,
     notes: organization?.notes || ''
   });
-  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useClickOutside(dropdownRef, () => setShowDropdown(false));
@@ -531,31 +493,11 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
     setShowDropdown(false);
   };
 
-  const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: null });
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!selectedOrgId && !organization) {
       toast.error('Please select an organization from the system');
-      return;
-    }
-
-    // Validate form
-    const validationErrors = {};
-    const notesResult = validators.text(formData.notes, false, 'Notes');
-    if (!notesResult.valid) {
-      validationErrors.notes = notesResult.message;
-    }
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      toast.error(Object.values(validationErrors)[0]);
       return;
     }
 
@@ -652,18 +594,12 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
               Notes (Optional)
             </label>
             <textarea
-              maxLength={65535}
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
               placeholder="Additional notes about this organization..."
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.notes ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
-            {errors.notes && (
-              <p className="mt-1 text-xs text-red-600">{errors.notes}</p>
-            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">

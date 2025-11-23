@@ -33,28 +33,21 @@ const { initializeWebSocket } = require('./utils/callSignaling');
 
 // Port configuration
 const port = process.env.PORT || 3000;
-const httpPort = process.env.HTTP_PORT || 3000;
-const httpsPort = process.env.HTTPS_PORT || 3443;
 const wsPort = process.env.WS_PORT || 3001;
 
-// Create HTTP server (always available)
-const httpServer = http.createServer(app);
-
-// Create HTTPS server (if certificates are available)
-let httpsServer = null;
+// Create HTTP or HTTPS server
+let server;
 if (hasSSL) {
   const options = {
     key: fs.readFileSync(keyFile),
     cert: fs.readFileSync(certFile),
   };
-  httpsServer = https.createServer(options, app);
+  server = https.createServer(options, app);
   console.log('✅ HTTPS enabled on backend - SSL certificate loaded');
 } else {
-  console.log('⚠️  HTTPS disabled - SSL certificates not found');
+  server = http.createServer(app);
+  console.log('⚠️  HTTPS disabled - Using HTTP (mixed content warnings will appear)');
 }
-
-// Use HTTPS server for Socket.io if available, otherwise use HTTP
-const server = httpsServer || httpServer;
 
 // Initialize Socket.io
 const io = new Server(server, {
@@ -177,23 +170,17 @@ const getLocalIP = () => {
   return 'localhost';
 };
 
-// Start HTTP server
-httpServer.listen(httpPort, '0.0.0.0', () => {
+// Start server with error handling
+server.listen(port, '0.0.0.0', () => {
   const localIP = getLocalIP();
+  const protocol = hasSSL ? 'https' : 'http';
   console.log('========================================');
   console.log(`🚀 Tawasol CRM Server is running`);
-  console.log(`📡 HTTP Port: ${httpPort}`);
-  if (hasSSL) {
-    console.log(`🔒 HTTPS Port: ${httpsPort}`);
-  }
+  console.log(`📡 ${protocol.toUpperCase()} Port: ${port}`);
   console.log('');
   console.log('🌐 Access URLs:');
-  console.log(`   HTTP Local:    http://localhost:${httpPort}`);
-  console.log(`   HTTP Network:  http://${localIP}:${httpPort}`);
-  if (hasSSL) {
-    console.log(`   HTTPS Local:   https://localhost:${httpsPort}`);
-    console.log(`   HTTPS Network: https://${localIP}:${httpsPort}`);
-  }
+  console.log(`   Local:    ${protocol}://localhost:${port}`);
+  console.log(`   Network:  ${protocol}://${localIP}:${port}`);
   console.log(`🔌 WebSocket Port: ${wsPort}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⏰ Started at: ${new Date().toLocaleString()}`);
@@ -218,56 +205,26 @@ httpServer.listen(httpPort, '0.0.0.0', () => {
   console.log('');
 });
 
-// Handle HTTP port already in use errors
-httpServer.on('error', (err) => {
+// Handle port already in use error
+server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error('========================================');
-    console.error('❌ ERROR: HTTP Port ' + httpPort + ' is already in use!');
+    console.error('❌ ERROR: Port ' + port + ' is already in use!');
     console.error('========================================');
     console.error('');
     console.error('🔧 Solutions:');
-    console.error('   1. Stop the process using port ' + httpPort + ':');
-    console.error('      netstat -ano | findstr :' + httpPort);
+    console.error('   1. Stop the process using port ' + port + ':');
+    console.error('      netstat -ano | findstr :' + port);
     console.error('      taskkill /PID <PID> /F');
     console.error('');
     console.error('   2. Or change the port in Backend/.env:');
-    console.error('      HTTP_PORT=3001');
+    console.error('      PORT=3001');
     console.error('');
     console.error('   3. Or use stop.bat to stop all servers');
     console.error('');
     process.exit(1);
   } else {
-    console.error('❌ HTTP Server error:', err);
+    console.error('❌ Server error:', err);
     process.exit(1);
   }
 });
-
-// Start HTTPS server if certificates are available
-if (hasSSL && httpsServer) {
-  httpsServer.listen(httpsPort, '0.0.0.0', () => {
-    const localIP = getLocalIP();
-    console.log(`✅ HTTPS server started on port ${httpsPort}`);
-  });
-
-  // Handle HTTPS port errors
-  httpsServer.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error('========================================');
-      console.error('❌ ERROR: HTTPS Port ' + httpsPort + ' is already in use!');
-      console.error('========================================');
-      console.error('');
-      console.error('🔧 Solutions:');
-      console.error('   1. Stop the process using port ' + httpsPort + ':');
-      console.error('      netstat -ano | findstr :' + httpsPort);
-      console.error('      taskkill /PID <PID> /F');
-      console.error('');
-      console.error('   2. Or change the port in Backend/.env:');
-      console.error('      HTTPS_PORT=3444');
-      console.error('');
-      process.exit(1);
-    } else {
-      console.error('❌ HTTPS Server error:', err);
-      process.exit(1);
-    }
-  });
-}

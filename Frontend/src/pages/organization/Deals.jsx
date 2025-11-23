@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../../services/api';
 import { hasPermission, canDelete } from '../../utils/permissions';
-import { validators } from '../../utils/validation';
 import {
   DndContext,
   closestCenter,
@@ -526,7 +525,6 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
   );
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -608,70 +606,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
     setAvailableContacts([]);
   };
 
-  const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: null });
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Validate form
-    const validationErrors = {};
-    
-    // Title validation
-    const titleResult = validators.dealTitle(formData.title, true);
-    if (!titleResult.valid) {
-      validationErrors.title = titleResult.message;
-    }
-    
-    // Value validation
-    if (formData.value !== '' && formData.value !== null) {
-      const valueResult = validators.dealValue(formData.value, false);
-      if (!valueResult.valid) {
-        validationErrors.value = valueResult.message;
-      }
-    }
-    
-    // Currency validation
-    const currencyResult = validators.currency(formData.currency, false);
-    if (!currencyResult.valid) {
-      validationErrors.currency = currencyResult.message;
-    }
-    
-    // Stage validation
-    if (!formData.stageId) {
-      validationErrors.stageId = 'Stage is required';
-    }
-    
-    // Probability validation
-    const probabilityResult = validators.probability(formData.probability, false);
-    if (!probabilityResult.valid) {
-      validationErrors.probability = probabilityResult.message;
-    }
-    
-    // Date validation
-    if (formData.expectedCloseDate) {
-      const dateResult = validators.date(formData.expectedCloseDate, false, 'Expected close date');
-      if (!dateResult.valid) {
-        validationErrors.expectedCloseDate = dateResult.message;
-      }
-    }
-    
-    // Notes validation
-    const notesResult = validators.text(formData.notes, false, 'Notes');
-    if (!notesResult.valid) {
-      validationErrors.notes = notesResult.message;
-    }
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      toast.error(Object.values(validationErrors)[0]);
-      return;
-    }
-    
     // Ensure only one contact type is set
     const submitData = { ...formData };
     if (contactType === 'person') {
@@ -720,16 +656,10 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
             <input
               type="text"
               required
-              maxLength={255}
               value={formData.title}
-              onChange={(e) => handleChange('title', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.title ? 'border-red-500' : 'border-gray-300'
-              }`}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
-            {errors.title && (
-              <p className="mt-1 text-xs text-red-600">{errors.title}</p>
-            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -739,18 +669,10 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               </label>
               <input
                 type="number"
-                step="0.01"
-                min="0"
-                max="999999999999999.99"
                 value={formData.value}
-                onChange={(e) => handleChange('value', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.value ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
-              {errors.value && (
-                <p className="mt-1 text-xs text-red-600">{errors.value}</p>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -758,10 +680,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               </label>
               <select
                 value={formData.currency}
-                onChange={(e) => handleChange('currency', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.currency ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -903,14 +823,9 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               <input
                 type="date"
                 value={formData.expectedCloseDate}
-                onChange={(e) => handleChange('expectedCloseDate', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.expectedCloseDate ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, expectedCloseDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
-              {errors.expectedCloseDate && (
-                <p className="mt-1 text-xs text-red-600">{errors.expectedCloseDate}</p>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -921,14 +836,9 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 min="0"
                 max="100"
                 value={formData.probability}
-                onChange={(e) => handleChange('probability', parseInt(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.probability ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
-              {errors.probability && (
-                <p className="mt-1 text-xs text-red-600">{errors.probability}</p>
-              )}
             </div>
           </div>
 
@@ -937,17 +847,11 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               Notes
             </label>
             <textarea
-              maxLength={65535}
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.notes ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
-            {errors.notes && (
-              <p className="mt-1 text-xs text-red-600">{errors.notes}</p>
-            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -988,29 +892,6 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
   const [editingStage, setEditingStage] = useState(null);
 
   const handleSaveStage = async (stageId, name, color, defaultProbability) => {
-    // Validate
-    const validationErrors = {};
-    
-    const nameResult = validators.stageName(name, true);
-    if (!nameResult.valid) {
-      validationErrors.name = nameResult.message;
-    }
-    
-    const colorResult = validators.color(color, false);
-    if (!colorResult.valid) {
-      validationErrors.color = colorResult.message;
-    }
-    
-    const probResult = validators.probability(defaultProbability, false);
-    if (!probResult.valid) {
-      validationErrors.probability = probResult.message;
-    }
-    
-    if (Object.keys(validationErrors).length > 0) {
-      toast.error(Object.values(validationErrors)[0]);
-      return;
-    }
-    
     try {
       await ApiService.request(`/api/deals/stages/${stageId}`, {
         method: 'PUT',
@@ -1040,35 +921,19 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
     }
   };
 
-  const [errors, setErrors] = useState({});
-
   const handleCreateStage = async () => {
-    // Validate form
-    const validationErrors = {};
-    
-    const nameResult = validators.stageName(newStageName.trim(), true);
-    if (!nameResult.valid) {
-      validationErrors.name = nameResult.message;
+    if (!newStageName.trim()) {
+      toast.error('Stage name is required');
+      return;
     }
-    
-    const colorResult = validators.color(newStageColor, false);
-    if (!colorResult.valid) {
-      validationErrors.color = colorResult.message;
-    }
-    
-    const probResult = validators.probability(newStageProbability, false);
-    if (!probResult.valid) {
-      validationErrors.probability = probResult.message;
-    }
-    
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      toast.error(Object.values(validationErrors)[0]);
+
+    const prob = parseInt(newStageProbability) || 0;
+    if (prob < 0 || prob > 100) {
+      toast.error('Probability must be between 0 and 100');
       return;
     }
 
     try {
-      const prob = parseInt(newStageProbability) || 0;
       await ApiService.request('/api/deals/stages', {
         method: 'POST',
         body: { name: newStageName.trim(), color: newStageColor, defaultProbability: prob }
@@ -1106,26 +971,17 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  maxLength={100}
                   placeholder="Stage name"
                   value={newStageName}
-                  onChange={(e) => {
-                    setNewStageName(e.target.value);
-                    if (errors.name) setErrors({ ...errors, name: null });
-                  }}
+                  onChange={(e) => setNewStageName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       handleCreateStage();
                     }
                   }}
-                  className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
-                {errors.name && (
-                  <p className="text-xs text-red-600 mt-1">{errors.name}</p>
-                )}
                 <input
                   type="color"
                   value={newStageColor}
@@ -1219,16 +1075,6 @@ const StageEditForm = ({ stage, onSave, onCancel }) => {
   const [defaultProbability, setDefaultProbability] = useState(stage.defaultProbability || 0);
 
   const handleSave = () => {
-    // Validate before saving
-    const nameResult = validators.stageName(name.trim(), true);
-    const colorResult = validators.color(color, false);
-    const probResult = validators.probability(defaultProbability, false);
-    
-    if (!nameResult.valid || !colorResult.valid || !probResult.valid) {
-      toast.error(nameResult.message || colorResult.message || probResult.message);
-      return;
-    }
-    
     if (name.trim() && (name !== stage.name || color !== stage.color || defaultProbability !== (stage.defaultProbability || 0))) {
       onSave(name.trim(), color, defaultProbability);
     } else {
@@ -1240,7 +1086,6 @@ const StageEditForm = ({ stage, onSave, onCancel }) => {
     <>
       <input
         type="text"
-        maxLength={100}
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={handleSave}

@@ -1,24 +1,10 @@
 # Generate Self-Signed SSL Certificate for Development
 # This allows microphone access on mobile browsers
-# Each team member should run this script to generate their own certificates
 
-Write-Host "========================================="
-Write-Host "  SSL Certificate Generator"
-Write-Host "========================================="
-Write-Host ""
-Write-Host "This script will generate SSL certificates for HTTPS."
-Write-Host "Each team member needs to run this to get their own .crt files."
-Write-Host ""
 Write-Host "Generating self-signed SSL certificate for development..."
 Write-Host ""
 
-# Create cert directory if it doesn't exist
 $certPath = ".\cert"
-if (-not (Test-Path $certPath)) {
-    New-Item -ItemType Directory -Path $certPath | Out-Null
-    Write-Host "Created cert directory: $certPath"
-}
-
 $certFile = "$certPath\localhost.crt"
 $keyFile = "$certPath\localhost.key"
 
@@ -59,24 +45,13 @@ if (-not $opensslPath) {
     # Generate private key
     & openssl genrsa -out $keyFile 2048
     
-    # Get local IP address for certificate
-    $localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like "192.168.*" -or $_.IPAddress -like "10.*" -or $_.IPAddress -like "172.*" } | Select-Object -First 1).IPAddress
-    if (-not $localIP) {
-        $localIP = "127.0.0.1"
-    }
-    
     # Generate certificate
-    & openssl req -new -x509 -key $keyFile -out $certFile -days 365 -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:$localIP,IP:127.0.0.1"
+    & openssl req -new -x509 -key $keyFile -out $certFile -days 365 -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:192.168.0.101,IP:127.0.0.1"
     
     Write-Host ""
     Write-Host "✓ Certificate generated successfully!"
     Write-Host "  Certificate: $certFile"
     Write-Host "  Private Key: $keyFile"
-    Write-Host "  Valid for: localhost, $localIP, 127.0.0.1"
-    Write-Host ""
-    Write-Host "IMPORTANT: Copy these files to Backend\cert\ folder:"
-    Write-Host "  copy cert\localhost.crt ..\Backend\cert\localhost.crt"
-    Write-Host "  copy cert\localhost.key ..\Backend\cert\localhost.key"
     Write-Host ""
 }
 

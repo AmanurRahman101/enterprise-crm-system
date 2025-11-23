@@ -1,6 +1,5 @@
 // Deal Controller
 const db = require('../db/connection');
-const { validators, validateRequest } = require('../utils/validation');
 const { hasPermission, canPerformAction } = require('../utils/permissions');
 
 // Get all deals for current organization
@@ -166,18 +165,6 @@ const createDeal = async (req, res) => {
       });
     }
 
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      title: (v) => validators.name(v, true, 'Title', 255),
-      value: (v) => validators.dealValue(v, false),
-      currency: (v) => validators.currency(v, false),
-      stageId: (v) => validators.integer(v, true, 'Stage ID'),
-      probability: (v) => validators.probability(v, false),
-      expectedCloseDate: (v) => validators.date(v, false, 'Expected close date'),
-      notes: (v) => validators.text(v, false, 'Notes')
-    });
-    if (validationError) return validationError;
-
     if (!title || !stageId) {
       return res.status(400).json({
         success: false,
@@ -287,18 +274,6 @@ const updateDeal = async (req, res) => {
     const organizationId = req.user.organizationId;
     const userId = req.user.userId;
     const role = req.user.role;
-
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      title: (v) => validators.name(v, false, 'Title', 255),
-      value: (v) => validators.dealValue(v, false),
-      currency: (v) => validators.currency(v, false),
-      stageId: (v) => validators.integer(v, false, 'Stage ID'),
-      probability: (v) => validators.probability(v, false),
-      expectedCloseDate: (v) => validators.date(v, false, 'Expected close date'),
-      notes: (v) => validators.text(v, false, 'Notes')
-    });
-    if (validationError) return validationError;
 
     // Check if deal exists and belongs to organization
     const [existingDeals] = await db.query(
@@ -527,15 +502,21 @@ const createDealStage = async (req, res) => {
       });
     }
 
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      name: (v) => validators.stageName(v, true),
-      color: (v) => validators.color(v, false),
-      defaultProbability: (v) => validators.probability(v, false)
-    });
-    if (validationError) return validationError;
+    if (!name || name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Stage name is required.'
+      });
+    }
 
+    // Validate probability
     const prob = parseInt(defaultProbability) || 0;
+    if (prob < 0 || prob > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Probability must be between 0 and 100.'
+      });
+    }
 
     // Get the highest order_index
     const [maxOrder] = await db.query(
@@ -583,14 +564,6 @@ const updateDealStage = async (req, res) => {
         message: 'Access denied. Only owners and admins can manage deal stages.'
       });
     }
-
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      name: (v) => validators.stageName(v, false),
-      color: (v) => validators.color(v, false),
-      defaultProbability: (v) => validators.probability(v, false)
-    });
-    if (validationError) return validationError;
 
     // Check if stage exists
     const [stages] = await db.query('SELECT * FROM deal_stages WHERE id = ?', [id]);

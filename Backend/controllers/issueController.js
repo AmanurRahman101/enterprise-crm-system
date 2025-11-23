@@ -1,6 +1,5 @@
 // Issue Controller
 const db = require('../db/connection');
-const { validators, validateRequest } = require('../utils/validation');
 
 // Get all issues for current organization
 const getIssues = async (req, res) => {
@@ -157,15 +156,12 @@ const createIssue = async (req, res) => {
       });
     }
 
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      title: (v) => validators.issueTitle(v, true),
-      description: (v) => validators.text(v, false, 'Description'),
-      jiraProjectKey: (v) => validators.jiraProjectKey(v, false),
-      jiraTicketId: (v) => validators.jiraTicketId(v, false),
-      jiraUrl: (v) => validators.jiraUrl(v, false)
-    });
-    if (validationError) return validationError;
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required.'
+      });
+    }
 
     const [result] = await db.query(
       `INSERT INTO issues (organization_id, title, description, status, priority, assigned_to_user_id, reporter_user_id, jira_project_key, jira_ticket_id, jira_url)
@@ -212,16 +208,6 @@ const updateIssue = async (req, res) => {
     const organizationId = req.user.organizationId;
     const userId = req.user.userId;
     const role = req.user.role;
-
-    // Validate request body
-    const validationError = validateRequest(req, res, {
-      title: (v) => validators.issueTitle(v, false),
-      description: (v) => validators.text(v, false, 'Description'),
-      jiraProjectKey: (v) => validators.jiraProjectKey(v, false),
-      jiraTicketId: (v) => validators.jiraTicketId(v, false),
-      jiraUrl: (v) => validators.jiraUrl(v, false)
-    });
-    if (validationError) return validationError;
 
     // Check if issue exists and belongs to organization
     const [existingIssues] = await db.query(

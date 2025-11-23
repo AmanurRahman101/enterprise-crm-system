@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../services/api';
-import { validators, validateForm } from '../utils/validation';
 
 const Signin = () => {
   const navigate = useNavigate();
@@ -10,7 +9,6 @@ const Signin = () => {
     email: '',
     password: ''
   });
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   // Check if user is already logged in
@@ -24,32 +22,13 @@ const Signin = () => {
     }
   }, [navigate]);
 
-  const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: null });
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     // Validate form
-    const validationRules = {
-      email: (v) => validators.email(v, true),
-      password: (v) => validators.password(v, true)
-    };
-
-    const { isValid, errors: validationErrors } = validateForm(formData, validationRules);
-
-    if (!isValid) {
-      setErrors(validationErrors);
-      const firstError = Object.values(validationErrors)[0];
-      if (firstError) {
-        toast.error(firstError);
-      }
+    if (!formData.email || !formData.password) {
+      toast.error('Please fill in all fields');
       setLoading(false);
       return;
     }
@@ -110,18 +89,12 @@ const Signin = () => {
                 type="email"
                 id="email"
                 required
-                maxLength={255}
                 value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="john@example.com"
                 autoComplete="email"
               />
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
-              )}
             </div>
 
             {/* Password */}
@@ -141,18 +114,12 @@ const Signin = () => {
                 type="password"
                 id="password"
                 required
-                maxLength={255}
                 value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="••••••••"
                 autoComplete="current-password"
               />
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
-              )}
             </div>
 
             {/* Submit Button */}
