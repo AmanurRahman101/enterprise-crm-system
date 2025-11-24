@@ -512,118 +512,35 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
     notes: deal?.notes || ''
   });
 
-  const [contactType, setContactType] = useState(deal?.contactPerson ? 'person' : deal?.contactOrg ? 'organization' : 'none');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [availableContacts, setAvailableContacts] = useState([]);
-  const [loadingContacts, setLoadingContacts] = useState(false);
-  const [selectedContact, setSelectedContact] = useState(
-    deal?.contactPerson 
-      ? { id: deal.contactPerson.id, name: deal.contactPerson.name, email: deal.contactPerson.email }
-      : deal?.contactOrg
-      ? { id: deal.contactOrg.id, name: deal.contactOrg.name, email: deal.contactOrg.email }
-      : null
+  // State for user assignment
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(
+    deal?.assignedTo ? { id: deal.assignedTo.id, name: deal.assignedTo.name, email: deal.assignedTo.email } : null
   );
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
 
-  // Close dropdown when clicking outside
+  // Load all users for assignment dropdown
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Load contacts based on type from the contacts API
-  useEffect(() => {
-    const loadContacts = async () => {
-      if (searchQuery.length < 2 && searchQuery.length > 0) return;
-      
+    const loadUsers = async () => {
       try {
-        setLoadingContacts(true);
-        if (contactType === 'person') {
-          const response = await ApiService.request('/api/contacts?type=people');
-          if (response.success) {
-            const filtered = (response.contacts || []).filter(contact => {
-              const name = `${contact.firstName || ''} ${contact.lastName || ''}`.toLowerCase();
-              const email = (contact.email || '').toLowerCase();
-              const search = searchQuery.toLowerCase();
-              return !searchQuery || name.includes(search) || email.includes(search);
-            });
-            setAvailableContacts(filtered);
-          }
-        } else if (contactType === 'organization') {
-          const response = await ApiService.request('/api/contacts?type=organizations');
-          if (response.success) {
-            const filtered = (response.contacts || []).filter(contact => {
-              const name = (contact.name || '').toLowerCase();
-              const email = (contact.email || '').toLowerCase();
-              const search = searchQuery.toLowerCase();
-              return !searchQuery || name.includes(search) || email.includes(search);
-            });
-            setAvailableContacts(filtered);
-          }
+        setLoadingUsers(true);
+        const response = await ApiService.request('/api/users');
+        if (response.success) {
+          setAvailableUsers(response.users || []);
         }
       } catch (error) {
-        console.error('Failed to load contacts:', error);
-        setAvailableContacts([]);
+        console.error('Failed to load users:', error);
+        setAvailableUsers([]);
       } finally {
-        setLoadingContacts(false);
+        setLoadingUsers(false);
       }
     };
-
-    const timer = setTimeout(() => {
-      if (contactType !== 'none') {
-        loadContacts();
-      } else {
-        setAvailableContacts([]);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, contactType]);
-
-  const handleContactSelect = (contact) => {
-    if (contactType === 'person') {
-      setFormData({ ...formData, contactPersonId: contact.id, contactOrgId: null });
-      setSelectedContact({ id: contact.id, name: `${contact.firstName} ${contact.lastName}`, email: contact.email });
-    } else if (contactType === 'organization') {
-      setFormData({ ...formData, contactOrgId: contact.id, contactPersonId: null });
-      setSelectedContact({ id: contact.id, name: contact.name, email: contact.email });
-    }
-    setSearchQuery(contact.firstName ? `${contact.firstName} ${contact.lastName}` : contact.name || contact.email);
-    setShowDropdown(false);
-  };
-
-  const handleContactTypeChange = (type) => {
-    setContactType(type);
-    setFormData({ ...formData, contactPersonId: null, contactOrgId: null });
-    setSelectedContact(null);
-    setSearchQuery('');
-    setAvailableContacts([]);
-  };
+    loadUsers();
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Ensure only one contact type is set
     const submitData = { ...formData };
-    if (contactType === 'person') {
-      submitData.contactOrgId = null;
-      if (!submitData.contactPersonId) {
-        submitData.contactPersonId = null;
-      }
-    } else if (contactType === 'organization') {
-      submitData.contactPersonId = null;
-      if (!submitData.contactOrgId) {
-        submitData.contactOrgId = null;
-      }
-    } else {
-      submitData.contactPersonId = null;
-      submitData.contactOrgId = null;
-    }
     // Convert empty strings to null for optional fields
     if (submitData.value === '') submitData.value = null;
     if (submitData.expectedCloseDate === '') submitData.expectedCloseDate = null;
@@ -726,90 +643,36 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contact Type
+              Assign To User
             </label>
-            <div className="flex gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => handleContactTypeChange('none')}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                  contactType === 'none'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                None
-              </button>
-              <button
-                type="button"
-                onClick={() => handleContactTypeChange('person')}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                  contactType === 'person'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Person
-              </button>
-              <button
-                type="button"
-                onClick={() => handleContactTypeChange('organization')}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                  contactType === 'organization'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Organization
-              </button>
-            </div>
-            {contactType !== 'none' && (
-              <div className="relative" ref={dropdownRef}>
-                <input
-                  type="text"
-                  placeholder={`Search ${contactType === 'person' ? 'person' : 'organization'}...`}
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-                {showDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {loadingContacts ? (
-                      <div className="p-4 text-center text-gray-500">Loading...</div>
-                    ) : availableContacts.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
-                        {searchQuery.length < 2 ? 'Type at least 2 characters to search' : 'No contacts found'}
-                      </div>
-                    ) : (
-                      availableContacts.map((contact) => (
-                        <button
-                          key={contact.id}
-                          type="button"
-                          onClick={() => handleContactSelect(contact)}
-                          className="w-full text-left px-4 py-2 hover:bg-indigo-50 transition-colors border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="font-medium text-gray-900">
-                            {contact.firstName ? `${contact.firstName} ${contact.lastName}` : contact.name}
-                          </div>
-                          <div className="text-sm text-gray-500">{contact.email}</div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-                {selectedContact && (
-                  <div className="mt-2 p-3 bg-indigo-50 rounded-lg">
-                    <div className="text-sm font-medium text-indigo-900">
-                      Selected: {selectedContact.name}
-                    </div>
-                    {selectedContact.email && (
-                      <div className="text-xs text-indigo-700">{selectedContact.email}</div>
-                    )}
-                  </div>
+            <select
+              value={formData.assignedToUserId || ''}
+              onChange={(e) => {
+                const userId = e.target.value ? parseInt(e.target.value) : null;
+                const user = availableUsers.find(u => u.id === userId);
+                setFormData({ ...formData, assignedToUserId: userId });
+                setSelectedUser(user ? { id: user.id, name: user.name, email: user.email } : null);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="">No assignment</option>
+              {loadingUsers ? (
+                <option value="">Loading users...</option>
+              ) : (
+                availableUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))
+              )}
+            </select>
+            {selectedUser && (
+              <div className="mt-2 p-2 bg-indigo-50 rounded-lg">
+                <div className="text-sm font-medium text-indigo-900">
+                  Assigned to: {selectedUser.name}
+                </div>
+                {selectedUser.email && (
+                  <div className="text-xs text-indigo-700">{selectedUser.email}</div>
                 )}
               </div>
             )}

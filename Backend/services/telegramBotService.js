@@ -5,10 +5,11 @@ const { chat } = require('./chatbotService');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+
 if (!TELEGRAM_BOT_TOKEN) {
   console.warn('TELEGRAM_BOT_TOKEN not configured. Telegram bot will not work.');
   module.exports = { initializeBot: () => {} };
-  return;
+  return; 
 }
 
 let bot = null;

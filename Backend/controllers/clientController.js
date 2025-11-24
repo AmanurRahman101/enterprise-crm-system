@@ -1,5 +1,6 @@
 // Client Portal Controller (for user_type='client')
 const db = require('../db/connection');
+const jiraService = require('../services/jiraService');
 const { verifyToken, isClient } = require('../middleware/auth');
 
 // Get Client's Deals (across all organizations where client is a contact)
@@ -26,14 +27,9 @@ const getClientDeals = async (req, res) => {
     const contactPersonIds = contactPeople.map(cp => cp.id);
     const contactOrgIds = contactOrgs.map(co => co.id);
 
-    if (contactPersonIds.length === 0 && contactOrgIds.length === 0) {
-      return res.status(200).json({
-        success: true,
-        deals: []
-      });
-    }
-
-    // Build query to get deals where client is a contact
+    // Build query to get deals where:
+    // 1. Client is a contact (existing behavior)
+    // 2. Deal is assigned to this user AND stage is "Won"
     let dealsQuery = `
       SELECT d.*, 
              ds.name as stage_name, ds.color as stage_color,
@@ -47,11 +43,22 @@ const getClientDeals = async (req, res) => {
       LEFT JOIN contacts_organizations co ON d.contact_org_id = co.id
       LEFT JOIN users u ON d.assigned_to_user_id = u.id
       INNER JOIN organizations o ON d.organization_id = o.id
-      WHERE (d.contact_person_id IN (${contactPersonIds.length > 0 ? contactPersonIds.join(',') : 'NULL'})
-             OR d.contact_org_id IN (${contactOrgIds.length > 0 ? contactOrgIds.join(',') : 'NULL'}))
+      WHERE (
     `;
 
-    const [deals] = await db.query(dealsQuery);
+    // Add contact-based filter
+    if (contactPersonIds.length > 0 || contactOrgIds.length > 0) {
+      dealsQuery += `(d.contact_person_id IN (${contactPersonIds.length > 0 ? contactPersonIds.join(',') : 'NULL'})
+             OR d.contact_org_id IN (${contactOrgIds.length > 0 ? contactOrgIds.join(',') : 'NULL'}))`;
+    } else {
+      dealsQuery += `(1 = 0)`; // No contacts, so only assigned deals
+    }
+
+    // Add assigned user filter (show won deals assigned to user)
+    dealsQuery += ` OR (d.assigned_to_user_id = ? AND ds.name = 'Won')`;
+    dealsQuery += `)`;
+
+    const [deals] = await db.query(dealsQuery, [userId]);
 
     res.status(200).json({
       success: true,
@@ -197,9 +204,132 @@ const getClientOverview = async (req, res) => {
   }
 };
 
+// Create Issue from Client Portal
+const createClientIssue = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      priority = 'medium',
+      dealId,
+      jiraProjectKey
+    } = req.body;
+
+    const userId = req.user.userId;
+
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required.'
+      });
+    }
+
+    if (!dealId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deal ID is required.'
+      });
+    }
+
+    // Validate deal exists and user has access to it (either as contact or assigned user)
+    const [deals] = await db.query(
+      `SELECT d.id, d.organization_id, d.title, ds.name as stage_name
+       FROM deals d
+       INNER JOIN deal_stages ds ON d.stage_id = ds.id
+       LEFT JOIN contacts_people cp ON d.contact_person_id = cp.id
+       LEFT JOIN contacts_organizations co ON d.contact_org_id = co.id
+       WHERE d.id = ? 
+       AND (
+         d.assigned_to_user_id = ? 
+         OR cp.email = (SELECT email FROM users WHERE id = ?)
+         OR co.email = (SELECT email FROM users WHERE id = ?)
+       )`,
+      [dealId, userId, userId, userId]
+    );
+
+    if (deals.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this deal or deal not found.'
+      });
+    }
+
+    const deal = deals[0];
+
+    // Check if deal is won
+    if (deal.stage_name !== 'Won') {
+      return res.status(400).json({
+        success: false,
+        message: 'Issues can only be created for won deals.'
+      });
+    }
+
+    const organizationId = deal.organization_id;
+    let jiraTicketId = null;
+    let jiraUrl = null;
+    let finalJiraProjectKey = jiraProjectKey;
+
+    // Create JIRA ticket if JIRA is configured
+    if (jiraService.isConfigured()) {
+      try {
+        const jiraResult = await jiraService.createTicket({
+          title,
+          description,
+          priority,
+          projectKey: jiraProjectKey,
+          dealId,
+          issueType: 'Task'
+        });
+
+        if (jiraResult.success) {
+          jiraTicketId = jiraResult.ticketId;
+          jiraUrl = jiraResult.ticketUrl;
+          finalJiraProjectKey = jiraProjectKey || process.env.JIRA_PROJECT_KEY;
+        }
+      } catch (jiraError) {
+        console.error('JIRA ticket creation failed:', jiraError.message);
+        // Continue without JIRA - don't fail the whole operation
+      }
+    }
+
+    // Create issue in database
+    const [result] = await db.query(
+      `INSERT INTO issues (organization_id, deal_id, title, description, status, priority, reporter_user_id, jira_project_key, jira_ticket_id, jira_url)
+       VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
+      [organizationId, dealId, title, description || null, priority, userId, finalJiraProjectKey || null, jiraTicketId || null, jiraUrl || null]
+    );
+
+    const [newIssues] = await db.query(
+      'SELECT * FROM issues WHERE id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: jiraTicketId 
+        ? `Issue created successfully and synced to JIRA (${jiraTicketId})`
+        : 'Issue created successfully.',
+      issue: newIssues[0],
+      jiraTicket: jiraTicketId ? {
+        ticketId: jiraTicketId,
+        url: jiraUrl
+      } : null
+    });
+
+  } catch (error) {
+    console.error('Create client issue error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error creating issue.',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getClientDeals,
   getClientIssues,
-  getClientOverview
+  getClientOverview,
+  createClientIssue
 };
 

@@ -28,7 +28,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_user_type (user_type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Organizations Table
 CREATE TABLE organizations (
@@ -40,7 +40,7 @@ CREATE TABLE organizations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_name (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- User-Organizations Relationship Table (Many-to-Many with roles)
 CREATE TABLE user_organizations (
@@ -55,7 +55,7 @@ CREATE TABLE user_organizations (
     INDEX idx_user_id (user_id),
     INDEX idx_organization_id (organization_id),
     INDEX idx_role (role)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Contacts: People
 CREATE TABLE contacts_people (
@@ -78,7 +78,7 @@ CREATE TABLE contacts_people (
     INDEX idx_user_id (user_id),
     INDEX idx_email (email),
     INDEX idx_name (first_name, last_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Contacts: Organizations
 CREATE TABLE contacts_organizations (
@@ -101,7 +101,7 @@ CREATE TABLE contacts_organizations (
     INDEX idx_linked_organization_id (linked_organization_id),
     INDEX idx_name (name),
     INDEX idx_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Deal Stages (Global stages)
 CREATE TABLE deal_stages (
@@ -113,7 +113,7 @@ CREATE TABLE deal_stages (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_order (order_index),
     INDEX idx_name (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Insert default deal stages with typical probability values
 INSERT INTO deal_stages (name, order_index, color, default_probability) VALUES
@@ -150,12 +150,13 @@ CREATE TABLE deals (
     INDEX idx_assigned_to (assigned_to_user_id),
     INDEX idx_contact_person (contact_person_id),
     INDEX idx_contact_org (contact_org_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Issues Table (Jira-ready structure)
 CREATE TABLE issues (
     id INT AUTO_INCREMENT PRIMARY KEY,
     organization_id INT NOT NULL,
+    deal_id INT,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     status ENUM('open', 'in_progress', 'resolved', 'closed') NOT NULL DEFAULT 'open',
@@ -168,14 +169,16 @@ CREATE TABLE issues (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE SET NULL,
     FOREIGN KEY (assigned_to_user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE RESTRICT,
     INDEX idx_organization_id (organization_id),
+    INDEX idx_deal_id (deal_id),
     INDEX idx_status (status),
     INDEX idx_priority (priority),
     INDEX idx_assigned_to (assigned_to_user_id),
     INDEX idx_reporter (reporter_user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Activities Table (Audit log)
 CREATE TABLE activities (
@@ -194,7 +197,7 @@ CREATE TABLE activities (
     INDEX idx_user_id (user_id),
     INDEX idx_entity (entity_type, entity_id),
     INDEX idx_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Files Table
 CREATE TABLE files (
@@ -214,7 +217,7 @@ CREATE TABLE files (
     INDEX idx_organization_id (organization_id),
     INDEX idx_uploaded_by (uploaded_by_user_id),
     INDEX idx_entity (entity_type, entity_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Notifications Table
 CREATE TABLE notifications (
@@ -235,7 +238,7 @@ CREATE TABLE notifications (
     INDEX idx_read_at (read_at),
     INDEX idx_delivered_at (delivered_at),
     INDEX idx_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- User Telegram Links (for Telegram bot integration)
 CREATE TABLE user_telegram_links (
@@ -249,7 +252,7 @@ CREATE TABLE user_telegram_links (
     INDEX idx_user_id (user_id),
     INDEX idx_telegram_chat_id (telegram_chat_id),
     INDEX idx_verification_code (verification_code)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- User FCM Tokens (for push notifications)
 CREATE TABLE user_fcm_tokens (
@@ -263,7 +266,7 @@ CREATE TABLE user_fcm_tokens (
     UNIQUE KEY unique_user_device (user_id, device_id),
     INDEX idx_user_id (user_id),
     INDEX idx_token (token)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =====================================================
 -- CALL LOGS TABLE (Voice Calling Feature)
@@ -300,4 +303,6 @@ CREATE TABLE IF NOT EXISTS call_logs (
     INDEX idx_channel (channel_name),
     INDEX idx_started (started_at),
     INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+

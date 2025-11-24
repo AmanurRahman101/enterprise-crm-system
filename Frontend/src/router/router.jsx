@@ -90,7 +90,7 @@ export let router = createBrowserRouter([
           {
             index: true,
             Component: OrgOverview
-          },
+            },
           {
             path: 'deals',
             Component: Deals

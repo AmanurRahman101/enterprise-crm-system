@@ -405,22 +405,11 @@ const Issues = () => {
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Issues</h1>
-            <p className="text-sm md:text-base text-gray-600 mt-2">
-              Track and manage issues with Jira integration
-            </p>
-          </div>
-          <button
-            onClick={handleCreateIssue}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Create Issue
-          </button>
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Issues</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-2">
+            Track and manage client-reported issues with Jira integration
+          </p>
         </div>
 
         {/* Statistics Cards */}

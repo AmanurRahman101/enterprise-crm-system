@@ -1,5 +1,7 @@
 // Issue Controller
 const db = require('../db/connection');
+const jiraService = require('../services/jiraService');
+const { hasPermission, canPerformAction } = require('../utils/permissions');
 
 // Get all issues for current organization
 const getIssues = async (req, res) => {
@@ -131,9 +133,8 @@ const createIssue = async (req, res) => {
       status = 'open',
       priority = 'medium',
       assignedToUserId,
-      jiraProjectKey,
-      jiraTicketId,
-      jiraUrl
+      dealId,
+      jiraProjectKey
     } = req.body;
 
     const organizationId = req.user.organizationId;
@@ -163,10 +164,64 @@ const createIssue = async (req, res) => {
       });
     }
 
+    // Validate deal_id if provided
+    if (dealId) {
+      const [deals] = await db.query(
+        'SELECT id FROM deals WHERE id = ? AND organization_id = ?',
+        [dealId, organizationId]
+      );
+      if (deals.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid deal ID.'
+        });
+      }
+    }
+
+    let jiraTicketId = null;
+    let jiraUrl = null;
+    let finalJiraProjectKey = jiraProjectKey;
+
+    // Create JIRA ticket if JIRA is configured
+    if (jiraService.isConfigured()) {
+      try {
+        // Get assignee email if provided
+        let assigneeEmail = null;
+        if (assignedToUserId) {
+          const [assignedUsers] = await db.query(
+            'SELECT email FROM users WHERE id = ?',
+            [assignedToUserId]
+          );
+          if (assignedUsers.length > 0) {
+            assigneeEmail = assignedUsers[0].email;
+          }
+        }
+
+        const jiraResult = await jiraService.createTicket({
+          title,
+          description,
+          priority,
+          projectKey: jiraProjectKey,
+          assigneeEmail,
+          dealId,
+          issueType: 'Task'
+        });
+
+        if (jiraResult.success) {
+          jiraTicketId = jiraResult.ticketId;
+          jiraUrl = jiraResult.ticketUrl;
+          finalJiraProjectKey = jiraProjectKey || process.env.JIRA_PROJECT_KEY;
+        }
+      } catch (jiraError) {
+        console.error('JIRA ticket creation failed:', jiraError.message);
+        // Continue without JIRA - don't fail the whole operation
+      }
+    }
+
     const [result] = await db.query(
-      `INSERT INTO issues (organization_id, title, description, status, priority, assigned_to_user_id, reporter_user_id, jira_project_key, jira_ticket_id, jira_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [organizationId, title, description || null, status, priority, assignedToUserId || null, userId, jiraProjectKey || null, jiraTicketId || null, jiraUrl || null]
+      `INSERT INTO issues (organization_id, deal_id, title, description, status, priority, assigned_to_user_id, reporter_user_id, jira_project_key, jira_ticket_id, jira_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [organizationId, dealId || null, title, description || null, status, priority, assignedToUserId || null, userId, finalJiraProjectKey || null, jiraTicketId || null, jiraUrl || null]
     );
 
     const [newIssues] = await db.query(
@@ -176,8 +231,14 @@ const createIssue = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Issue created successfully.',
-      issue: newIssues[0]
+      message: jiraTicketId 
+        ? `Issue created successfully and synced to JIRA (${jiraTicketId})`
+        : 'Issue created successfully.',
+      issue: newIssues[0],
+      jiraTicket: jiraTicketId ? {
+        ticketId: jiraTicketId,
+        url: jiraUrl
+      } : null
     });
 
   } catch (error) {
@@ -211,7 +272,7 @@ const updateIssue = async (req, res) => {
 
     // Check if issue exists and belongs to organization
     const [existingIssues] = await db.query(
-      'SELECT id, assigned_to_user_id, reporter_user_id FROM issues WHERE id = ? AND organization_id = ?',
+      'SELECT id, assigned_to_user_id, reporter_user_id, jira_ticket_id FROM issues WHERE id = ? AND organization_id = ?',
       [id, organizationId]
     );
 
@@ -297,6 +358,22 @@ const updateIssue = async (req, res) => {
       `UPDATE issues SET ${updates.join(', ')} WHERE id = ? AND organization_id = ?`,
       values
     );
+
+    // Sync with JIRA if ticket exists
+    if (existingIssue.jira_ticket_id && jiraService.isConfigured()) {
+      try {
+        const jiraUpdates = {};
+        if (title !== undefined) jiraUpdates.title = title;
+        if (description !== undefined) jiraUpdates.description = description;
+        if (status !== undefined) jiraUpdates.status = status;
+        if (priority !== undefined) jiraUpdates.priority = priority;
+        
+        await jiraService.updateTicket(existingIssue.jira_ticket_id, jiraUpdates);
+      } catch (jiraError) {
+        console.error('JIRA sync failed:', jiraError.message);
+        // Continue without failing the update
+      }
+    }
 
     const [updatedIssues] = await db.query(
       'SELECT * FROM issues WHERE id = ?',

@@ -28,6 +28,8 @@ const agoraRoutes = require('./routes/agoraRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
 const telegramRoutes = require('./routes/telegramRoutes');
 const callRoutes = require('./routes/callRoutes');
+const userRoutes = require('./routes/userRoutes');
+const jiraRoutes = require('./routes/jiraRoutes');
 const { initializeBot } = require('./services/telegramBotService');
 const { initializeWebSocket } = require('./utils/callSignaling');
 
@@ -62,6 +64,9 @@ const io = new Server(server, {
 
 // Socket.io connection handling
 const socketService = require('./services/socketService')(io);
+
+// Make io available to routes
+app.set('io', io);
 
 // Pass socket service to contact controller for online status checking
 const contactController = require('./controllers/contactController');
@@ -115,6 +120,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/client', clientRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/deals', dealRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/issues', issueRoutes);
@@ -124,6 +130,7 @@ app.use('/api/agora', agoraRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/calls', callRoutes);
+app.use('/api/jira', jiraRoutes);
 
 // Legacy RPC-style routes (for backward compatibility)
 app.use('/rpc', rpcRoutes);
