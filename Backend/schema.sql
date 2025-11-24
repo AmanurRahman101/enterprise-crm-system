@@ -55,7 +55,7 @@ CREATE TABLE user_organizations (
     INDEX idx_user_id (user_id),
     INDEX idx_organization_id (organization_id),
     INDEX idx_role (role)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Contacts: People
 CREATE TABLE contacts_people (
