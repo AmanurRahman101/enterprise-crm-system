@@ -3,17 +3,19 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db/connection');
 const { jwtSecret, jwtExpiration } = require('../config/jwt');
+const { validateSignupInput, validateSigninInput } = require('../utils/validation');
 
 // User Signup (creates unified user account - all users can access client portal and create/join organizations)
 const signup = async (req, res) => {
   try {
     const { email, password, fullName, phone } = req.body;
+    const { isValid, errors } = validateSignupInput({ email, password, fullName, phone });
 
-    // Validate required fields
-    if (!email || !password || !fullName) {
+    if (!isValid) {
       return res.status(400).json({
         success: false,
-        message: 'Email, password, and full name are required.'
+        message: 'Please correct the highlighted fields.',
+        errors
       });
     }
 
@@ -64,6 +66,15 @@ const signup = async (req, res) => {
 const signin = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const { isValid, errors } = validateSigninInput({ email, password });
+
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please correct the highlighted fields.',
+        errors
+      });
+    }
 
     // Debug logging (masked for security)
     console.log('Signin attempt:', { 
@@ -91,7 +102,7 @@ const signin = async (req, res) => {
       console.log(`Signin attempt failed: User not found with email: ${email}`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.'
+        message: 'No account found for that email.'
       });
     }
 
@@ -111,7 +122,7 @@ const signin = async (req, res) => {
       console.log(`Signin attempt failed: Invalid password for user: ${user.email}`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.'
+        message: 'Invalid password.'
       });
     }
 

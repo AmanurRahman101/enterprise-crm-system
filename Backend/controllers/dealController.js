@@ -1,6 +1,7 @@
 // Deal Controller
 const db = require('../db/connection');
 const { hasPermission, canPerformAction } = require('../utils/permissions');
+const { validateDealPayload } = require('../utils/validation');
 
 // Get all deals for current organization
 const getDeals = async (req, res) => {
@@ -165,10 +166,15 @@ const createDeal = async (req, res) => {
       });
     }
 
-    if (!title || !stageId) {
+    const { isValid, errors } = validateDealPayload(
+      { title, value, currency, stageId, contactPersonId, contactOrgId, assignedToUserId, expectedCloseDate, probability, notes },
+      { partial: false }
+    );
+    if (!isValid) {
       return res.status(400).json({
         success: false,
-        message: 'Title and stage are required.'
+        message: 'Please correct the highlighted fields.',
+        errors
       });
     }
 
@@ -177,7 +183,10 @@ const createDeal = async (req, res) => {
     if (stages.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid deal stage.'
+        message: 'Invalid deal stage.',
+        errors: {
+          stageId: 'Please select a valid stage.'
+        }
       });
     }
     
@@ -195,7 +204,10 @@ const createDeal = async (req, res) => {
       if (contacts.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid contact person. Please select a contact from your contacts list.'
+          message: 'Invalid contact person. Please select a contact from your contacts list.',
+          errors: {
+            contactPersonId: 'Select a valid contact from your organization.'
+          }
         });
       }
     }
@@ -208,7 +220,10 @@ const createDeal = async (req, res) => {
       if (contacts.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid contact organization. Please select a contact from your contacts list.'
+          message: 'Invalid contact organization. Please select a contact from your contacts list.',
+          errors: {
+            contactOrgId: 'Select a valid organization contact.'
+          }
         });
       }
       // Prevent adding a deal with the current organization itself
@@ -274,6 +289,15 @@ const updateDeal = async (req, res) => {
     const organizationId = req.user.organizationId;
     const userId = req.user.userId;
     const role = req.user.role;
+
+    const { isValid, errors } = validateDealPayload(req.body, { partial: true });
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please correct the highlighted fields.',
+        errors
+      });
+    }
 
     // Check if deal exists and belongs to organization
     const [existingDeals] = await db.query(

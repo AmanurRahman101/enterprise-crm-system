@@ -2,6 +2,7 @@
 const db = require('../db/connection');
 const jiraService = require('../services/jiraService');
 const { verifyToken, isClient } = require('../middleware/auth');
+const { validateClientIssuePayload } = require('../utils/validation');
 
 // Get Client's Deals (across all organizations where client is a contact)
 const getClientDeals = async (req, res) => {
@@ -217,17 +218,12 @@ const createClientIssue = async (req, res) => {
 
     const userId = req.user.userId;
 
-    if (!title) {
+    const { isValid, errors } = validateClientIssuePayload({ title, description, priority, dealId, jiraProjectKey });
+    if (!isValid) {
       return res.status(400).json({
         success: false,
-        message: 'Title is required.'
-      });
-    }
-
-    if (!dealId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Deal ID is required.'
+        message: 'Please correct the highlighted fields.',
+        errors
       });
     }
 
@@ -250,7 +246,10 @@ const createClientIssue = async (req, res) => {
     if (deals.length === 0) {
       return res.status(403).json({
         success: false,
-        message: 'You do not have access to this deal or deal not found.'
+        message: 'You do not have access to this deal or deal not found.',
+        errors: {
+          dealId: 'Select a valid deal you have access to.'
+        }
       });
     }
 
@@ -260,7 +259,10 @@ const createClientIssue = async (req, res) => {
     if (deal.stage_name !== 'Won') {
       return res.status(400).json({
         success: false,
-        message: 'Issues can only be created for won deals.'
+        message: 'Issues can only be created for won deals.',
+        errors: {
+          dealId: 'Issues can only be created for deals marked as Won.'
+        }
       });
     }
 

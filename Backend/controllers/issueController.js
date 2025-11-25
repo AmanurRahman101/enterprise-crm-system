@@ -2,6 +2,7 @@
 const db = require('../db/connection');
 const jiraService = require('../services/jiraService');
 const { hasPermission, canPerformAction } = require('../utils/permissions');
+const { validateIssuePayload } = require('../utils/validation');
 
 // Get all issues for current organization
 const getIssues = async (req, res) => {
@@ -141,6 +142,18 @@ const createIssue = async (req, res) => {
     const userId = req.user.userId;
     const role = req.user.role;
 
+    const { isValid, errors } = validateIssuePayload(
+      { title, description, status, priority, assignedToUserId, dealId, jiraProjectKey },
+      { partial: false }
+    );
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please correct the highlighted fields.',
+        errors
+      });
+    }
+
     // Check permission: Only owner, admin, manager, agent can create issues
     if (!hasPermission(role, 'CREATE_ISSUE')) {
       return res.status(403).json({
@@ -157,13 +170,6 @@ const createIssue = async (req, res) => {
       });
     }
 
-    if (!title) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title is required.'
-      });
-    }
-
     // Validate deal_id if provided
     if (dealId) {
       const [deals] = await db.query(
@@ -173,7 +179,10 @@ const createIssue = async (req, res) => {
       if (deals.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid deal ID.'
+          message: 'Invalid deal ID.',
+          errors: {
+            dealId: 'Please select a valid deal.'
+          }
         });
       }
     }
@@ -269,6 +278,18 @@ const updateIssue = async (req, res) => {
     const organizationId = req.user.organizationId;
     const userId = req.user.userId;
     const role = req.user.role;
+
+    const { isValid, errors } = validateIssuePayload(
+      { title, description, status, priority, assignedToUserId, jiraProjectKey, jiraTicketId, jiraUrl },
+      { partial: true }
+    );
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please correct the highlighted fields.',
+        errors
+      });
+    }
 
     // Check if issue exists and belongs to organization
     const [existingIssues] = await db.query(
