@@ -130,6 +130,13 @@ PORT=3000
 # JIRA_EMAIL=your-email@example.com
 # JIRA_API_TOKEN=your-jira-api-token
 # JIRA_PROJECT_KEY=CRM
+
+# AI Agent / Telegram Host
+GEMINI_API_KEY=         # Required for Google Gemini
+TELEGRAM_BOT_TOKEN=     # Required for Telegram bot
+MCP_SSE_URL=http://localhost:3000/mcp/sse
+GEMINI_MODEL=gemini-2.5-flash
+TELEGRAM_BOT_USERNAME=  # Optional handle (without @) shown in the UI
 ```
 
 **Start the Backend:**
@@ -143,6 +150,8 @@ You should see:
 ✅ Database connected successfully
 Server running on port 3000
 ```
+
+> ℹ️ Need to debug the MCP layer in isolation? Run `npm run mcp` to start only `Backend/mcp/server.js` on its own Express instance.
 
 ---
 
@@ -174,6 +183,22 @@ VITE v5.x.x  ready in xxx ms
 
 1. **Open your browser**
 2. **Go to:** http://localhost:5173/
+
+---
+
+### Step 6: (Optional) Start the MCP Telegram Host
+
+1. Confirm `GEMINI_API_KEY` and `TELEGRAM_BOT_TOKEN` are set in `Backend/.env`.
+2. In a new terminal, start the host:
+   ```bash
+   cd Backend
+   npm run bot
+   ```
+3. Link your Telegram account:
+   - In the CRM, go to **Organization Dashboard → Telegram Link** and generate a 6-digit code.
+   - Send the code to the bot. Once you get `✅ Account linked`, start asking CRM questions.
+
+The host connects to the MCP server at `http://localhost:3000/mcp/sse`. If you reverse-proxy or change ports, update `MCP_SSE_URL` accordingly.
 
 ---
 

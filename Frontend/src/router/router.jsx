@@ -20,6 +20,7 @@ import Issues from "../pages/organization/Issues";
 import Activities from "../pages/organization/Activities";
 import Team from "../pages/organization/Team";
 import CallHistory from "../pages/organization/CallHistory";
+import TelegramLink from "../pages/organization/TelegramLink";
 
 // Client Portal Pages
 import ClientOverview from "../pages/client/Overview";
@@ -114,6 +115,10 @@ export let router = createBrowserRouter([
           {
             path: 'calls',
             Component: CallHistory
+          },
+          {
+            path: 'settings/telegram',
+            Component: TelegramLink
           }
         ]
       }

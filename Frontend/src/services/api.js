@@ -199,6 +199,17 @@ class ApiService {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     return this.request(`/api/contacts/available/organizations${query}`);
   }
+
+  // Telegram linking endpoints
+  async getTelegramLinkStatus() {
+    return this.request('/api/telegram/link');
+  }
+
+  async generateTelegramLinkCode() {
+    return this.request('/api/telegram/link', {
+      method: 'POST'
+    });
+  }
 }
 
 export default new ApiService();

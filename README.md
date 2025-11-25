@@ -75,6 +75,10 @@ Optional variables:
 - `JWT_EXPIRATION` - JWT token expiration (default: 7d)
 - `GEMINI_API_KEY` - Google Gemini API key (for chatbot)
 - `TELEGRAM_BOT_TOKEN` - Telegram bot token (for Telegram integration)
+- `MCP_SSE_URL` - Custom MCP SSE endpoint for the Telegram host (default: http://localhost:3000/mcp/sse)
+- `MCP_SSE_PATH` / `MCP_MESSAGES_PATH` - Override internal MCP route paths if reverse proxying
+- `GEMINI_MODEL` - Gemini model to use for the host (default: gemini-2.5-flash)
+- `TELEGRAM_BOT_USERNAME` - Optional bot handle (without @) shown in the UI instructions
 
 #### Frontend Configuration
 
@@ -143,6 +147,17 @@ This script will:
 - Start frontend server (port 5173)
 - Open the application in your browser
 
+📣 **AI Agent / Telegram Host**
+
+Once the backend is running, start the Gemini-powered Telegram host in a separate terminal:
+
+```bash
+cd Backend
+npm run bot
+```
+
+The bot uses the MCP pipeline at `http://localhost:3000/mcp/sse`. Ensure `GEMINI_API_KEY` and `TELEGRAM_BOT_TOKEN` are set before launching.
+
 ### 7. Access the Application
 
 - **Frontend**: http://localhost:5173
@@ -193,8 +208,11 @@ tawasol-crm/
 │   ├── services/           # Business logic services
 │   ├── utils/              # Utility functions
 │   ├── db/                 # Database connection
+│   ├── mcp/                # MCP server + SQL tools
+│   ├── telegram/           # Telegram auth/session helpers
 │   ├── uploads/            # Uploaded files
 │   ├── schema.sql          # Database schema
+│   ├── bot.js              # Telegram MCP host entry point
 │   └── index.js            # Server entry point
 │
 ├── Frontend/               # React frontend
@@ -213,6 +231,17 @@ tawasol-crm/
 ├── stop.bat                # Stop script
 └── README.md               # This file
 ```
+
+## MCP AI Agent & Telegram Host
+
+- `Backend/mcp/server.js` mounts the MCP server on the Express app via `/mcp/sse` (stream) and `/mcp/messages` (POST). All tools enforce `organizationId` arguments for tenant isolation.
+- `Backend/bot.js` runs a Telegraf host that connects to Google Gemini (`gemini-2.5-flash` by default) and proxies Gemini function calls to MCP tools. Launch it with `npm run bot` after the backend is online.
+- `Backend/telegram/` contains helpers for Telegram chat ownership (verification codes) and lightweight conversation memory.
+- Required env vars: `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`. Optional overrides: `MCP_SSE_URL`, `MCP_SSE_PATH`, `MCP_MESSAGES_PATH`, `GEMINI_MODEL`.
+- To link a Telegram user, generate a 6-digit code in CRM → Settings → Telegram, send it to the bot, then start chatting.
+- UI path: Organization Dashboard → Telegram Link ( `/dashboard/organization/settings/telegram` ) shows current status and lets users generate pairing codes.
+
+This hub-and-spoke model keeps deterministic SQL work inside the MCP server (hands) while Gemini orchestrates tool calls (brain).
 
 ## Available Scripts
 

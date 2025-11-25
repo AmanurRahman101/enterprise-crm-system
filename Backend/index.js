@@ -30,8 +30,8 @@ const telegramRoutes = require('./routes/telegramRoutes');
 const callRoutes = require('./routes/callRoutes');
 const userRoutes = require('./routes/userRoutes');
 const jiraRoutes = require('./routes/jiraRoutes');
-const { initializeBot } = require('./services/telegramBotService');
 const { initializeWebSocket } = require('./utils/callSignaling');
+const { mountMcpServer } = require('./mcp/server');
 
 // Port configuration
 const port = process.env.PORT || 3000;
@@ -81,6 +81,9 @@ initializeWebSocket(server);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Mount MCP SSE transport for the AI agent
+const mcpLifecycle = mountMcpServer(app) || { shutdown: async () => {} };
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -154,14 +157,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Initialize Telegram bot (gracefully handle missing token)
-try {
-  initializeBot();
-} catch (error) {
-  console.warn('⚠️  Telegram bot initialization failed:', error.message);
-  console.log('💡 Telegram bot requires TELEGRAM_BOT_TOKEN in .env');
-}
-
 // Get local network IP for LAN access
 const getLocalIP = () => {
   const os = require('os');
@@ -211,6 +206,20 @@ server.listen(port, '0.0.0.0', () => {
   }
   console.log('');
 });
+
+let isShuttingDown = false;
+const gracefulShutdown = async () => {
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+  console.log('💤 Shutting down backend...');
+  await mcpLifecycle.shutdown();
+  server.close(() => process.exit(0));
+};
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
 
 // Handle port already in use error
 server.on('error', (err) => {
