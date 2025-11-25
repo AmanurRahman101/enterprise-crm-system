@@ -31,6 +31,23 @@ const sessionStore = new SessionStore();
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
+const extractModelText = (response, fallback = '') => {
+  if (!response) {
+    return fallback;
+  }
+  try {
+    if (typeof response.text === 'function') {
+      const text = response.text();
+      if (typeof text === 'string' && text.trim()) {
+        return text.trim();
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to extract Gemini text output:', error);
+  }
+  return fallback;
+};
+
 async function createMcpClient() {
   const baseUrl = new URL(MCP_SSE_URL);
   const client = new Client({
@@ -107,7 +124,7 @@ Return actionable summaries referencing deal/contact/issue names and highlight b
 `;
 }
 
-async function runAgent(chatId, { organizationId }, userText) {
+async function runAgent(chatId, { userId, email, organizationId }, userText) {
   const { client, transport } = await createMcpClient();
   try {
     const { tools } = await client.listTools();
@@ -132,6 +149,19 @@ async function runAgent(chatId, { organizationId }, userText) {
         functionCalls.map(async call => {
           const args = { ...(call.args || {}) };
           args.organizationId = organizationId;
+          const normalizedEmail = email ? email.toLowerCase() : undefined;
+          if (normalizedEmail && args.requestorEmail === undefined) {
+            args.requestorEmail = normalizedEmail;
+          }
+          if (normalizedEmail && args.creatorEmail === undefined) {
+            args.creatorEmail = normalizedEmail;
+          }
+          if (userId && args.requestorUserId === undefined) {
+            args.requestorUserId = userId;
+          }
+          if (userId && args.userId === undefined) {
+            args.userId = userId;
+          }
           const toolResult = await client.callTool({
             name: call.name,
             arguments: args
@@ -146,13 +176,16 @@ async function runAgent(chatId, { organizationId }, userText) {
       const responseParts = toolResults.map(result => ({
         functionResponse: {
           name: result.name,
-          response: { content: result.result }
+          response: { result: result.result }
         }
       }));
 
       const finalMessage = await chat.sendMessage(responseParts);
       const finalResponse = await finalMessage.response;
-      const finalText = finalResponse.text?.() || finalResponse.text || 'I was unable to compose a reply.';
+      const finalText =
+        extractModelText(finalResponse) ||
+        toolResults.map(r => r.result).join('\n') ||
+        'I was unable to compose a reply.';
 
       sessionStore.append(chatId, 'user', userText);
       sessionStore.append(chatId, 'model', finalText);
@@ -160,7 +193,7 @@ async function runAgent(chatId, { organizationId }, userText) {
       return finalText;
     }
 
-    const text = response.text?.() || response.text || 'I did not find anything to share yet.';
+    const text = extractModelText(response, 'I did not find anything to share yet.');
     sessionStore.append(chatId, 'user', userText);
     sessionStore.append(chatId, 'model', text);
     return text;

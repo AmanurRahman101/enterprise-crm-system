@@ -34,8 +34,16 @@ async function resolveUserContext(chatId) {
     throw error;
   }
 
+  const [users] = await db.query('SELECT email FROM users WHERE id = ? LIMIT 1', [userId]);
+  if (users.length === 0) {
+    const error = new Error('Linked user account no longer exists');
+    error.code = 'USER_MISSING';
+    throw error;
+  }
+
   return {
     userId,
+    email: users[0].email,
     organizationId: orgs[0].organization_id
   };
 }
