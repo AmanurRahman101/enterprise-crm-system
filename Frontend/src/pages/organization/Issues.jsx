@@ -84,7 +84,7 @@ const IssueCard = ({ issue, onClick }) => {
 
 // Issue Modal Component
 const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
-  const [formData, setFormData] = useState({
+  const buildInitialState = () => ({
     title: issue?.title || '',
     description: issue?.description || '',
     status: issue?.status || 'open',
@@ -94,9 +94,66 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
     jira_url: issue?.jira_url || ''
   });
 
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState(buildInitialState);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setFormData(buildInitialState());
+    setErrors({});
+  }, [issue]);
+
+  const validateForm = () => {
+    const nextErrors = {};
+    const title = formData.title.trim();
+    if (!title) {
+      nextErrors.title = 'Title is required.';
+    } else if (title.length < 3) {
+      nextErrors.title = 'Title must be at least 3 characters.';
+    }
+
+    if (formData.description && formData.description.length > 5000) {
+      nextErrors.description = 'Description cannot exceed 5000 characters.';
+    }
+
+    if (formData.jira_project_key && !/^[A-Z][A-Z0-9_-]{1,9}$/.test(formData.jira_project_key)) {
+      nextErrors.jira_project_key = 'Project key must be uppercase letters/numbers.';
+    }
+
+    if (formData.jira_ticket_id && !/^[A-Z]+-\d+$/.test(formData.jira_ticket_id)) {
+      nextErrors.jira_ticket_id = 'Ticket ID must look like PROJ-123.';
+    }
+
+    if (formData.jira_url) {
+      try {
+        new URL(formData.jira_url);
+      } catch (e) {
+        nextErrors.jira_url = 'Enter a valid URL.';
+      }
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    if (!validateForm()) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSave(formData);
+      setErrors({});
+    } catch (error) {
+      if (error?.errors) {
+        setErrors((prev) => ({ ...prev, ...error.errors }));
+      } else {
+        toast.error(error.message || 'Failed to save issue');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -123,9 +180,12 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.title ? 'border-red-400' : 'border-gray-300'
+              }`}
               placeholder="Brief description of the issue"
             />
+            {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
           </div>
 
           <div>
@@ -136,9 +196,12 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={5}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.description ? 'border-red-400' : 'border-gray-300'
+              }`}
               placeholder="Detailed description of the issue..."
             />
+            {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -194,10 +257,15 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
                   type="text"
                   value={formData.jira_project_key}
                   onChange={(e) => setFormData({ ...formData, jira_project_key: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.jira_project_key ? 'border-red-400' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., PROJ"
                 />
                 <p className="text-xs text-gray-500 mt-1">The project key in Jira</p>
+                {errors.jira_project_key && (
+                  <p className="mt-1 text-xs text-red-600">{errors.jira_project_key}</p>
+                )}
               </div>
 
               <div>
@@ -208,10 +276,15 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
                   type="text"
                   value={formData.jira_ticket_id}
                   onChange={(e) => setFormData({ ...formData, jira_ticket_id: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.jira_ticket_id ? 'border-red-400' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., PROJ-123"
                 />
                 <p className="text-xs text-gray-500 mt-1">The full ticket ID from Jira</p>
+                {errors.jira_ticket_id && (
+                  <p className="mt-1 text-xs text-red-600">{errors.jira_ticket_id}</p>
+                )}
               </div>
 
               <div>
@@ -222,10 +295,13 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
                   type="url"
                   value={formData.jira_url}
                   onChange={(e) => setFormData({ ...formData, jira_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.jira_url ? 'border-red-400' : 'border-gray-300'
+                  }`}
                   placeholder="https://your-domain.atlassian.net/browse/PROJ-123"
                 />
                 <p className="text-xs text-gray-500 mt-1">Direct link to the Jira ticket</p>
+                {errors.jira_url && <p className="mt-1 text-xs text-red-600">{errors.jira_url}</p>}
               </div>
             </div>
           </div>
@@ -246,15 +322,17 @@ const IssueModal = ({ issue, onClose, onSave, onDelete }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+                disabled={submitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                disabled={submitting}
               >
-                {issue ? 'Update Issue' : 'Create Issue'}
+                {submitting ? 'Saving...' : issue ? 'Update Issue' : 'Create Issue'}
               </button>
             </div>
           </div>
@@ -350,6 +428,7 @@ const Issues = () => {
       loadData();
     } catch (error) {
       toast.error(error.message || 'Failed to save issue');
+      throw error;
     }
   };
 

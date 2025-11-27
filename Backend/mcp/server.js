@@ -1,6 +1,10 @@
 /**
  * MCP Server hookup for Tawasol CRM.
  * Exposes deterministic SQL tools over SSE for the Telegram host.
+ * 
+ * Two separate endpoints:
+ * - /mcp/client/sse - Client mode tools (limited)
+ * - /mcp/org/sse - Organization mode tools (full CRUD)
  */
 const express = require('express');
 const { z } = require('zod');
@@ -8,10 +12,18 @@ const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 const db = require('../db/connection');
 
-const MCP_SSE_PATH = process.env.MCP_SSE_PATH || '/mcp/sse';
-const MCP_MESSAGES_PATH = process.env.MCP_MESSAGES_PATH || '/mcp/messages';
+// Endpoint paths
+const MCP_CLIENT_SSE_PATH = '/mcp/client/sse';
+const MCP_CLIENT_MESSAGES_PATH = '/mcp/client/messages';
+const MCP_ORG_SSE_PATH = '/mcp/org/sse';
+const MCP_ORG_MESSAGES_PATH = '/mcp/org/messages';
+
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+
+const baseUserSchema = {
+  userId: z.number().int().positive().describe('User ID making the request')
+};
 
 const baseOrgSchema = {
   organizationId: z.number().int().positive().describe('Organization ID to scope the query')
@@ -35,13 +47,15 @@ const sanitizeCurrency = (value) => {
   return CURRENCY_REGEX.test(upper) ? upper : 'USD';
 };
 
-/**
- * Register all CRM tools on a new MCP server instance.
- */
-function createMcpServer() {
+// ============================================================
+// CLIENT MODE MCP SERVER
+// Limited tools for clients viewing their deals/issues
+// ============================================================
+
+function createClientMcpServer() {
   const server = new McpServer(
     {
-      name: 'tawasol-crm-mcp',
+      name: 'tawasol-crm-client-mcp',
       version: '1.0.0'
     },
     {
@@ -51,14 +65,388 @@ function createMcpServer() {
     }
   );
 
-  registerTools(server);
+  registerClientTools(server);
   return server;
 }
 
-function registerTools(server) {
+function registerClientTools(server) {
+  // List organizations (for creating issues)
+  server.tool(
+    'listOrganizations',
+    'List all organizations available for reporting issues. Use this to find organization IDs when creating issues.',
+    {
+      ...baseUserSchema,
+      search: z.string().max(100).describe('Optional search term to filter by name').optional()
+    },
+    async ({ userId, search }) => {
+      try {
+        let sql = 'SELECT id, name FROM organizations';
+        const params = [];
+        
+        if (search) {
+          sql += ' WHERE name LIKE ?';
+          params.push(`%${search.trim()}%`);
+        }
+        
+        sql += ' ORDER BY name LIMIT 20';
+        
+        const [rows] = await db.query(sql, params);
+        
+        return formatTableResult(
+          `Organizations (${rows.length})`,
+          rows,
+          ['id', 'name']
+        );
+      } catch (error) {
+        return formatError(`Failed to list organizations: ${error.message}`);
+      }
+    }
+  );
+
+  // Query deals where user is a contact
+  server.tool(
+    'queryMyDeals',
+    'List deals where you are listed as a contact. Shows deals from all organizations where you are a client.',
+    {
+      ...baseUserSchema,
+      status: z.enum(['all', 'active', 'won', 'lost']).describe('Filter by deal status').optional(),
+      limit: limitSchema
+    },
+    async ({ userId, status, limit }) => {
+      try {
+        const limitValue = clampLimit(limit);
+        
+        // Get user email for contact lookup
+        const [users] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
+        if (users.length === 0) {
+          return formatError('User not found.');
+        }
+        const userEmail = users[0].email;
+
+        // Find contact IDs linked to this user's email
+        const [contactPeople] = await db.query(
+          'SELECT id, organization_id FROM contacts_people WHERE email = ?',
+          [userEmail]
+        );
+        const [contactOrgs] = await db.query(
+          'SELECT id, organization_id FROM contacts_organizations WHERE email = ?',
+          [userEmail]
+        );
+
+        const contactPersonIds = contactPeople.map(cp => cp.id);
+        const contactOrgIds = contactOrgs.map(co => co.id);
+
+        if (contactPersonIds.length === 0 && contactOrgIds.length === 0) {
+          return formatTableResult('My Deals (0)', [], ['id', 'title', 'value', 'stage', 'organization']);
+        }
+
+        let whereClause = `(
+          d.contact_person_id IN (${contactPersonIds.length > 0 ? contactPersonIds.join(',') : 'NULL'})
+          OR d.contact_org_id IN (${contactOrgIds.length > 0 ? contactOrgIds.join(',') : 'NULL'})
+        )`;
+
+        // Status filter
+        if (status === 'won') {
+          whereClause += ` AND ds.name = 'Won'`;
+        } else if (status === 'lost') {
+          whereClause += ` AND ds.name = 'Lost'`;
+        } else if (status === 'active') {
+          whereClause += ` AND ds.name NOT IN ('Won', 'Lost')`;
+        }
+
+        const [rows] = await db.query(
+          `
+            SELECT
+              d.id,
+              d.title,
+              d.value,
+              d.currency,
+              ds.name AS stage,
+              d.probability,
+              o.name AS organizationName,
+              DATE_FORMAT(d.updated_at, '%Y-%m-%d') AS updatedAt
+            FROM deals d
+            INNER JOIN deal_stages ds ON d.stage_id = ds.id
+            INNER JOIN organizations o ON d.organization_id = o.id
+            WHERE ${whereClause}
+            ORDER BY d.updated_at DESC
+            LIMIT ?
+          `,
+          [limitValue]
+        );
+
+        return formatTableResult(
+          `My Deals (${rows.length})`,
+          rows,
+          ['id', 'title', 'value', 'currency', 'stage', 'probability', 'organizationName', 'updatedAt']
+        );
+      } catch (error) {
+        return formatError(`Failed to query deals: ${error.message}`);
+      }
+    }
+  );
+
+  // Query issues reported by user
+  server.tool(
+    'queryMyIssues',
+    'List issues you have reported. Shows issues from all organizations.',
+    {
+      ...baseUserSchema,
+      status: z.enum(['all', ...ISSUE_STATUSES]).describe('Filter by issue status: all, open, in_progress, resolved, or closed').optional(),
+      limit: limitSchema
+    },
+    async ({ userId, status, limit }) => {
+      try {
+        const limitValue = clampLimit(limit);
+        const clauses = ['i.reporter_user_id = ?'];
+        const params = [userId];
+
+        if (status && status !== 'all') {
+          clauses.push('i.status = ?');
+          params.push(status);
+        }
+
+        const [rows] = await db.query(
+          `
+            SELECT
+              i.id,
+              i.title,
+              i.status,
+              i.priority,
+              o.name AS organizationName,
+              u.full_name AS assignedTo,
+              DATE_FORMAT(i.updated_at, '%Y-%m-%d') AS updatedAt
+            FROM issues i
+            INNER JOIN organizations o ON i.organization_id = o.id
+            LEFT JOIN users u ON i.assigned_to_user_id = u.id
+            WHERE ${clauses.join(' AND ')}
+            ORDER BY i.updated_at DESC
+            LIMIT ?
+          `,
+          [...params, limitValue]
+        );
+
+        return formatTableResult(
+          `My Issues (${rows.length})`,
+          rows,
+          ['id', 'title', 'status', 'priority', 'organizationName', 'assignedTo', 'updatedAt']
+        );
+      } catch (error) {
+        return formatError(`Failed to query issues: ${error.message}`);
+      }
+    }
+  );
+
+  // Create issue as client
+  server.tool(
+    'createIssue',
+    'Report a new issue or support request to an organization. Use listOrganizations first to find the organization ID.',
+    {
+      ...baseUserSchema,
+      organizationId: z.number().int().positive().describe('Organization ID to report to (use listOrganizations to find)'),
+      title: z.string().min(3).max(200).describe('Issue title'),
+      description: z.string().max(5000).describe('Detailed description of the issue').optional(),
+      priority: z.enum(ISSUE_PRIORITIES).describe('Issue priority').optional(),
+      dealId: z.number().int().positive().describe('Related deal ID (if applicable)').optional()
+    },
+    async ({ userId, organizationId, title, description, priority = 'medium', dealId }) => {
+      try {
+        // Verify organization exists
+        const [orgs] = await db.query('SELECT id, name FROM organizations WHERE id = ?', [organizationId]);
+        if (orgs.length === 0) {
+          return formatError('Organization not found. Use listOrganizations to find valid organization IDs.');
+        }
+
+        // If dealId provided, verify user has access to it
+        if (dealId) {
+          const [users] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
+          if (users.length === 0) {
+            return formatError('User not found.');
+          }
+          const userEmail = users[0].email;
+
+          const [deals] = await db.query(
+            `SELECT d.id FROM deals d
+             LEFT JOIN contacts_people cp ON d.contact_person_id = cp.id
+             LEFT JOIN contacts_organizations co ON d.contact_org_id = co.id
+             WHERE d.id = ? AND d.organization_id = ?
+             AND (cp.email = ? OR co.email = ?)`,
+            [dealId, organizationId, userEmail, userEmail]
+          );
+
+          if (deals.length === 0) {
+            return formatError('You do not have access to this deal.');
+          }
+        }
+
+        const [result] = await db.query(
+          `INSERT INTO issues (organization_id, deal_id, title, description, status, priority, reporter_user_id)
+           VALUES (?, ?, ?, ?, 'open', ?, ?)`,
+          [organizationId, dealId || null, title.trim(), description || null, priority, userId]
+        );
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Issue "${title}" created with ID ${result.insertId} for ${orgs[0].name}. The organization will be notified.`
+            }
+          ]
+        };
+      } catch (error) {
+        return formatError(`Failed to create issue: ${error.message}`);
+      }
+    }
+  );
+
+  // Get issue details
+  server.tool(
+    'getIssueDetails',
+    'Get detailed information about one of your issues.',
+    {
+      ...baseUserSchema,
+      issueId: z.number().int().positive().describe('Issue ID to view')
+    },
+    async ({ userId, issueId }) => {
+      try {
+        const [rows] = await db.query(
+          `SELECT i.*, o.name AS organization_name, u.full_name AS assigned_to_name
+           FROM issues i
+           INNER JOIN organizations o ON i.organization_id = o.id
+           LEFT JOIN users u ON i.assigned_to_user_id = u.id
+           WHERE i.id = ? AND i.reporter_user_id = ?`,
+          [issueId, userId]
+        );
+
+        if (rows.length === 0) {
+          return formatError('Issue not found or you do not have access to it.');
+        }
+
+        const issue = rows[0];
+        const lines = [
+          `📋 Issue #${issue.id}: ${issue.title}`,
+          `Organization: ${issue.organization_name}`,
+          `Status: ${issue.status}`,
+          `Priority: ${issue.priority}`,
+          `Assigned To: ${issue.assigned_to_name || 'Unassigned'}`,
+          `Created: ${new Date(issue.created_at).toLocaleDateString()}`,
+          `Updated: ${new Date(issue.updated_at).toLocaleDateString()}`,
+          '',
+          `Description: ${issue.description || 'No description provided.'}`
+        ];
+
+        return {
+          content: [{ type: 'text', text: lines.join('\n') }]
+        };
+      } catch (error) {
+        return formatError(`Failed to get issue details: ${error.message}`);
+      }
+    }
+  );
+
+  // Get client overview stats
+  server.tool(
+    'getMyStats',
+    'Get an overview of your deals and issues across all organizations.',
+    {
+      ...baseUserSchema
+    },
+    async ({ userId }) => {
+      try {
+        const [users] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
+        if (users.length === 0) {
+          return formatError('User not found.');
+        }
+        const userEmail = users[0].email;
+
+        // Count deals
+        const [contactPeople] = await db.query(
+          'SELECT id FROM contacts_people WHERE email = ?',
+          [userEmail]
+        );
+        const [contactOrgs] = await db.query(
+          'SELECT id FROM contacts_organizations WHERE email = ?',
+          [userEmail]
+        );
+
+        const contactPersonIds = contactPeople.map(cp => cp.id);
+        const contactOrgIds = contactOrgs.map(co => co.id);
+
+        let dealsCount = 0;
+        let activeDealsCount = 0;
+        let wonDealsValue = 0;
+
+        if (contactPersonIds.length > 0 || contactOrgIds.length > 0) {
+          const [dealStats] = await db.query(
+            `SELECT 
+              COUNT(*) as total,
+              SUM(CASE WHEN ds.name NOT IN ('Won', 'Lost') THEN 1 ELSE 0 END) as active,
+              SUM(CASE WHEN ds.name = 'Won' THEN d.value ELSE 0 END) as wonValue
+             FROM deals d
+             INNER JOIN deal_stages ds ON d.stage_id = ds.id
+             WHERE d.contact_person_id IN (${contactPersonIds.length > 0 ? contactPersonIds.join(',') : 'NULL'})
+                OR d.contact_org_id IN (${contactOrgIds.length > 0 ? contactOrgIds.join(',') : 'NULL'})`
+          );
+          dealsCount = dealStats[0].total || 0;
+          activeDealsCount = dealStats[0].active || 0;
+          wonDealsValue = dealStats[0].wonValue || 0;
+        }
+
+        // Count issues
+        const [issueStats] = await db.query(
+          `SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status IN ('open', 'in_progress') THEN 1 ELSE 0 END) as open
+           FROM issues WHERE reporter_user_id = ?`,
+          [userId]
+        );
+
+        const lines = [
+          '📊 Your Overview',
+          '',
+          `💼 Deals: ${dealsCount} total (${activeDealsCount} active)`,
+          `💰 Won Value: ${formatCurrency(wonDealsValue)}`,
+          `🎫 Issues: ${issueStats[0].total || 0} total (${issueStats[0].open || 0} open)`
+        ];
+
+        return {
+          content: [{ type: 'text', text: lines.join('\n') }]
+        };
+      } catch (error) {
+        return formatError(`Failed to get stats: ${error.message}`);
+      }
+    }
+  );
+}
+
+// ============================================================
+// ORGANIZATION MODE MCP SERVER
+// Full CRUD tools for organization members
+// ============================================================
+
+function createOrgMcpServer() {
+  const server = new McpServer(
+    {
+      name: 'tawasol-crm-org-mcp',
+      version: '1.0.0'
+    },
+    {
+      capabilities: {
+        logging: {}
+      }
+    }
+  );
+
+  registerOrgTools(server);
+  return server;
+}
+
+function registerOrgTools(server) {
+  // ==================== QUERY TOOLS ====================
+
   server.tool(
     'queryDeals',
-    'List deals for an organization. Supports stage and value filters.',
+    'List deals for the organization. Supports stage and value filters.',
     {
       ...baseOrgSchema,
       stageId: z.number().int().positive().describe('Optional stage ID filter').optional(),
@@ -121,24 +509,28 @@ function registerTools(server) {
           ['id', 'title', 'value', 'currency', 'stageId', 'probability', 'ownerId', 'updatedAt']
         );
       } catch (error) {
-        return server.createToolError(`Failed to query deals: ${error.message}`);
+        return formatError(`Failed to query deals: ${error.message}`);
       }
     }
   );
 
   server.tool(
     'queryContacts',
-    'List contacts (people or organizations) for an org with optional search.',
+    'List contacts (people or organizations) for the org. Supports filtering by system/general contacts.',
     {
       ...baseOrgSchema,
       type: z
         .enum(['all', 'people', 'organizations'])
         .describe('Choose which contact set to return')
         .default('all'),
+      contactCategory: z
+        .enum(['all', 'system', 'general'])
+        .describe('Filter by contact category: system (linked to user accounts) or general (external contacts)')
+        .default('all'),
       search: z.string().min(1).max(255).describe('Case-insensitive search term').optional(),
       limit: limitSchema
     },
-    async ({ organizationId, type, search, limit }) => {
+    async ({ organizationId, type, contactCategory, search, limit }) => {
       try {
         const limitValue = clampLimit(limit);
         const searchTerm = search ? `%${search.trim()}%` : null;
@@ -148,21 +540,32 @@ function registerTools(server) {
           const peopleParams = [organizationId];
           let peopleSql = `
             SELECT
-              id,
-              CONCAT(first_name, ' ', last_name) AS name,
-              email,
-              phone,
-              job_title AS extra,
+              cp.id,
+              CONCAT(cp.first_name, ' ', cp.last_name) AS name,
+              cp.email,
+              cp.phone,
+              cp.job_title AS extra,
               'person' AS contactType,
-              DATE_FORMAT(updated_at, '%Y-%m-%d') AS updatedAt
-            FROM contacts_people
-            WHERE organization_id = ?
+              CASE WHEN cp.user_id IS NOT NULL THEN 'system' ELSE 'general' END AS category,
+              u.full_name AS linkedUserName,
+              DATE_FORMAT(cp.updated_at, '%Y-%m-%d') AS updatedAt
+            FROM contacts_people cp
+            LEFT JOIN users u ON cp.user_id = u.id
+            WHERE cp.organization_id = ?
           `;
+          
+          // Category filter
+          if (contactCategory === 'system') {
+            peopleSql += ' AND cp.user_id IS NOT NULL';
+          } else if (contactCategory === 'general') {
+            peopleSql += ' AND cp.user_id IS NULL';
+          }
+          
           if (searchTerm) {
-            peopleSql += ` AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?)`;
+            peopleSql += ` AND (cp.first_name LIKE ? OR cp.last_name LIKE ? OR cp.email LIKE ? OR cp.phone LIKE ?)`;
             peopleParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
           }
-          peopleSql += ' ORDER BY updated_at DESC LIMIT ?';
+          peopleSql += ' ORDER BY cp.updated_at DESC LIMIT ?';
           peopleParams.push(limitValue);
           const [peopleRows] = await db.query(peopleSql, peopleParams);
           results.push(...peopleRows);
@@ -172,21 +575,32 @@ function registerTools(server) {
           const orgParams = [organizationId];
           let orgSql = `
             SELECT
-              id,
-              name,
-              email,
-              phone,
-              address AS extra,
+              co.id,
+              co.name,
+              co.email,
+              co.phone,
+              co.address AS extra,
               'organization' AS contactType,
-              DATE_FORMAT(updated_at, '%Y-%m-%d') AS updatedAt
-            FROM contacts_organizations
-            WHERE organization_id = ?
+              CASE WHEN co.linked_organization_id IS NOT NULL THEN 'system' ELSE 'general' END AS category,
+              lo.name AS linkedOrgName,
+              DATE_FORMAT(co.updated_at, '%Y-%m-%d') AS updatedAt
+            FROM contacts_organizations co
+            LEFT JOIN organizations lo ON co.linked_organization_id = lo.id
+            WHERE co.organization_id = ?
           `;
+          
+          // Category filter
+          if (contactCategory === 'system') {
+            orgSql += ' AND co.linked_organization_id IS NOT NULL';
+          } else if (contactCategory === 'general') {
+            orgSql += ' AND co.linked_organization_id IS NULL';
+          }
+          
           if (searchTerm) {
-            orgSql += ` AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)`;
+            orgSql += ` AND (co.name LIKE ? OR co.email LIKE ? OR co.phone LIKE ?)`;
             orgParams.push(searchTerm, searchTerm, searchTerm);
           }
-          orgSql += ' ORDER BY updated_at DESC LIMIT ?';
+          orgSql += ' ORDER BY co.updated_at DESC LIMIT ?';
           orgParams.push(limitValue);
           const [orgRows] = await db.query(orgSql, orgParams);
           results.push(...orgRows);
@@ -196,38 +610,66 @@ function registerTools(server) {
         return formatTableResult(
           `Contacts (${trimmed.length})`,
           trimmed,
-          ['contactType', 'id', 'name', 'email', 'phone', 'extra', 'updatedAt']
+          ['contactType', 'category', 'id', 'name', 'email', 'phone', 'extra', 'updatedAt']
         );
       } catch (error) {
-        return server.createToolError(`Failed to query contacts: ${error.message}`);
+        return formatError(`Failed to query contacts: ${error.message}`);
+      }
+    }
+  );
+
+  // Search system users (for linking contacts)
+  server.tool(
+    'searchSystemUsers',
+    'Search for registered users in the system to link as contacts.',
+    {
+      ...baseOrgSchema,
+      search: z.string().min(1).max(255).describe('Search by email or name'),
+      limit: limitSchema
+    },
+    async ({ organizationId, search, limit }) => {
+      try {
+        const limitValue = clampLimit(limit);
+        const searchTerm = `%${search.trim()}%`;
+
+        const [rows] = await db.query(
+          `SELECT id, email, full_name AS name, phone
+           FROM users
+           WHERE (email LIKE ? OR full_name LIKE ?)
+           ORDER BY full_name
+           LIMIT ?`,
+          [searchTerm, searchTerm, limitValue]
+        );
+
+        return formatTableResult(
+          `System Users (${rows.length})`,
+          rows,
+          ['id', 'name', 'email', 'phone']
+        );
+      } catch (error) {
+        return formatError(`Failed to search users: ${error.message}`);
       }
     }
   );
 
   server.tool(
     'queryIssues',
-    'List issues filtered by status/priority for an organization.',
+    'List issues filtered by status/priority for the organization.',
     {
       ...baseOrgSchema,
-      status: z
-        .enum(['open', 'in_progress', 'resolved', 'closed'])
-        .describe('Optional status filter')
-        .optional(),
-      priority: z
-        .enum(['low', 'medium', 'high', 'critical'])
-        .describe('Optional priority filter')
-        .optional(),
+      status: z.enum(['all', ...ISSUE_STATUSES]).describe('Filter by status: all, open, in_progress, resolved, or closed').optional(),
+      priority: z.enum(['all', ...ISSUE_PRIORITIES]).describe('Filter by priority: all, low, medium, high, or critical').optional(),
       limit: limitSchema
     },
     async ({ organizationId, status, priority, limit }) => {
       try {
         const clauses = ['organization_id = ?'];
         const params = [organizationId];
-        if (status) {
+        if (status && status !== 'all') {
           clauses.push('status = ?');
           params.push(status);
         }
-        if (priority) {
+        if (priority && priority !== 'all') {
           clauses.push('priority = ?');
           params.push(priority);
         }
@@ -254,7 +696,7 @@ function registerTools(server) {
           ['id', 'title', 'status', 'priority', 'ownerId', 'updatedAt']
         );
       } catch (error) {
-        return server.createToolError(`Failed to query issues: ${error.message}`);
+        return formatError(`Failed to query issues: ${error.message}`);
       }
     }
   );
@@ -294,15 +736,18 @@ function registerTools(server) {
           `
             SELECT
               (SELECT COUNT(*) FROM contacts_people WHERE organization_id = ?) AS peopleCount,
+              (SELECT COUNT(*) FROM contacts_people WHERE organization_id = ? AND user_id IS NOT NULL) AS systemPeopleCount,
               (SELECT COUNT(*) FROM contacts_organizations WHERE organization_id = ?) AS orgCount
           `,
-          [organizationId, organizationId]
+          [organizationId, organizationId, organizationId]
         );
+
+        const generalPeopleCount = (contactStats.peopleCount || 0) - (contactStats.systemPeopleCount || 0);
 
         const responseLines = [
           `Deals: ${dealStats.totalDeals || 0} (value ${formatCurrency(dealStats.totalValue)})`,
           `Forecast >=50%: ${formatCurrency(dealStats.forecastedValue)}`,
-          `Contacts: ${contactStats.peopleCount || 0} people / ${contactStats.orgCount || 0} orgs`,
+          `Contacts: ${contactStats.peopleCount || 0} people (${contactStats.systemPeopleCount || 0} system, ${generalPeopleCount} general) / ${contactStats.orgCount || 0} orgs`,
           `Issues: ${issueStats.openIssues || 0} open (${issueStats.criticalIssues || 0} critical)`
         ];
 
@@ -315,7 +760,7 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to gather stats: ${error.message}`);
+        return formatError(`Failed to gather stats: ${error.message}`);
       }
     }
   );
@@ -351,17 +796,19 @@ function registerTools(server) {
           ['id', 'name', 'orderIndex', 'defaultProbability', 'dealCount']
         );
       } catch (error) {
-        return server.createToolError(`Failed to list stages: ${error.message}`);
+        return formatError(`Failed to list stages: ${error.message}`);
       }
     }
   );
 
-  // Deal mutations
+  // ==================== DEAL MUTATIONS ====================
+
   server.tool(
     'createDeal',
     'Create a new deal for this organization.',
     {
       ...baseOrgSchema,
+      creatorEmail: z.string().email().describe('Email of the user creating the deal'),
       title: z.string().min(3).max(150).describe('Deal title'),
       stageId: z.number().int().positive().describe('Deal stage ID'),
       value: z.number().nonnegative().describe('Deal value').optional(),
@@ -369,7 +816,6 @@ function registerTools(server) {
       contactPersonId: z.number().int().positive().describe('Existing contact person ID').optional(),
       contactOrgId: z.number().int().positive().describe('Existing contact organization ID').optional(),
       assignedToEmail: z.string().email().describe('Email of user to assign the deal to').optional(),
-      assignedToUserId: z.number().int().positive().describe('Legacy user ID for assignment').optional(),
       expectedCloseDate: z.string().describe('Expected close date (YYYY-MM-DD)').optional(),
       probability: z.number().int().min(0).max(100).describe('Probability in percent').optional(),
       notes: z.string().max(2000).describe('Internal notes').optional()
@@ -378,6 +824,7 @@ function registerTools(server) {
       try {
         const {
           organizationId,
+          creatorEmail,
           title,
           stageId,
           value,
@@ -385,34 +832,31 @@ function registerTools(server) {
           contactPersonId,
           contactOrgId,
           assignedToEmail,
-          assignedToUserId,
           expectedCloseDate,
           probability,
           notes
         } = args;
+
+        // Verify creator is in org
+        await resolveOrgUser(organizationId, { email: creatorEmail });
 
         const stage = await ensureStage(stageId);
         if (contactPersonId) {
           await ensureContactPerson(organizationId, contactPersonId);
         }
         if (contactOrgId) {
-          const [rows] = await db.query(
-            'SELECT id FROM contacts_organizations WHERE id = ? AND organization_id = ?',
-            [contactOrgId, organizationId]
-          );
-          if (rows.length === 0) {
-            throw new Error('Contact organization not found in this organization.');
-          }
+          await ensureContactOrg(organizationId, contactOrgId);
         }
+
         let assignedUserId = null;
-        if (assignedToEmail || assignedToUserId) {
+        if (assignedToEmail) {
           const assignedUser = await resolveOrgUser(organizationId, {
-            userId: assignedToUserId,
             email: assignedToEmail,
             required: false
           });
           assignedUserId = assignedUser?.id || null;
         }
+
         if (expectedCloseDate) {
           const parsed = Date.parse(expectedCloseDate);
           if (Number.isNaN(parsed)) {
@@ -420,10 +864,7 @@ function registerTools(server) {
           }
         }
 
-        const finalProbability = normalizeProbability(
-          probability,
-          stage.default_probability || 0
-        );
+        const finalProbability = normalizeProbability(probability, stage.default_probability || 0);
         const finalCurrency = sanitizeCurrency(currency || 'USD');
 
         const [result] = await db.query(
@@ -453,7 +894,7 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to create deal: ${error.message}`);
+        return formatError(`Failed to create deal: ${error.message}`);
       }
     }
   );
@@ -471,7 +912,6 @@ function registerTools(server) {
       contactPersonId: z.number().int().positive().optional(),
       contactOrgId: z.number().int().positive().optional(),
       assignedToEmail: z.string().email().optional(),
-      assignedToUserId: z.number().int().positive().optional(),
       expectedCloseDate: z.string().optional(),
       probability: z.number().int().min(0).max(100).optional(),
       notes: z.string().max(2000).optional()
@@ -488,7 +928,6 @@ function registerTools(server) {
           contactPersonId,
           contactOrgId,
           assignedToEmail,
-          assignedToUserId,
           expectedCloseDate,
           probability,
           notes
@@ -535,21 +974,14 @@ function registerTools(server) {
         }
         if (contactOrgId !== undefined) {
           if (contactOrgId) {
-            const [rows] = await db.query(
-              'SELECT id FROM contacts_organizations WHERE id = ? AND organization_id = ?',
-              [contactOrgId, organizationId]
-            );
-            if (rows.length === 0) {
-              throw new Error('Contact organization not found in this organization.');
-            }
+            await ensureContactOrg(organizationId, contactOrgId);
           }
           updates.push('contact_org_id = ?');
           params.push(contactOrgId || null);
         }
-        if (assignedToEmail !== undefined || assignedToUserId !== undefined) {
-          if (assignedToEmail || assignedToUserId) {
+        if (assignedToEmail !== undefined) {
+          if (assignedToEmail) {
             const assigned = await resolveOrgUser(organizationId, {
-              userId: assignedToUserId,
               email: assignedToEmail,
               required: false
             });
@@ -594,7 +1026,7 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to update deal: ${error.message}`);
+        return formatError(`Failed to update deal: ${error.message}`);
       }
     }
   );
@@ -622,46 +1054,40 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to delete deal: ${error.message}`);
+        return formatError(`Failed to delete deal: ${error.message}`);
       }
     }
   );
 
-  // Issue mutations
+  // ==================== ISSUE MUTATIONS ====================
+
   server.tool(
     'createIssue',
     'Create a new issue/ticket inside this organization.',
     {
       ...baseOrgSchema,
-      requestorEmail: z.string().email().describe('Email of the reporter creating the issue'),
-      requestorUserId: z.number().int().positive().describe('Legacy reporter user ID').optional(),
+      creatorEmail: z.string().email().describe('Email of the user creating the issue'),
       title: z.string().min(3).max(200).describe('Issue title'),
       description: z.string().max(5000).optional(),
       priority: z.enum(ISSUE_PRIORITIES).describe('Issue priority').optional(),
       assignedToEmail: z.string().email().optional(),
-      assignedToUserId: z.number().int().positive().optional(),
       dealId: z.number().int().positive().describe('Related deal ID').optional()
     },
     async ({
       organizationId,
-      requestorEmail,
-      requestorUserId,
+      creatorEmail,
       title,
       description,
       priority = 'medium',
       assignedToEmail,
-      assignedToUserId,
       dealId
     }) => {
       try {
-        const reporter = await resolveOrgUser(organizationId, {
-          userId: requestorUserId,
-          email: requestorEmail
-        });
+        const reporter = await resolveOrgUser(organizationId, { email: creatorEmail });
+        
         let assignedUser = null;
-        if (assignedToEmail || assignedToUserId) {
+        if (assignedToEmail) {
           assignedUser = await resolveOrgUser(organizationId, {
-            userId: assignedToUserId,
             email: assignedToEmail,
             required: false
           });
@@ -693,7 +1119,7 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to create issue: ${error.message}`);
+        return formatError(`Failed to create issue: ${error.message}`);
       }
     }
   );
@@ -708,10 +1134,9 @@ function registerTools(server) {
       description: z.string().max(5000).optional(),
       status: z.enum(ISSUE_STATUSES).optional(),
       priority: z.enum(ISSUE_PRIORITIES).optional(),
-      assignedToEmail: z.string().email().optional(),
-      assignedToUserId: z.number().int().positive().optional()
+      assignedToEmail: z.string().email().optional()
     },
-    async ({ organizationId, issueId, title, description, status, priority, assignedToEmail, assignedToUserId }) => {
+    async ({ organizationId, issueId, title, description, status, priority, assignedToEmail }) => {
       try {
         await ensureIssue(organizationId, issueId);
         const updates = [];
@@ -732,10 +1157,9 @@ function registerTools(server) {
           updates.push('priority = ?');
           params.push(priority);
         }
-        if (assignedToEmail !== undefined || assignedToUserId !== undefined) {
-          if (assignedToEmail || assignedToUserId) {
+        if (assignedToEmail !== undefined) {
+          if (assignedToEmail) {
             const assigned = await resolveOrgUser(organizationId, {
-              userId: assignedToUserId,
               email: assignedToEmail,
               required: false
             });
@@ -760,7 +1184,7 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to update issue: ${error.message}`);
+        return formatError(`Failed to update issue: ${error.message}`);
       }
     }
   );
@@ -785,33 +1209,33 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to delete issue: ${error.message}`);
+        return formatError(`Failed to delete issue: ${error.message}`);
       }
     }
   );
 
-  // Contact mutations
+  // ==================== CONTACT MUTATIONS ====================
+
   server.tool(
     'createContactPerson',
-    'Create a new person contact linked to this organization.',
+    'Create a new person contact. Can be a general contact (external) or linked to a system user.',
     {
       ...baseOrgSchema,
       creatorEmail: z.string().email().describe('Email of the CRM user creating this contact'),
-      creatorUserId: z.number().int().positive().describe('Legacy creator user ID').optional(),
-      firstName: z.string().min(1).max(100),
-      lastName: z.string().max(100).optional(),
-      email: z.string().email(),
-      phone: z.string().max(50).optional(),
-      jobTitle: z.string().max(150).optional(),
-      notes: z.string().max(2000).optional()
+      firstName: z.string().min(1).max(100).describe('Contact first name'),
+      lastName: z.string().max(100).describe('Contact last name').optional(),
+      email: z.string().email().describe('Contact email address'),
+      phone: z.string().max(50).describe('Contact phone number').optional(),
+      jobTitle: z.string().max(150).describe('Contact job title').optional(),
+      notes: z.string().max(2000).describe('Notes about the contact').optional(),
+      linkToSystemUser: z.boolean().describe('If true, automatically link to system user if email matches').optional()
     },
-    async ({ organizationId, creatorEmail, creatorUserId, firstName, lastName, email, phone, jobTitle, notes }) => {
+    async ({ organizationId, creatorEmail, firstName, lastName, email, phone, jobTitle, notes, linkToSystemUser }) => {
       try {
-        const creator = await resolveOrgUser(organizationId, {
-          userId: creatorUserId,
-          email: creatorEmail
-        });
+        const creator = await resolveOrgUser(organizationId, { email: creatorEmail });
         const cleanedEmail = email.toLowerCase();
+        
+        // Check if contact already exists in this org
         const [existing] = await db.query(
           'SELECT id FROM contacts_people WHERE organization_id = ? AND email = ?',
           [organizationId, cleanedEmail]
@@ -819,11 +1243,28 @@ function registerTools(server) {
         if (existing.length > 0) {
           throw new Error('A contact with this email already exists in the organization.');
         }
+
+        // Check if we should link to a system user
+        let linkedUserId = null;
+        let linkedUserName = null;
+        if (linkToSystemUser !== false) {
+          // By default, try to link if email matches a system user
+          const [systemUsers] = await db.query(
+            'SELECT id, full_name FROM users WHERE LOWER(email) = ?',
+            [cleanedEmail]
+          );
+          if (systemUsers.length > 0) {
+            linkedUserId = systemUsers[0].id;
+            linkedUserName = systemUsers[0].full_name;
+          }
+        }
+
         const [result] = await db.query(
           `INSERT INTO contacts_people (organization_id, user_id, first_name, last_name, email, phone, job_title, notes, created_by_user_id)
-           VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             organizationId,
+            linkedUserId,
             firstName.trim(),
             lastName?.trim() || '',
             cleanedEmail,
@@ -833,16 +1274,100 @@ function registerTools(server) {
             creator.id
           ]
         );
+
+        const categoryText = linkedUserId 
+          ? `system contact (linked to ${linkedUserName})`
+          : 'general contact (external)';
+
         return {
           content: [
             {
               type: 'text',
-              text: `✅ Contact person "${firstName} ${lastName || ''}" created with ID ${result.insertId}.`
+              text: `✅ Contact "${firstName} ${lastName || ''}" created with ID ${result.insertId} as ${categoryText}.`
             }
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to create contact person: ${error.message}`);
+        return formatError(`Failed to create contact person: ${error.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    'linkContactToUser',
+    'Link an existing general contact to a system user account.',
+    {
+      ...baseOrgSchema,
+      contactPersonId: z.number().int().positive().describe('Contact person ID to link'),
+      systemUserId: z.number().int().positive().describe('System user ID to link to (use searchSystemUsers to find)')
+    },
+    async ({ organizationId, contactPersonId, systemUserId }) => {
+      try {
+        // Verify contact exists
+        const contact = await ensureContactPerson(organizationId, contactPersonId);
+        
+        if (contact.user_id) {
+          throw new Error('This contact is already linked to a system user.');
+        }
+
+        // Verify system user exists
+        const [users] = await db.query('SELECT id, full_name, email FROM users WHERE id = ?', [systemUserId]);
+        if (users.length === 0) {
+          throw new Error('System user not found.');
+        }
+
+        const systemUser = users[0];
+
+        // Link the contact
+        await db.query(
+          'UPDATE contacts_people SET user_id = ? WHERE id = ? AND organization_id = ?',
+          [systemUserId, contactPersonId, organizationId]
+        );
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Contact ${contactPersonId} linked to system user "${systemUser.full_name}" (${systemUser.email}).`
+            }
+          ]
+        };
+      } catch (error) {
+        return formatError(`Failed to link contact: ${error.message}`);
+      }
+    }
+  );
+
+  server.tool(
+    'unlinkContactFromUser',
+    'Unlink a system contact, converting it to a general contact.',
+    {
+      ...baseOrgSchema,
+      contactPersonId: z.number().int().positive().describe('Contact person ID to unlink')
+    },
+    async ({ organizationId, contactPersonId }) => {
+      try {
+        const contact = await ensureContactPerson(organizationId, contactPersonId);
+        
+        if (!contact.user_id) {
+          throw new Error('This contact is not linked to a system user.');
+        }
+
+        await db.query(
+          'UPDATE contacts_people SET user_id = NULL WHERE id = ? AND organization_id = ?',
+          [contactPersonId, organizationId]
+        );
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Contact ${contactPersonId} unlinked from system user. It is now a general contact.`
+            }
+          ]
+        };
+      } catch (error) {
+        return formatError(`Failed to unlink contact: ${error.message}`);
       }
     }
   );
@@ -914,7 +1439,7 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to update contact person: ${error.message}`);
+        return formatError(`Failed to update contact person: ${error.message}`);
       }
     }
   );
@@ -942,11 +1467,15 @@ function registerTools(server) {
           ]
         };
       } catch (error) {
-        return server.createToolError(`Failed to delete contact person: ${error.message}`);
+        return formatError(`Failed to delete contact person: ${error.message}`);
       }
     }
   );
 }
+
+// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
 
 function clampLimit(value) {
   if (typeof value !== 'number' || Number.isNaN(value)) {
@@ -1004,6 +1533,18 @@ function formatTableResult(title, rows, fields) {
   };
 }
 
+function formatError(message) {
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `❌ Error: ${message}`
+      }
+    ],
+    isError: true
+  };
+}
+
 async function ensureStage(stageId) {
   const [rows] = await db.query(
     'SELECT id, default_probability FROM deal_stages WHERE id = ?',
@@ -1048,42 +1589,36 @@ async function ensureContactPerson(organizationId, contactPersonId) {
   return rows[0];
 }
 
-async function ensureOrgUserById(organizationId, userId) {
-  if (!userId) return null;
+async function ensureContactOrg(organizationId, contactOrgId) {
   const [rows] = await db.query(
-    'SELECT u.id, u.email, u.full_name FROM users u INNER JOIN user_organizations uo ON u.id = uo.user_id WHERE u.id = ? AND uo.organization_id = ?',
-    [userId, organizationId]
+    'SELECT id FROM contacts_organizations WHERE id = ? AND organization_id = ?',
+    [contactOrgId, organizationId]
   );
   if (rows.length === 0) {
-    throw new Error('User not found in this organization.');
+    throw new Error('Contact organization not found in this organization.');
   }
   return rows[0];
 }
 
-async function ensureOrgUserByEmail(organizationId, email) {
-  if (!email) return null;
+async function resolveOrgUser(organizationId, { email, required = true }) {
+  if (!email) {
+    if (required) {
+      throw new Error('Please provide a user email for this action.');
+    }
+    return null;
+  }
   const normalized = email.toLowerCase();
   const [rows] = await db.query(
     'SELECT u.id, u.email, u.full_name FROM users u INNER JOIN user_organizations uo ON u.id = uo.user_id WHERE LOWER(u.email) = ? AND uo.organization_id = ?',
     [normalized, organizationId]
   );
   if (rows.length === 0) {
-    throw new Error('No user with that email belongs to this organization.');
+    if (required) {
+      throw new Error('No user with that email belongs to this organization.');
+    }
+    return null;
   }
   return rows[0];
-}
-
-async function resolveOrgUser(organizationId, { userId, email, required = true }) {
-  if (email) {
-    return ensureOrgUserByEmail(organizationId, email);
-  }
-  if (userId) {
-    return ensureOrgUserById(organizationId, userId);
-  }
-  if (required) {
-    throw new Error('Please provide a user email for this action.');
-  }
-  return null;
 }
 
 function normalizeProbability(value, fallback) {
@@ -1100,49 +1635,55 @@ function normalizeProbability(value, fallback) {
   return Math.round(numeric);
 }
 
+// ============================================================
+// MOUNT MCP SERVERS
+// ============================================================
+
 /**
- * Mount MCP SSE + message endpoints onto an existing Express app.
+ * Mount both Client and Org MCP SSE + message endpoints onto an existing Express app.
  */
 function mountMcpServer(app) {
   if (!app || typeof app.get !== 'function') {
     throw new Error('mountMcpServer expects an Express application instance.');
   }
 
-  const sessions = new Map();
+  const clientSessions = new Map();
+  const orgSessions = new Map();
 
-  app.get(MCP_SSE_PATH, async (req, res) => {
-    const transport = new SSEServerTransport(MCP_MESSAGES_PATH, res);
-    const server = createMcpServer();
+  // CLIENT MODE ENDPOINT
+  app.get(MCP_CLIENT_SSE_PATH, async (req, res) => {
+    const transport = new SSEServerTransport(MCP_CLIENT_MESSAGES_PATH, res);
+    const server = createClientMcpServer();
     const sessionId = transport.sessionId;
-    sessions.set(sessionId, { transport, server });
+    clientSessions.set(sessionId, { transport, server });
 
     transport.onclose = () => {
-      sessions.delete(sessionId);
+      clientSessions.delete(sessionId);
       server.close().catch(err => {
-        console.warn(`[MCP] Error closing server for session ${sessionId}:`, err.message);
+        console.warn(`[MCP-Client] Error closing server for session ${sessionId}:`, err.message);
       });
     };
 
     try {
       await server.connect(transport);
-      console.log(`[MCP] SSE session established (${sessionId})`);
+      console.log(`[MCP-Client] SSE session established (${sessionId})`);
     } catch (error) {
-      sessions.delete(sessionId);
-      console.error('[MCP] Failed to start SSE session:', error);
+      clientSessions.delete(sessionId);
+      console.error('[MCP-Client] Failed to start SSE session:', error);
       if (!res.headersSent) {
         res.status(500).end('Failed to start MCP session');
       }
     }
   });
 
-  app.post(MCP_MESSAGES_PATH, async (req, res) => {
+  app.post(MCP_CLIENT_MESSAGES_PATH, async (req, res) => {
     const sessionId = req.query.sessionId;
     if (!sessionId) {
       res.status(400).json({ error: 'Missing sessionId query parameter' });
       return;
     }
 
-    const session = sessions.get(sessionId);
+    const session = clientSessions.get(sessionId);
     if (!session) {
       res.status(404).json({ error: 'Session not found' });
       return;
@@ -1151,7 +1692,56 @@ function mountMcpServer(app) {
     try {
       await session.transport.handlePostMessage(req, res, req.body);
     } catch (error) {
-      console.error(`[MCP] Failed to handle POST for session ${sessionId}:`, error);
+      console.error(`[MCP-Client] Failed to handle POST for session ${sessionId}:`, error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to handle MCP message' });
+      }
+    }
+  });
+
+  // ORGANIZATION MODE ENDPOINT
+  app.get(MCP_ORG_SSE_PATH, async (req, res) => {
+    const transport = new SSEServerTransport(MCP_ORG_MESSAGES_PATH, res);
+    const server = createOrgMcpServer();
+    const sessionId = transport.sessionId;
+    orgSessions.set(sessionId, { transport, server });
+
+    transport.onclose = () => {
+      orgSessions.delete(sessionId);
+      server.close().catch(err => {
+        console.warn(`[MCP-Org] Error closing server for session ${sessionId}:`, err.message);
+      });
+    };
+
+    try {
+      await server.connect(transport);
+      console.log(`[MCP-Org] SSE session established (${sessionId})`);
+    } catch (error) {
+      orgSessions.delete(sessionId);
+      console.error('[MCP-Org] Failed to start SSE session:', error);
+      if (!res.headersSent) {
+        res.status(500).end('Failed to start MCP session');
+      }
+    }
+  });
+
+  app.post(MCP_ORG_MESSAGES_PATH, async (req, res) => {
+    const sessionId = req.query.sessionId;
+    if (!sessionId) {
+      res.status(400).json({ error: 'Missing sessionId query parameter' });
+      return;
+    }
+
+    const session = orgSessions.get(sessionId);
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    try {
+      await session.transport.handlePostMessage(req, res, req.body);
+    } catch (error) {
+      console.error(`[MCP-Org] Failed to handle POST for session ${sessionId}:`, error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to handle MCP message' });
       }
@@ -1159,28 +1749,48 @@ function mountMcpServer(app) {
   });
 
   const shutdown = async () => {
-    for (const [sessionId, session] of sessions.entries()) {
-      sessions.delete(sessionId);
+    // Close client sessions
+    for (const [sessionId, session] of clientSessions.entries()) {
+      clientSessions.delete(sessionId);
       try {
         await session.transport.close?.();
       } catch (error) {
-        console.warn(`[MCP] Failed to close transport ${sessionId}:`, error.message);
+        console.warn(`[MCP-Client] Failed to close transport ${sessionId}:`, error.message);
       }
       try {
         await session.server.close();
       } catch (error) {
-        console.warn(`[MCP] Failed to close server ${sessionId}:`, error.message);
+        console.warn(`[MCP-Client] Failed to close server ${sessionId}:`, error.message);
+      }
+    }
+
+    // Close org sessions
+    for (const [sessionId, session] of orgSessions.entries()) {
+      orgSessions.delete(sessionId);
+      try {
+        await session.transport.close?.();
+      } catch (error) {
+        console.warn(`[MCP-Org] Failed to close transport ${sessionId}:`, error.message);
+      }
+      try {
+        await session.server.close();
+      } catch (error) {
+        console.warn(`[MCP-Org] Failed to close server ${sessionId}:`, error.message);
       }
     }
   };
 
-  console.log(`[MCP] Mounted at GET ${MCP_SSE_PATH} and POST ${MCP_MESSAGES_PATH}`);
+  console.log(`[MCP] Client endpoint mounted at GET ${MCP_CLIENT_SSE_PATH}`);
+  console.log(`[MCP] Org endpoint mounted at GET ${MCP_ORG_SSE_PATH}`);
   return { shutdown };
 }
 
 module.exports = {
   mountMcpServer,
-  createMcpServer
+  createClientMcpServer,
+  createOrgMcpServer,
+  MCP_CLIENT_SSE_PATH,
+  MCP_ORG_SSE_PATH
 };
 
 /**
@@ -1194,7 +1804,9 @@ if (require.main === module) {
   const port = process.env.MCP_PORT || 3030;
 
   const server = app.listen(port, () => {
-    console.log(`MCP server listening on http://localhost:${port}${MCP_SSE_PATH}`);
+    console.log(`MCP server listening on http://localhost:${port}`);
+    console.log(`  Client endpoint: ${MCP_CLIENT_SSE_PATH}`);
+    console.log(`  Org endpoint: ${MCP_ORG_SSE_PATH}`);
   });
 
   const graceful = async () => {
@@ -1206,4 +1818,3 @@ if (require.main === module) {
   process.on('SIGINT', graceful);
   process.on('SIGTERM', graceful);
 }
-

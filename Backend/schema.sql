@@ -7,7 +7,10 @@ DROP TABLE IF EXISTS files;
 DROP TABLE IF EXISTS activities;
 DROP TABLE IF EXISTS issues;
 DROP TABLE IF EXISTS deals;
+DROP TABLE IF EXISTS leads;
 DROP TABLE IF EXISTS deal_stages;
+DROP TABLE IF EXISTS organization_customer_relationships;
+DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS contacts_organizations;
 DROP TABLE IF EXISTS contacts_people;
 DROP TABLE IF EXISTS user_telegram_links;
@@ -103,6 +106,37 @@ CREATE TABLE contacts_organizations (
     INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- Customers Table (Legacy compatibility with multi-tenant isolation)
+CREATE TABLE customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email (email)
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Organization-Customer Relationships
+CREATE TABLE organization_customer_relationships (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL,
+    customer_id INT NOT NULL,
+    status ENUM('active', 'inactive', 'pending') NOT NULL DEFAULT 'active',
+    notes TEXT,
+    added_by_user_id INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (added_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY unique_org_customer (organization_id, customer_id),
+    INDEX idx_org (organization_id),
+    INDEX idx_customer (customer_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- Deal Stages (Global stages)
 CREATE TABLE deal_stages (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -150,6 +184,25 @@ CREATE TABLE deals (
     INDEX idx_assigned_to (assigned_to_user_id),
     INDEX idx_contact_person (contact_person_id),
     INDEX idx_contact_org (contact_org_id)
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Leads Table (Legacy compatibility with organization context)
+CREATE TABLE leads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id INT NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
+    company_name VARCHAR(255),
+    source VARCHAR(255),
+    notes TEXT,
+    status ENUM('new', 'contacted', 'qualified', 'proposal', 'negotiation', 'converted', 'lost') NOT NULL DEFAULT 'new',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+    INDEX idx_org (organization_id),
+    INDEX idx_status (status),
+    INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Issues Table (Jira-ready structure)

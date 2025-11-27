@@ -17,12 +17,24 @@ const verifyToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, jwtSecret);
     
+    // Support legacy tokens that used "id" instead of "userId"
+    const userId = decoded.userId || decoded.id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid token payload: missing user identifier.'
+      });
+    }
+
     // Extract required fields from JWT (userType removed - all users are unified)
     req.user = {
-      userId: decoded.userId,
+      userId,
+      id: userId, // Backward compatibility for legacy controllers
       email: decoded.email,
-      currentOrganizationId: decoded.currentOrganizationId,
-      userType: decoded.userType || 'internal' // Optional, kept for backward compatibility
+      currentOrganizationId: decoded.currentOrganizationId || decoded.organizationId || null,
+      userType: decoded.userType || decoded.type || 'internal', // Optional, kept for backward compatibility
+      legacyCustomer: decoded.legacyCustomer || false
     };
     
     next();

@@ -4,17 +4,24 @@ const bcrypt = require('bcryptjs');
 // Get all customers for a company
 const getCompanyCustomers = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     
     const [customers] = await db.query(
       `SELECT 
         c.id, c.full_name, c.email, c.phone, c.created_at,
-        ccr.status, ccr.notes, ccr.created_at as relationship_created
+        ocr.status, ocr.notes, ocr.created_at as relationship_created
       FROM customers c
-      INNER JOIN company_customer_relationship ccr ON c.id = ccr.customer_id
-      WHERE ccr.company_id = ?
-      ORDER BY ccr.created_at DESC`,
-      [companyId]
+      INNER JOIN organization_customer_relationships ocr ON c.id = ocr.customer_id
+      WHERE ocr.organization_id = ?
+      ORDER BY ocr.created_at DESC`,
+      [organizationId]
     );
 
     res.status(200).json({
@@ -34,7 +41,15 @@ const getCompanyCustomers = async (req, res) => {
 // Add a new customer
 const addCustomer = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+    const addedByUserId = req.user.userId || null;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { full_name, email, phone, password, notes } = req.body;
 
     // Validate required fields
@@ -66,8 +81,8 @@ const addCustomer = async (req, res) => {
       customerId = existingCustomer[0].id;
       
       const [existingRelationship] = await db.query(
-        'SELECT * FROM company_customer_relationship WHERE company_id = ? AND customer_id = ?',
-        [companyId, customerId]
+        'SELECT * FROM organization_customer_relationships WHERE organization_id = ? AND customer_id = ?',
+        [organizationId, customerId]
       );
 
       if (existingRelationship.length > 0) {
@@ -89,21 +104,21 @@ const addCustomer = async (req, res) => {
 
     // Create relationship
     await db.query(
-      `INSERT INTO company_customer_relationship 
-       (company_id, customer_id, status, notes, added_by_company_id) 
+      `INSERT INTO organization_customer_relationships 
+       (organization_id, customer_id, status, notes, added_by_user_id) 
        VALUES (?, ?, 'active', ?, ?)`,
-      [companyId, customerId, notes, companyId]
+      [organizationId, customerId, notes, addedByUserId]
     );
 
     // Fetch the customer details
     const [customers] = await db.query(
       `SELECT 
         c.id, c.full_name, c.email, c.phone, c.created_at,
-        ccr.status, ccr.notes, ccr.created_at as relationship_created
+        ocr.status, ocr.notes, ocr.created_at as relationship_created
       FROM customers c
-      INNER JOIN company_customer_relationship ccr ON c.id = ccr.customer_id
-      WHERE c.id = ? AND ccr.company_id = ?`,
-      [customerId, companyId]
+      INNER JOIN organization_customer_relationships ocr ON c.id = ocr.customer_id
+      WHERE c.id = ? AND ocr.organization_id = ?`,
+      [customerId, organizationId]
     );
 
     res.status(201).json({
@@ -124,14 +139,21 @@ const addCustomer = async (req, res) => {
 // Update customer relationship
 const updateCustomer = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { id } = req.params;
     const { status, notes } = req.body;
 
     // Verify the relationship exists
     const [relationship] = await db.query(
-      'SELECT * FROM company_customer_relationship WHERE company_id = ? AND customer_id = ?',
-      [companyId, id]
+      'SELECT * FROM organization_customer_relationships WHERE organization_id = ? AND customer_id = ?',
+      [organizationId, id]
     );
 
     if (relationship.length === 0) {
@@ -143,21 +165,21 @@ const updateCustomer = async (req, res) => {
 
     // Update relationship
     await db.query(
-      `UPDATE company_customer_relationship 
+      `UPDATE organization_customer_relationships 
        SET status = ?, notes = ?
-       WHERE company_id = ? AND customer_id = ?`,
-      [status, notes, companyId, id]
+       WHERE organization_id = ? AND customer_id = ?`,
+      [status, notes, organizationId, id]
     );
 
     // Fetch updated customer
     const [customers] = await db.query(
       `SELECT 
         c.id, c.full_name, c.email, c.phone, c.created_at,
-        ccr.status, ccr.notes, ccr.created_at as relationship_created
+        ocr.status, ocr.notes, ocr.created_at as relationship_created
       FROM customers c
-      INNER JOIN company_customer_relationship ccr ON c.id = ccr.customer_id
-      WHERE c.id = ? AND ccr.company_id = ?`,
-      [id, companyId]
+      INNER JOIN organization_customer_relationships ocr ON c.id = ocr.customer_id
+      WHERE c.id = ? AND ocr.organization_id = ?`,
+      [id, organizationId]
     );
 
     res.status(200).json({
@@ -178,13 +200,20 @@ const updateCustomer = async (req, res) => {
 // Remove customer relationship
 const removeCustomer = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { id } = req.params;
 
     // Verify the relationship exists
     const [relationship] = await db.query(
-      'SELECT * FROM company_customer_relationship WHERE company_id = ? AND customer_id = ?',
-      [companyId, id]
+      'SELECT * FROM organization_customer_relationships WHERE organization_id = ? AND customer_id = ?',
+      [organizationId, id]
     );
 
     if (relationship.length === 0) {
@@ -196,8 +225,8 @@ const removeCustomer = async (req, res) => {
 
     // Delete relationship
     await db.query(
-      'DELETE FROM company_customer_relationship WHERE company_id = ? AND customer_id = ?',
-      [companyId, id]
+      'DELETE FROM organization_customer_relationships WHERE organization_id = ? AND customer_id = ?',
+      [organizationId, id]
     );
 
     res.status(200).json({

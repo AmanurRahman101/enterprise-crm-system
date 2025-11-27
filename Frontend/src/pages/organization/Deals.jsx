@@ -363,6 +363,7 @@ const Deals = () => {
       loadData();
     } catch (error) {
       toast.error(error.message || 'Failed to save deal');
+      throw error;
     }
   };
 
@@ -499,18 +500,22 @@ const Deals = () => {
 
 // Deal Modal Component
 const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) => {
-  const [formData, setFormData] = useState({
+  const buildInitialState = () => ({
     title: deal?.title || '',
-    value: deal?.value || '',
+    value: deal?.value ?? '',
     currency: deal?.currency || 'USD',
     stageId: deal?.stage?.id || stages[0]?.id || '',
     contactPersonId: deal?.contactPerson?.id || null,
     contactOrgId: deal?.contactOrg?.id || null,
     assignedToUserId: deal?.assignedTo?.id || null,
     expectedCloseDate: deal?.expectedCloseDate || '',
-    probability: deal?.probability || 0,
+    probability: deal?.probability ?? 0,
     notes: deal?.notes || ''
   });
+
+  const [formData, setFormData] = useState(buildInitialState);
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   // State for user assignment
   const [availableUsers, setAvailableUsers] = useState([]);
@@ -538,14 +543,77 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
     loadUsers();
   }, []);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    setFormData(buildInitialState());
+    setErrors({});
+    setSelectedUser(
+      deal?.assignedTo
+        ? { id: deal.assignedTo.id, name: deal.assignedTo.name, email: deal.assignedTo.email }
+        : null
+    );
+  }, [deal, stages]);
+
+  const validateForm = () => {
+    const nextErrors = {};
+    const title = formData.title.trim();
+    if (!title) {
+      nextErrors.title = 'Title is required.';
+    } else if (title.length < 3) {
+      nextErrors.title = 'Title must be at least 3 characters.';
+    }
+
+    if (formData.value !== '' && formData.value !== null) {
+      const value = Number(formData.value);
+      if (Number.isNaN(value) || value < 0) {
+        nextErrors.value = 'Value must be a positive number.';
+      }
+    }
+
+    if (!formData.stageId) {
+      nextErrors.stageId = 'Stage is required.';
+    }
+
+    if (formData.expectedCloseDate && Number.isNaN(Date.parse(formData.expectedCloseDate))) {
+      nextErrors.expectedCloseDate = 'Enter a valid date.';
+    }
+
+    if (formData.probability !== '' && formData.probability !== null) {
+      const probability = Number(formData.probability);
+      if (Number.isNaN(probability) || probability < 0 || probability > 100) {
+        nextErrors.probability = 'Probability must be between 0 and 100.';
+      }
+    }
+
+    if (formData.notes && formData.notes.length > 2000) {
+      nextErrors.notes = 'Notes cannot exceed 2000 characters.';
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+    setSubmitting(true);
     const submitData = { ...formData };
-    // Convert empty strings to null for optional fields
     if (submitData.value === '') submitData.value = null;
     if (submitData.expectedCloseDate === '') submitData.expectedCloseDate = null;
-    if (submitData.probability === '') submitData.probability = 0;
-    onSave(submitData);
+    if (submitData.probability === '' || submitData.probability === null) submitData.probability = 0;
+    try {
+      await onSave(submitData);
+      setErrors({});
+    } catch (error) {
+      if (error?.errors) {
+        setErrors((prev) => ({ ...prev, ...error.errors }));
+      } else {
+        toast.error(error.message || 'Failed to save deal');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -575,8 +643,11 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.title ? 'border-red-400' : 'border-gray-300'
+              }`}
             />
+            {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -588,8 +659,11 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 type="number"
                 value={formData.value}
                 onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.value ? 'border-red-400' : 'border-gray-300'
+                }`}
               />
+              {errors.value && <p className="mt-1 text-xs text-red-600">{errors.value}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -623,7 +697,9 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                   probability: selectedStage?.defaultProbability || formData.probability
                 });
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.stageId ? 'border-red-400' : 'border-gray-300'
+              }`}
             >
               {stages.map(stage => (
                 <option key={stage.id} value={stage.id}>
@@ -631,6 +707,7 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 </option>
               ))}
             </select>
+            {errors.stageId && <p className="mt-1 text-xs text-red-600">{errors.stageId}</p>}
             {formData.stageId && (() => {
               const selectedStage = stages.find(s => s.id === formData.stageId);
               return selectedStage?.defaultProbability !== undefined && (
@@ -687,8 +764,13 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 type="date"
                 value={formData.expectedCloseDate}
                 onChange={(e) => setFormData({ ...formData, expectedCloseDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.expectedCloseDate ? 'border-red-400' : 'border-gray-300'
+                }`}
               />
+              {errors.expectedCloseDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.expectedCloseDate}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -700,8 +782,11 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 max="100"
                 value={formData.probability}
                 onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.probability ? 'border-red-400' : 'border-gray-300'
+                }`}
               />
+              {errors.probability && <p className="mt-1 text-xs text-red-600">{errors.probability}</p>}
             </div>
           </div>
 
@@ -713,8 +798,11 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.notes ? 'border-red-400' : 'border-gray-300'
+              }`}
             />
+            {errors.notes && <p className="mt-1 text-xs text-red-600">{errors.notes}</p>}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -730,15 +818,17 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
+              disabled={submitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              disabled={submitting}
             >
-              {deal ? 'Update' : 'Create'}
+              {submitting ? 'Saving...' : deal ? 'Update' : 'Create'}
             </button>
           </div>
         </form>

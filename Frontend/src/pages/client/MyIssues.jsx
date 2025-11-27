@@ -7,6 +7,7 @@ const MyIssues = () => {
   const navigate = useNavigate();
   const [issues, setIssues] = useState([]);
   const [wonDeals, setWonDeals] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [user] = useState(() => ApiService.getUser());
@@ -21,6 +22,7 @@ const MyIssues = () => {
 
     loadIssues();
     loadWonDeals();
+    loadOrganizations();
   }, [navigate]);
 
   const loadIssues = async () => {
@@ -49,6 +51,17 @@ const MyIssues = () => {
       }
     } catch (error) {
       console.error('Failed to load deals:', error);
+    }
+  };
+
+  const loadOrganizations = async () => {
+    try {
+      const response = await ApiService.request('/api/client/organizations');
+      if (response.success) {
+        setOrganizations(response.organizations || []);
+      }
+    } catch (error) {
+      console.error('Failed to load organizations:', error);
     }
   };
 
@@ -170,6 +183,7 @@ const MyIssues = () => {
       {showCreateModal && (
         <CreateIssueModal
           wonDeals={wonDeals}
+          organizations={organizations}
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
@@ -182,33 +196,69 @@ const MyIssues = () => {
 };
 
 // Create Issue Modal Component
-const CreateIssueModal = ({ wonDeals, onClose, onSuccess }) => {
+const CreateIssueModal = ({ wonDeals, organizations, onClose, onSuccess }) => {
+  const [issueType, setIssueType] = useState('general'); // 'general' or 'deal'
   const [formData, setFormData] = useState({
+    organizationId: '',
     dealId: '',
     title: '',
     description: '',
     priority: 'medium'
   });
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const nextErrors = {};
+    
+    if (issueType === 'deal') {
+      if (!formData.dealId) {
+        nextErrors.dealId = 'Please select a deal.';
+      }
+    } else {
+      if (!formData.organizationId) {
+        nextErrors.organizationId = 'Please select an organization.';
+      }
+    }
+    
+    const title = formData.title.trim();
+    if (!title) {
+      nextErrors.title = 'Title is required.';
+    } else if (title.length < 3) {
+      nextErrors.title = 'Title must be at least 3 characters.';
+    }
+    if (formData.description && formData.description.length > 3000) {
+      nextErrors.description = 'Description cannot exceed 3000 characters.';
+    }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.dealId) {
-      toast.error('Please select a deal');
-      return;
-    }
-
-    if (!formData.title.trim()) {
-      toast.error('Please enter a title');
+    if (!validateForm()) {
       return;
     }
 
     try {
       setSubmitting(true);
+      
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority
+      };
+      
+      if (issueType === 'deal') {
+        payload.dealId = formData.dealId;
+      } else {
+        payload.organizationId = formData.organizationId;
+      }
+      
       const response = await ApiService.request('/api/client/issues', {
         method: 'POST',
-        body: formData
+        body: payload
       });
 
       if (response.success) {
@@ -218,11 +268,29 @@ const CreateIssueModal = ({ wonDeals, onClose, onSuccess }) => {
         toast.error(response.message || 'Failed to create issue');
       }
     } catch (error) {
-      toast.error(error.message || 'Failed to create issue');
+      if (error?.errors) {
+        setErrors((prev) => ({ ...prev, ...error.errors }));
+      } else {
+        toast.error(error.message || 'Failed to create issue');
+      }
     } finally {
       setSubmitting(false);
     }
   };
+
+  const handleIssueTypeChange = (type) => {
+    setIssueType(type);
+    setErrors({});
+    setFormData(prev => ({
+      ...prev,
+      dealId: '',
+      organizationId: ''
+    }));
+  };
+
+  const canSubmit = issueType === 'deal' 
+    ? wonDeals.length > 0 
+    : organizations.length > 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -240,29 +308,104 @@ const CreateIssueModal = ({ wonDeals, onClose, onSuccess }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Issue Type Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Won Deal *
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Issue Type
             </label>
-            <select
-              required
-              value={formData.dealId}
-              onChange={(e) => setFormData({ ...formData, dealId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            >
-              <option value="">Select a deal...</option>
-              {wonDeals.map((deal) => (
-                <option key={deal.id} value={deal.id}>
-                  {deal.title} - {deal.organizationName}
-                </option>
-              ))}
-            </select>
-            {wonDeals.length === 0 && (
-              <p className="mt-1 text-sm text-gray-500">
-                No won deals available. Issues can only be created for won deals.
-              </p>
-            )}
+            <div className="flex gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="issueType"
+                  value="general"
+                  checked={issueType === 'general'}
+                  onChange={() => handleIssueTypeChange('general')}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">General Issue</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="issueType"
+                  value="deal"
+                  checked={issueType === 'deal'}
+                  onChange={() => handleIssueTypeChange('deal')}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Deal Issue</span>
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {issueType === 'general' 
+                ? 'Report a general issue to an organization you work with.'
+                : 'Report an issue related to a specific won deal.'}
+            </p>
           </div>
+
+          {/* Organization Selection (for General Issues) */}
+          {issueType === 'general' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Organization *
+              </label>
+              <select
+                value={formData.organizationId}
+                onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.organizationId ? 'border-red-400' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Select an organization...</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+              {organizations.length === 0 && (
+                <p className="mt-1 text-sm text-gray-500">
+                  No organizations available. You need to be associated with an organization first.
+                </p>
+              )}
+              {errors.organizationId && <p className="mt-1 text-xs text-red-600">{errors.organizationId}</p>}
+            </div>
+          )}
+
+          {/* Deal Selection (for Deal Issues) */}
+          {issueType === 'deal' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Won Deal *
+              </label>
+              <select
+                value={formData.dealId}
+                onChange={(e) => setFormData({ ...formData, dealId: e.target.value })}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.dealId ? 'border-red-400' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Select a deal...</option>
+                {wonDeals.map((deal) => (
+                  <option key={deal.id} value={deal.id}>
+                    {deal.title} - {deal.organizationName}
+                  </option>
+                ))}
+              </select>
+              {wonDeals.length === 0 && (
+                <p className="mt-1 text-sm text-gray-500">
+                  No won deals available. Issues can only be created for won deals.
+                </p>
+              )}
+              {errors.dealId && <p className="mt-1 text-xs text-red-600">{errors.dealId}</p>}
+              {formData.dealId && (
+                <p className="mt-1 text-sm text-green-600">
+                  Organization: {wonDeals.find(d => String(d.id) === String(formData.dealId))?.organizationName || 'N/A'}
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -273,9 +416,12 @@ const CreateIssueModal = ({ wonDeals, onClose, onSuccess }) => {
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.title ? 'border-red-400' : 'border-gray-300'
+              }`}
               placeholder="Brief description of the issue"
             />
+            {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
           </div>
 
           <div>
@@ -286,9 +432,12 @@ const CreateIssueModal = ({ wonDeals, onClose, onSuccess }) => {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                errors.description ? 'border-red-400' : 'border-gray-300'
+              }`}
               placeholder="Detailed description of the issue..."
             />
+            {errors.description && <p className="mt-1 text-xs text-red-600">{errors.description}</p>}
           </div>
 
           <div>
@@ -319,7 +468,7 @@ const CreateIssueModal = ({ wonDeals, onClose, onSuccess }) => {
             <button
               type="submit"
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              disabled={submitting || wonDeals.length === 0}
+              disabled={submitting || !canSubmit}
             >
               {submitting ? 'Creating...' : 'Create Issue'}
             </button>

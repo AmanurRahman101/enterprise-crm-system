@@ -72,7 +72,13 @@ class ApiService {
 
       if (!response.ok) {
         const errorMessage = data.message || data.error || `API request failed: ${response.status} ${response.statusText}`;
-        throw new Error(errorMessage);
+        const error = new Error(errorMessage);
+        error.status = response.status;
+        if (typeof data === 'object') {
+          error.errors = data.errors;
+          error.response = data;
+        }
+        throw error;
       }
 
       return data;

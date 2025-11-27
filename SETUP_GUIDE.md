@@ -131,10 +131,11 @@ PORT=3000
 # JIRA_API_TOKEN=your-jira-api-token
 # JIRA_PROJECT_KEY=CRM
 
-# AI Agent / Telegram Host
-GEMINI_API_KEY=         # Required for Google Gemini
+# AI Agent / Telegram Bot
+GEMINI_API_KEY=         # Required for Google Gemini AI
 TELEGRAM_BOT_TOKEN=     # Required for Telegram bot
-MCP_SSE_URL=http://localhost:3000/mcp/sse
+MCP_CLIENT_SSE_URL=http://localhost:3000/mcp/client/sse   # Client mode MCP endpoint
+MCP_ORG_SSE_URL=http://localhost:3000/mcp/org/sse         # Organization mode MCP endpoint
 GEMINI_MODEL=gemini-2.5-flash
 TELEGRAM_BOT_USERNAME=  # Optional handle (without @) shown in the UI
 ```
@@ -151,7 +152,9 @@ You should see:
 Server running on port 3000
 ```
 
-> ℹ️ Need to debug the MCP layer in isolation? Run `npm run mcp` to start only `Backend/mcp/server.js` on its own Express instance.
+> ℹ️ **MCP Debugging**: Run `npm run mcp` to start the MCP server standalone. This exposes both endpoints:
+> - Client tools: `http://localhost:3000/mcp/client/sse`
+> - Organization tools: `http://localhost:3000/mcp/org/sse`
 
 ---
 
@@ -186,19 +189,82 @@ VITE v5.x.x  ready in xxx ms
 
 ---
 
-### Step 6: (Optional) Start the MCP Telegram Host
+### Step 6: (Optional) Start the Telegram Bot
 
-1. Confirm `GEMINI_API_KEY` and `TELEGRAM_BOT_TOKEN` are set in `Backend/.env`.
-2. In a new terminal, start the host:
+The Telegram bot provides AI-powered CRM access with dual-mode operation:
+- **Client Mode**: Report issues, view your deals, and interact with organizations as a customer
+- **Organization Mode**: Full CRM management (deals, contacts, issues) for team members
+
+#### Setup
+
+1. **Create a Telegram Bot**
+   - Message [@BotFather](https://t.me/BotFather) on Telegram
+   - Send `/newbot` and follow the prompts
+   - Copy the bot token provided
+
+2. **Configure Environment Variables**
+   - Set `TELEGRAM_BOT_TOKEN` in `Backend/.env` to your bot token
+   - Set `GEMINI_API_KEY` to your Google AI API key (get one at https://aistudio.google.com/apikey)
+   - Optionally set `TELEGRAM_BOT_USERNAME` to your bot's username (without @)
+
+3. **Start the Bot**
    ```bash
    cd Backend
    npm run bot
    ```
-3. Link your Telegram account:
-   - In the CRM, go to **Organization Dashboard → Telegram Link** and generate a 6-digit code.
-   - Send the code to the bot. Once you get `✅ Account linked`, start asking CRM questions.
+   
+   You should see:
+   ```
+   🤖 Telegram bot started! Send /start to begin.
+   ```
 
-The host connects to the MCP server at `http://localhost:3000/mcp/sse`. If you reverse-proxy or change ports, update `MCP_SSE_URL` accordingly.
+#### Linking Your Account
+
+1. **Generate a Link Code**
+   - In the CRM web app, go to **Settings → Telegram Link** (available in both Client and Organization dashboards)
+   - Click **Generate Code** to get a 6-digit code (valid for 10 minutes)
+
+2. **Link via Telegram**
+   - Open your Telegram bot
+   - Send `/start` to the bot
+   - Send the 6-digit code
+   - You'll see `✅ Account linked successfully!`
+
+3. **Choose Interaction Mode**
+   - After linking, the bot will ask how you want to interact:
+     - **👤 Client Mode**: Access as a customer (report issues, view deals)
+     - **🏢 Organization Mode**: Access as a team member (full CRM management)
+   - If you're a member of multiple organizations, you can choose which one to manage
+
+#### Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Start the bot or link a new account |
+| `/switch` | Switch between Client and Organization modes |
+| `/status` | View current connection status and mode |
+| `/help` | Show available commands and features |
+
+#### Features by Mode
+
+**Client Mode Tools:**
+- View your deals across organizations
+- Report issues to any organization
+- Check issue status and history
+- View personal stats
+
+**Organization Mode Tools:**
+- Create, update, and delete deals
+- Manage contacts (both system and general contacts)
+- Handle customer issues
+- View organization statistics
+- Search and link system users to contacts
+
+The bot connects to segmented MCP endpoints:
+- Client Mode: `http://localhost:3000/mcp/client/sse`
+- Organization Mode: `http://localhost:3000/mcp/org/sse`
+
+If you change ports or use a reverse proxy, update `MCP_CLIENT_SSE_URL` and `MCP_ORG_SSE_URL` accordingly.
 
 ---
 
@@ -212,33 +278,45 @@ The host connects to the MCP server at `http://localhost:3000/mcp/sse`. If you r
    - Email
    - Password
    - Phone (optional)
-   - User Type: **Internal** (for organization staff) or **Client**
 
 3. Click **"Sign Up"**
 
-### Create an Organization (for Internal Users)
+> **Note:** After signup, every user automatically has access to the **Client Portal**. Users can then create or join organizations to access the **Organization Portal**.
 
-1. After signing in, you'll be prompted to create an organization
-2. Enter:
-   - Organization Name
-   - Email
-   - Phone
-   - Address
+### Access Options
 
-3. Click **"Create Organization"**
+**Client Portal (Available to All Users):**
+- View deals where you're the contact person
+- Report issues to organizations
+- Track issue status and resolution
+- Connect your Telegram account
 
-### Start Using the CRM
+**Organization Portal (After Creating/Joining an Organization):**
 
-**For Organization Users:**
-- Dashboard: View overview
-- Deals: Manage deals pipeline
-- Contacts: Manage contacts
-- Issues: View and manage client issues
+1. **Create an Organization:**
+   - Go to Dashboard
+   - Click **"Create Organization"**
+   - Enter organization details (name, email, phone, address)
 
-**For Client Users:**
-- My Deals: View deals assigned to you
-- My Issues: Create issues for won deals
-- Overview: See your stats
+2. **Join an Existing Organization:**
+   - Request an invite from an organization admin
+   - Accept the invitation from your dashboard
+
+### Using the CRM
+
+**Organization Dashboard:**
+- **Overview**: Key metrics and recent activity
+- **Deals**: Full pipeline management with drag-and-drop stages
+- **Contacts**: Manage both system contacts (CRM users) and general contacts
+- **Issues**: Handle customer support tickets
+- **Team**: Manage organization members and roles
+- **Telegram Link**: Connect your Telegram account for AI-powered access
+
+**Client Dashboard:**
+- **Overview**: Personal stats and summary
+- **My Deals**: Deals where you're the contact person
+- **My Issues**: Create and track support issues
+- **Telegram Link**: Connect your Telegram account
 
 ---
 
@@ -272,6 +350,29 @@ The host connects to the MCP server at `http://localhost:3000/mcp/sse`. If you r
 **Error: "Unknown column 'deal_id'"**
 - Run the ALTER TABLE command from Step 2
 
+### Telegram Bot Issues
+
+**Error: "Unable to connect to CRM server"**
+- Ensure the backend server is running (`npm start` in Backend folder)
+- Check that `MCP_CLIENT_SSE_URL` and `MCP_ORG_SSE_URL` point to the correct backend address
+
+**Error: "TELEGRAM_BOT_TOKEN is not set"**
+- Add your bot token to `Backend/.env`
+- Get a token from [@BotFather](https://t.me/BotFather) on Telegram
+
+**Error: "GEMINI_API_KEY is not set"**
+- Add your API key to `Backend/.env`
+- Get an API key from [Google AI Studio](https://aistudio.google.com/apikey)
+
+**Bot says "Conversation history issue"**
+- This is auto-recovered; just retry your request
+- If persistent, use `/start` to reset your session
+
+**Bot shows "You don't have access"**
+- All authenticated users can access Client Mode
+- For Organization Mode, you must be a member of at least one organization
+- Use `/switch` to change modes
+
 ---
 
 ## Default Test Data
@@ -292,21 +393,34 @@ The schema includes default deal stages:
 tawasol-crm/
 ├── Backend/
 │   ├── controllers/      # API logic
-│   ├── routes/          # API routes
-│   ├── middleware/      # Auth & validation
-│   ├── services/        # JIRA integration
-│   ├── schema.sql       # Database schema
-│   ├── index.js         # Server entry
-│   └── .env            # Configuration
+│   ├── routes/           # API routes
+│   ├── middleware/       # Auth & validation
+│   ├── services/         # External integrations (JIRA, etc.)
+│   ├── mcp/
+│   │   └── server.js     # MCP server with client & org endpoints
+│   ├── telegram/
+│   │   ├── auth.js       # Telegram auth utilities
+│   │   └── sessionStore.js # Chat session management
+│   ├── bot.js            # Telegram bot (Telegraf + Gemini AI)
+│   ├── schema.sql        # Database schema
+│   ├── index.js          # Server entry point
+│   └── .env              # Configuration
 │
 ├── Frontend/
 │   ├── src/
-│   │   ├── pages/      # React pages
-│   │   ├── components/ # React components
-│   │   ├── services/   # API service
-│   │   └── router/     # Routes config
+│   │   ├── pages/
+│   │   │   ├── client/   # Client portal pages
+│   │   │   ├── organization/ # Organization portal pages
+│   │   │   └── company/  # Company pages
+│   │   ├── components/   # Reusable React components
+│   │   ├── services/     # API & socket services
+│   │   ├── layout/       # Layout components
+│   │   └── router/       # Routes config
 │   └── package.json
 │
+├── start.bat             # Windows: Start backend + frontend
+├── stop.bat              # Windows: Stop all services
+├── TelegramBot.bat       # Windows: Start Telegram bot
 └── README.md
 ```
 
@@ -324,9 +438,44 @@ If you encounter any issues:
 
 ## Next Steps
 
-- Configure JIRA integration (optional)
-- Set up Agora for voice calls (optional)
-- Configure Telegram bot (optional)
-- Deploy to production server
+- **Telegram Bot**: Set up the AI-powered Telegram bot for mobile CRM access (see Step 6)
+- **JIRA Integration**: Connect to JIRA for issue synchronization (optional)
+- **Agora Voice Calls**: Enable in-app voice calling with Agora (optional)
+- **Production Deployment**: Deploy to your production server with proper SSL
+
+---
+
+## Quick Reference
+
+### Environment Variables Summary
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DB_HOST` | Yes | MySQL host (usually `localhost`) |
+| `DB_USER` | Yes | MySQL username |
+| `DB_PASSWORD` | No | MySQL password (empty if none) |
+| `DB_NAME` | Yes | Database name (`tawasol_crm`) |
+| `JWT_SECRET` | Yes | Secret key for JWT tokens |
+| `PORT` | No | Backend port (default: 3000) |
+| `GEMINI_API_KEY` | For bot | Google AI API key |
+| `TELEGRAM_BOT_TOKEN` | For bot | Telegram bot token |
+| `MCP_CLIENT_SSE_URL` | For bot | Client MCP endpoint URL |
+| `MCP_ORG_SSE_URL` | For bot | Organization MCP endpoint URL |
+
+### Available npm Scripts (Backend)
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start the backend server |
+| `npm run bot` | Start the Telegram bot |
+| `npm run mcp` | Start MCP server standalone (debugging) |
+
+### Available npm Scripts (Frontend)
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
 
 **Enjoy using Tawasol CRM! 🚀**

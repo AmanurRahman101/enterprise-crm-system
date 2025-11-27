@@ -1,7 +1,7 @@
-// Telegram Routes (webhook + CRM linking utilities)
+// Telegram Routes (CRM account linking utilities)
+// Note: The Telegram bot runs as a separate process (bot.js) using polling mode
 const express = require('express');
 const router = express.Router();
-const { bot } = require('../services/telegramBotService');
 const { verifyToken } = require('../middleware/auth');
 const {
   createVerificationCodeForUser,
@@ -67,13 +67,4 @@ router.post('/link', verifyToken, async (req, res) => {
   }
 });
 
-// Webhook endpoint for Telegram (legacy bot service)
-router.post('/webhook', (req, res) => {
-  if (bot) {
-    bot.processUpdate(req.body);
-  }
-  res.sendStatus(200);
-});
-
 module.exports = router;
-

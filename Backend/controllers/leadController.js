@@ -3,11 +3,18 @@ const db = require('../db/connection');
 // Get all leads for a company
 const getCompanyLeads = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     
     const [leads] = await db.query(
-      'SELECT * FROM leads WHERE company_id = ? ORDER BY created_at DESC',
-      [companyId]
+      'SELECT * FROM leads WHERE organization_id = ? ORDER BY created_at DESC',
+      [organizationId]
     );
 
     res.status(200).json({
@@ -27,7 +34,15 @@ const getCompanyLeads = async (req, res) => {
 // Create a new lead
 const createLead = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+    const userId = req.user.userId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { full_name, email, phone, company_name, source, notes } = req.body;
 
     // Validate required fields
@@ -40,9 +55,9 @@ const createLead = async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO leads 
-       (company_id, full_name, email, phone, company_name, source, notes, status) 
+       (organization_id, full_name, email, phone, company_name, source, notes, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, 'new')`,
-      [companyId, full_name, email, phone, company_name, source, notes]
+      [organizationId, full_name, email, phone, company_name, source, notes]
     );
 
     // Fetch the created lead
@@ -78,14 +93,21 @@ const createLead = async (req, res) => {
 // Update a lead
 const updateLead = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { id } = req.params;
     const { full_name, email, phone, company_name, status, source, notes } = req.body;
 
     // Verify the lead belongs to this company
     const [existingLead] = await db.query(
-      'SELECT * FROM leads WHERE id = ? AND company_id = ?',
-      [id, companyId]
+      'SELECT * FROM leads WHERE id = ? AND organization_id = ?',
+      [id, organizationId]
     );
 
     if (existingLead.length === 0) {
@@ -100,8 +122,8 @@ const updateLead = async (req, res) => {
       `UPDATE leads 
        SET full_name = ?, email = ?, phone = ?, company_name = ?, 
            status = ?, source = ?, notes = ?
-       WHERE id = ? AND company_id = ?`,
-      [full_name, email, phone, company_name, status, source, notes, id, companyId]
+       WHERE id = ? AND organization_id = ?`,
+      [full_name, email, phone, company_name, status, source, notes, id, organizationId]
     );
 
     // Fetch updated lead
@@ -128,13 +150,20 @@ const updateLead = async (req, res) => {
 // Delete a lead
 const deleteLead = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { id } = req.params;
 
     // Verify the lead belongs to this company
     const [existingLead] = await db.query(
-      'SELECT * FROM leads WHERE id = ? AND company_id = ?',
-      [id, companyId]
+      'SELECT * FROM leads WHERE id = ? AND organization_id = ?',
+      [id, organizationId]
     );
 
     if (existingLead.length === 0) {
@@ -145,8 +174,8 @@ const deleteLead = async (req, res) => {
     }
 
     await db.query(
-      'DELETE FROM leads WHERE id = ? AND company_id = ?',
-      [id, companyId]
+      'DELETE FROM leads WHERE id = ? AND organization_id = ?',
+      [id, organizationId]
     );
 
     res.status(200).json({
@@ -166,7 +195,15 @@ const deleteLead = async (req, res) => {
 // Convert lead to customer
 const convertLead = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+    const userId = req.user.userId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
     const { id } = req.params;
     const { password } = req.body;
 
@@ -180,8 +217,8 @@ const convertLead = async (req, res) => {
 
     // Get the lead
     const [leads] = await db.query(
-      'SELECT * FROM leads WHERE id = ? AND company_id = ?',
-      [id, companyId]
+      'SELECT * FROM leads WHERE id = ? AND organization_id = ?',
+      [id, organizationId]
     );
 
     if (leads.length === 0) {
@@ -219,11 +256,11 @@ const convertLead = async (req, res) => {
 
     // Create relationship
     await db.query(
-      `INSERT INTO company_customer_relationship 
-       (company_id, customer_id, status, notes, added_by_company_id) 
+      `INSERT INTO organization_customer_relationships 
+       (organization_id, customer_id, status, notes, added_by_user_id) 
        VALUES (?, ?, 'active', ?, ?)
-       ON DUPLICATE KEY UPDATE status = 'active', notes = ?, updated_at = CURRENT_TIMESTAMP`,
-      [companyId, customerId, `Converted from lead: ${lead.full_name}`, companyId, `Converted from lead: ${lead.full_name}`]
+       ON DUPLICATE KEY UPDATE status = VALUES(status), notes = VALUES(notes), updated_at = CURRENT_TIMESTAMP`,
+      [organizationId, customerId, `Converted from lead: ${lead.full_name}`, userId || null]
     );
 
     // Update lead status to converted

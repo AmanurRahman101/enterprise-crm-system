@@ -258,6 +258,7 @@ const PersonModal = ({ person, onClose, onSave }) => {
     jobTitle: person?.jobTitle || '',
     notes: person?.notes || ''
   });
+  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useClickOutside(dropdownRef, () => setShowDropdown(false));
@@ -299,13 +300,14 @@ const PersonModal = ({ person, onClose, onSave }) => {
     setFormData({ ...formData, userId: user.id });
     setSearchQuery(user.fullName || user.email);
     setShowDropdown(false);
+    setErrors((prev) => ({ ...prev, userId: undefined }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!selectedUserId && !person) {
-      toast.error('Please select a user from the system');
+      setErrors((prev) => ({ ...prev, userId: 'Please select a user from the system.' }));
       return;
     }
 
@@ -342,7 +344,9 @@ const PersonModal = ({ person, onClose, onSave }) => {
                     setShowDropdown(true);
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.userId ? 'border-red-400' : 'border-gray-300'
+                  }`}
                 />
                 {showDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -380,6 +384,7 @@ const PersonModal = ({ person, onClose, onSave }) => {
               <p className="mt-1 text-xs text-gray-500">
                 Only users who have signed up to the system can be added as contacts (for calling feature).
               </p>
+              {errors.userId && <p className="mt-1 text-xs text-red-600">{errors.userId}</p>}
             </div>
           )}
 
@@ -451,6 +456,7 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
     organizationId: null,
     notes: organization?.notes || ''
   });
+  const [errors, setErrors] = useState({});
 
   // Close dropdown when clicking outside
   useClickOutside(dropdownRef, () => setShowDropdown(false));
@@ -491,13 +497,14 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
     setFormData({ ...formData, organizationId: org.id });
     setSearchQuery(org.name);
     setShowDropdown(false);
+    setErrors((prev) => ({ ...prev, organizationId: undefined }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!selectedOrgId && !organization) {
-      toast.error('Please select an organization from the system');
+      setErrors((prev) => ({ ...prev, organizationId: 'Please select an organization from the system.' }));
       return;
     }
 
@@ -534,7 +541,9 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
                     setShowDropdown(true);
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                    errors.organizationId ? 'border-red-400' : 'border-gray-300'
+                  }`}
                 />
                 {showDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -576,6 +585,9 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
               <p className="mt-1 text-xs text-gray-500">
                 Only organizations that exist in the system can be added as contacts.
               </p>
+              {errors.organizationId && (
+                <p className="mt-1 text-xs text-red-600">{errors.organizationId}</p>
+              )}
             </div>
           )}
 

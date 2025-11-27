@@ -5,7 +5,14 @@ const db = require('../db/connection');
 // Update Customer Profile
 const updateCustomerProfile = async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const customerId = req.user.userId || req.user.id;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer context is required.'
+      });
+    }
     const { fullName, email, phone } = req.body;
 
     if (!fullName || !email) {
@@ -60,7 +67,7 @@ const updateCustomerProfile = async (req, res) => {
 const getAllCompanies = async (req, res) => {
   try {
     const [companies] = await db.query(
-      'SELECT id, company_name, email, phone, address, created_at FROM companies ORDER BY company_name ASC'
+      'SELECT id, name as company_name, email, phone, address, created_at FROM organizations ORDER BY name ASC'
     );
 
     res.status(200).json({
@@ -81,22 +88,29 @@ const getAllCompanies = async (req, res) => {
 // Get Customer's Companies (companies customer has relationship with)
 const getCustomerCompanies = async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const customerId = req.user.userId || req.user.id;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer context is required.'
+      });
+    }
 
     const [companies] = await db.query(
       `SELECT 
-        c.id,
-        c.company_name,
-        c.email,
-        c.phone,
-        c.address,
-        ccr.status,
-        ccr.notes,
-        ccr.created_at as relationship_started
-      FROM company_customer_relationship ccr
-      INNER JOIN companies c ON ccr.company_id = c.id
-      WHERE ccr.customer_id = ?
-      ORDER BY ccr.created_at DESC`,
+        o.id,
+        o.name as company_name,
+        o.email,
+        o.phone,
+        o.address,
+        ocr.status,
+        ocr.notes,
+        ocr.created_at as relationship_started
+      FROM organization_customer_relationships ocr
+      INNER JOIN organizations o ON ocr.organization_id = o.id
+      WHERE ocr.customer_id = ?
+      ORDER BY ocr.created_at DESC`,
       [customerId]
     );
 
@@ -118,7 +132,7 @@ const getCustomerCompanies = async (req, res) => {
 // Add Company to Customer's List
 const addCompanyToCustomer = async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const customerId = req.user.userId || req.user.id;
     const { companyId } = req.body;
 
     if (!companyId) {
@@ -130,7 +144,7 @@ const addCompanyToCustomer = async (req, res) => {
 
     // Check if company exists
     const [company] = await db.query(
-      'SELECT id FROM companies WHERE id = ?',
+      'SELECT id FROM organizations WHERE id = ?',
       [companyId]
     );
 
@@ -143,7 +157,7 @@ const addCompanyToCustomer = async (req, res) => {
 
     // Check if relationship already exists
     const [existing] = await db.query(
-      'SELECT id FROM company_customer_relationship WHERE company_id = ? AND customer_id = ?',
+      'SELECT id FROM organization_customer_relationships WHERE organization_id = ? AND customer_id = ?',
       [companyId, customerId]
     );
 
@@ -156,7 +170,7 @@ const addCompanyToCustomer = async (req, res) => {
 
     // Create relationship
     await db.query(
-      'INSERT INTO company_customer_relationship (company_id, customer_id, status) VALUES (?, ?, ?)',
+      'INSERT INTO organization_customer_relationships (organization_id, customer_id, status, added_by_user_id) VALUES (?, ?, ?, NULL)',
       [companyId, customerId, 'active']
     );
 
@@ -178,12 +192,19 @@ const addCompanyToCustomer = async (req, res) => {
 // Remove Company from Customer's List
 const removeCompanyFromCustomer = async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const customerId = req.user.userId || req.user.id;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer context is required.'
+      });
+    }
     const { companyId } = req.params;
 
     // Delete the relationship
     const [result] = await db.query(
-      'DELETE FROM company_customer_relationship WHERE company_id = ? AND customer_id = ?',
+      'DELETE FROM organization_customer_relationships WHERE organization_id = ? AND customer_id = ?',
       [companyId, customerId]
     );
 

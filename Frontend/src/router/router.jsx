@@ -143,6 +143,10 @@ export let router = createBrowserRouter([
           {
             path: 'issues',
             Component: MyIssues
+          },
+          {
+            path: 'settings/telegram',
+            Component: TelegramLink
           }
         ]
       }

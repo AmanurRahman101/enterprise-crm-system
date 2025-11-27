@@ -2,7 +2,7 @@
 const db = require('../db/connection');
 const jiraService = require('../services/jiraService');
 const { verifyToken, isClient } = require('../middleware/auth');
-const { validateClientIssuePayload } = require('../utils/validation');
+const { validateClientIssuePayload, validateIssuePayload } = require('../utils/validation');
 
 // Get Client's Deals (across all organizations where client is a contact)
 const getClientDeals = async (req, res) => {
@@ -141,6 +141,35 @@ const getClientIssues = async (req, res) => {
   }
 };
 
+// Get All Organizations (for client to raise general issues)
+const getClientOrganizations = async (req, res) => {
+  try {
+    // Return all organizations so clients can raise issues against any company
+    const [organizations] = await db.query(
+      `SELECT id, name, email as org_email
+       FROM organizations
+       ORDER BY name`
+    );
+
+    res.status(200).json({
+      success: true,
+      organizations: organizations.map(org => ({
+        id: org.id,
+        name: org.name,
+        email: org.org_email
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get client organizations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching organizations.',
+      error: error.message
+    });
+  }
+};
+
 // Get Client Overview Stats
 const getClientOverview = async (req, res) => {
   try {
@@ -213,12 +242,14 @@ const createClientIssue = async (req, res) => {
       description,
       priority = 'medium',
       dealId,
+      organizationId: requestedOrgId,
       jiraProjectKey
     } = req.body;
 
     const userId = req.user.userId;
 
-    const { isValid, errors } = validateClientIssuePayload({ title, description, priority, dealId, jiraProjectKey });
+    // Validate basic issue fields (without requiring dealId)
+    const { isValid, errors } = validateIssuePayload({ title, description, priority, jiraProjectKey }, { partial: false });
     if (!isValid) {
       return res.status(400).json({
         success: false,
@@ -227,46 +258,91 @@ const createClientIssue = async (req, res) => {
       });
     }
 
-    // Validate deal exists and user has access to it (either as contact or assigned user)
-    const [deals] = await db.query(
-      `SELECT d.id, d.organization_id, d.title, ds.name as stage_name
-       FROM deals d
-       INNER JOIN deal_stages ds ON d.stage_id = ds.id
-       LEFT JOIN contacts_people cp ON d.contact_person_id = cp.id
-       LEFT JOIN contacts_organizations co ON d.contact_org_id = co.id
-       WHERE d.id = ? 
-       AND (
-         d.assigned_to_user_id = ? 
-         OR cp.email = (SELECT email FROM users WHERE id = ?)
-         OR co.email = (SELECT email FROM users WHERE id = ?)
-       )`,
-      [dealId, userId, userId, userId]
-    );
-
-    if (deals.length === 0) {
-      return res.status(403).json({
+    // Get user email for contact verification
+    const [users] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      return res.status(404).json({
         success: false,
-        message: 'You do not have access to this deal or deal not found.',
-        errors: {
-          dealId: 'Select a valid deal you have access to.'
-        }
+        message: 'User not found.'
       });
     }
+    const userEmail = users[0].email;
 
-    const deal = deals[0];
+    let organizationId = null;
+    let finalDealId = null;
 
-    // Check if deal is won
-    if (deal.stage_name !== 'Won') {
+    if (dealId) {
+      // Deal-based issue: Validate deal exists and user has access to it
+      const [deals] = await db.query(
+        `SELECT d.id, d.organization_id, d.title, ds.name as stage_name
+         FROM deals d
+         INNER JOIN deal_stages ds ON d.stage_id = ds.id
+         LEFT JOIN contacts_people cp ON d.contact_person_id = cp.id
+         LEFT JOIN contacts_organizations co ON d.contact_org_id = co.id
+         WHERE d.id = ? 
+         AND (
+           d.assigned_to_user_id = ? 
+           OR cp.email = ?
+           OR co.email = ?
+         )`,
+        [dealId, userId, userEmail, userEmail]
+      );
+
+      if (deals.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have access to this deal or deal not found.',
+          errors: {
+            dealId: 'Select a valid deal you have access to.'
+          }
+        });
+      }
+
+      const deal = deals[0];
+
+      // Check if deal is won
+      if (deal.stage_name !== 'Won') {
+        return res.status(400).json({
+          success: false,
+          message: 'Issues can only be created for won deals.',
+          errors: {
+            dealId: 'Issues can only be created for deals marked as Won.'
+          }
+        });
+      }
+
+      organizationId = deal.organization_id;
+      finalDealId = dealId;
+    } else if (requestedOrgId) {
+      // General issue: Validate organization exists
+      const [orgCheck] = await db.query(
+        `SELECT id, name FROM organizations WHERE id = ?`,
+        [requestedOrgId]
+      );
+
+      if (orgCheck.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Organization not found.',
+          errors: {
+            organizationId: 'Select a valid organization.'
+          }
+        });
+      }
+
+      organizationId = requestedOrgId;
+      finalDealId = null; // General issue - no deal
+    } else {
+      // Neither dealId nor organizationId provided
       return res.status(400).json({
         success: false,
-        message: 'Issues can only be created for won deals.',
+        message: 'Please select a deal or an organization for the issue.',
         errors: {
-          dealId: 'Issues can only be created for deals marked as Won.'
+          organizationId: 'Either a deal or an organization is required.'
         }
       });
     }
 
-    const organizationId = deal.organization_id;
     let jiraTicketId = null;
     let jiraUrl = null;
     let finalJiraProjectKey = jiraProjectKey;
@@ -279,7 +355,7 @@ const createClientIssue = async (req, res) => {
           description,
           priority,
           projectKey: jiraProjectKey,
-          dealId,
+          dealId: finalDealId,
           issueType: 'Task'
         });
 
@@ -298,7 +374,7 @@ const createClientIssue = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO issues (organization_id, deal_id, title, description, status, priority, reporter_user_id, jira_project_key, jira_ticket_id, jira_url)
        VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?, ?)`,
-      [organizationId, dealId, title, description || null, priority, userId, finalJiraProjectKey || null, jiraTicketId || null, jiraUrl || null]
+      [organizationId, finalDealId, title, description || null, priority, userId, finalJiraProjectKey || null, jiraTicketId || null, jiraUrl || null]
     );
 
     const [newIssues] = await db.query(
@@ -332,6 +408,7 @@ module.exports = {
   getClientDeals,
   getClientIssues,
   getClientOverview,
+  getClientOrganizations,
   createClientIssue
 };
 

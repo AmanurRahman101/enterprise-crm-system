@@ -4,12 +4,12 @@ const jwt = require('jsonwebtoken');
 const db = require('../db/connection');
 const { jwtSecret, jwtExpiration } = require('../config/jwt');
 
-// Company Signup
+// Company Signup (legacy endpoint bridging new multi-tenant system)
 const signupCompany = async (req, res) => {
   try {
-    const { companyName, email, password, phone, address } = req.body;
+    const { companyName, fullName, email, password, phone, address } = req.body;
+    const ownerFullName = fullName || `${companyName} Owner`;
 
-    // Validate required fields
     if (!companyName || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -17,49 +17,69 @@ const signupCompany = async (req, res) => {
       });
     }
 
-    // Check if company already exists
-    const [existingCompany] = await db.query(
-      'SELECT id FROM companies WHERE email = ?',
+    const [existingUsers] = await db.query(
+      'SELECT id FROM users WHERE email = ?',
       [email]
     );
 
-    if (existingCompany.length > 0) {
+    if (existingUsers.length > 0) {
       return res.status(409).json({
         success: false,
-        message: 'Company with this email already exists.'
+        message: 'An account with this email already exists. Please sign in instead.'
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert company into database
-    const [result] = await db.query(
-      'INSERT INTO companies (company_name, email, password, phone, address) VALUES (?, ?, ?, ?, ?)',
-      [companyName, email, hashedPassword, phone || null, address || null]
+    // Create user account
+    const [userResult] = await db.query(
+      'INSERT INTO users (email, password, full_name, phone, user_type) VALUES (?, ?, ?, ?, ?)',
+      [email, hashedPassword, ownerFullName, phone || null, 'internal']
+    );
+    const userId = userResult.insertId;
+
+    // Create organization
+    const [orgResult] = await db.query(
+      'INSERT INTO organizations (name, email, phone, address) VALUES (?, ?, ?, ?)',
+      [companyName, email, phone || null, address || null]
+    );
+    const organizationId = orgResult.insertId;
+
+    // Link user to organization as owner
+    await db.query(
+      'INSERT INTO user_organizations (user_id, organization_id, role) VALUES (?, ?, ?)',
+      [userId, organizationId, 'owner']
     );
 
-    // Generate JWT token
     const token = jwt.sign(
-      { id: result.insertId, email, type: 'company' },
+      { userId, email, currentOrganizationId: organizationId },
       jwtSecret,
       { expiresIn: jwtExpiration }
     );
 
-    // Return success response
     res.status(201).json({
       success: true,
       message: 'Company registered successfully.',
       token,
       company: {
-        id: result.insertId,
+        id: organizationId,
         company_name: companyName,
         email,
         phone,
         address
+      },
+      user: {
+        id: userId,
+        full_name: ownerFullName,
+        email,
+        phone
+      },
+      currentOrganization: {
+        id: organizationId,
+        name: companyName,
+        role: 'owner'
       }
     });
-
   } catch (error) {
     console.error('Company signup error:', error);
     res.status(500).json({
@@ -70,12 +90,11 @@ const signupCompany = async (req, res) => {
   }
 };
 
-// Company Signin
+// Company Signin (legacy endpoint bridging new multi-tenant system)
 const signinCompany = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate required fields
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -83,23 +102,20 @@ const signinCompany = async (req, res) => {
       });
     }
 
-    // Find company by email
-    const [companies] = await db.query(
-      'SELECT * FROM companies WHERE email = ?',
+    const [users] = await db.query(
+      'SELECT * FROM users WHERE LOWER(email) = LOWER(?)',
       [email]
     );
 
-    if (companies.length === 0) {
+    if (users.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password.'
       });
     }
 
-    const company = companies[0];
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, company.password);
+    const user = users[0];
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -108,23 +124,46 @@ const signinCompany = async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    // Fetch user's organizations (legacy company view assumes first organization)
+    const [organizations] = await db.query(
+      `SELECT o.id, o.name, o.email, o.phone, o.address, uo.role
+       FROM organizations o
+       INNER JOIN user_organizations uo ON o.id = uo.organization_id
+       WHERE uo.user_id = ?
+       ORDER BY uo.joined_at ASC`,
+      [user.id]
+    );
+
+    const currentOrganization = organizations.length > 0 ? organizations[0] : null;
+
     const token = jwt.sign(
-      { id: company.id, email: company.email, type: 'company' },
+      {
+        userId: user.id,
+        email: user.email,
+        currentOrganizationId: currentOrganization ? currentOrganization.id : null
+      },
       jwtSecret,
       { expiresIn: jwtExpiration }
     );
 
-    // Return success response (excluding password)
-    const { password: _, ...companyData } = company;
+    const { password: _, ...safeUser } = user;
 
     res.status(200).json({
       success: true,
       message: 'Company signed in successfully.',
       token,
-      company: companyData
+      user: safeUser,
+      company: currentOrganization
+        ? {
+            id: currentOrganization.id,
+            company_name: currentOrganization.name,
+            email: currentOrganization.email,
+            phone: currentOrganization.phone,
+            address: currentOrganization.address
+          }
+        : null,
+      organizations
     });
-
   } catch (error) {
     console.error('Company signin error:', error);
     res.status(500).json({
@@ -138,8 +177,15 @@ const signinCompany = async (req, res) => {
 // Update Company Profile
 const updateCompanyProfile = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
     const { companyName, email, phone, address } = req.body;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
 
     // Validate required fields
     if (!companyName || !email) {
@@ -149,35 +195,29 @@ const updateCompanyProfile = async (req, res) => {
       });
     }
 
-    // Check if email is already used by another company
-    const [existingCompany] = await db.query(
-      'SELECT id FROM companies WHERE email = ? AND id != ?',
-      [email, companyId]
-    );
-
-    if (existingCompany.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: 'Email is already in use by another company.'
-      });
-    }
-
     // Update company profile
     await db.query(
-      'UPDATE companies SET company_name = ?, email = ?, phone = ?, address = ? WHERE id = ?',
-      [companyName, email, phone || null, address || null, companyId]
+      'UPDATE organizations SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?',
+      [companyName, email, phone || null, address || null, organizationId]
     );
 
     // Fetch updated company data
-    const [updatedCompany] = await db.query(
-      'SELECT id, company_name, email, phone, address, created_at FROM companies WHERE id = ?',
-      [companyId]
+    const [updatedOrganization] = await db.query(
+      'SELECT id, name, email, phone, address, created_at FROM organizations WHERE id = ?',
+      [organizationId]
     );
 
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully.',
-      company: updatedCompany[0]
+      company: {
+        id: updatedOrganization[0].id,
+        company_name: updatedOrganization[0].name,
+        email: updatedOrganization[0].email,
+        phone: updatedOrganization[0].phone,
+        address: updatedOrganization[0].address,
+        created_at: updatedOrganization[0].created_at
+      }
     });
 
   } catch (error) {
@@ -193,30 +233,37 @@ const updateCompanyProfile = async (req, res) => {
 // Get Company Analytics Data
 const getCompanyAnalytics = async (req, res) => {
   try {
-    const companyId = req.user.id;
+    const organizationId = req.user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Organization context is required.'
+      });
+    }
 
     // Get total customers
     const [customersCount] = await db.query(
-      'SELECT COUNT(*) as total FROM company_customer_relationship WHERE company_id = ?',
-      [companyId]
+      'SELECT COUNT(*) as total FROM organization_customer_relationships WHERE organization_id = ?',
+      [organizationId]
     );
 
     // Get total leads
     const [leadsCount] = await db.query(
-      'SELECT COUNT(*) as total FROM leads WHERE company_id = ?',
-      [companyId]
+      'SELECT COUNT(*) as total FROM leads WHERE organization_id = ?',
+      [organizationId]
     );
 
     // Get leads by status
     const [leadsByStatus] = await db.query(
-      'SELECT status, COUNT(*) as count FROM leads WHERE company_id = ? GROUP BY status',
-      [companyId]
+      'SELECT status, COUNT(*) as count FROM leads WHERE organization_id = ? GROUP BY status',
+      [organizationId]
     );
 
     // Get conversion rate (converted leads / total leads)
     const [convertedLeads] = await db.query(
-      'SELECT COUNT(*) as total FROM leads WHERE company_id = ? AND status = "converted"',
-      [companyId]
+      'SELECT COUNT(*) as total FROM leads WHERE organization_id = ? AND status = "converted"',
+      [organizationId]
     );
 
     const totalLeads = leadsCount[0].total;

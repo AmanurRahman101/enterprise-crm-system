@@ -3,12 +3,15 @@ import { Link, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../services/api';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Signin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   // Check if user is already logged in
@@ -22,13 +25,23 @@ const Signin = () => {
     }
   }, [navigate]);
 
+  const validateForm = () => {
+    const nextErrors = {};
+    if (!formData.email || !EMAIL_REGEX.test(formData.email.trim())) {
+      nextErrors.email = 'Enter a valid email address.';
+    }
+    if (!formData.password) {
+      nextErrors.password = 'Password is required.';
+    }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Validate form
-    if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields');
+    if (!validateForm()) {
       setLoading(false);
       return;
     }
@@ -91,10 +104,14 @@ const Signin = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.email ? 'border-red-400' : 'border-gray-300'
+                }`}
                 placeholder="john@example.com"
                 autoComplete="email"
+                aria-invalid={errors.email ? 'true' : 'false'}
               />
+              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
             </div>
 
             {/* Password */}
@@ -116,10 +133,14 @@ const Signin = () => {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                  errors.password ? 'border-red-400' : 'border-gray-300'
+                }`}
                 placeholder="••••••••"
                 autoComplete="current-password"
+                aria-invalid={errors.password ? 'true' : 'false'}
               />
+              {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
             </div>
 
             {/* Submit Button */}

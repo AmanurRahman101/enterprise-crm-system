@@ -41,7 +41,12 @@ const signupCustomer = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: result.insertId, email, type: 'customer' },
+      {
+        userId: result.insertId,
+        email,
+        type: 'customer',
+        legacyCustomer: true
+      },
       jwtSecret,
       { expiresIn: jwtExpiration }
     );
@@ -109,7 +114,12 @@ const signinCustomer = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: customer.id, email: customer.email, type: 'customer' },
+      {
+        userId: customer.id,
+        email: customer.email,
+        type: 'customer',
+        legacyCustomer: true
+      },
       jwtSecret,
       { expiresIn: jwtExpiration }
     );

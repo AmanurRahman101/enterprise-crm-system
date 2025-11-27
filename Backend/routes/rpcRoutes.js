@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { signupCompany, signinCompany, updateCompanyProfile, getCompanyAnalytics } = require('../controllers/companyController');
 const { signupCustomer, signinCustomer } = require('../controllers/customerController');
-const { verifyToken, isCompany, isCustomer } = require('../middleware/auth');
+const { verifyToken, isCompany, isCustomer, authenticate } = require('../middleware/auth');
 
 // Lead Controller
 const {
@@ -46,7 +46,7 @@ router.post('/signinCustomer', signinCustomer);
 // ===== Company Protected Routes =====
 
 // Company Profile
-router.get('/getCompanyProfile', verifyToken, isCompany, (req, res) => {
+router.get('/getCompanyProfile', authenticate, isCompany, (req, res) => {
   res.json({
     success: true,
     message: 'Company profile endpoint',
@@ -54,23 +54,23 @@ router.get('/getCompanyProfile', verifyToken, isCompany, (req, res) => {
   });
 });
 
-router.post('/updateCompanyProfile', verifyToken, isCompany, updateCompanyProfile);
+router.post('/updateCompanyProfile', authenticate, isCompany, updateCompanyProfile);
 
 // Analytics
-router.get('/getCompanyAnalytics', verifyToken, isCompany, getCompanyAnalytics);
+router.get('/getCompanyAnalytics', authenticate, isCompany, getCompanyAnalytics);
 
 // Leads Management
-router.get('/getCompanyLeads', verifyToken, isCompany, getCompanyLeads);
-router.post('/createLead', verifyToken, isCompany, createLead);
-router.put('/updateLead/:id', verifyToken, isCompany, updateLead);
-router.delete('/deleteLead/:id', verifyToken, isCompany, deleteLead);
-router.post('/convertLead/:id', verifyToken, isCompany, convertLead);
+router.get('/getCompanyLeads', authenticate, isCompany, getCompanyLeads);
+router.post('/createLead', authenticate, isCompany, createLead);
+router.put('/updateLead/:id', authenticate, isCompany, updateLead);
+router.delete('/deleteLead/:id', authenticate, isCompany, deleteLead);
+router.post('/convertLead/:id', authenticate, isCompany, convertLead);
 
 // Customer Management
-router.get('/getCompanyCustomers', verifyToken, isCompany, getCompanyCustomers);
-router.post('/addCustomer', verifyToken, isCompany, addCustomer);
-router.put('/updateCustomer/:id', verifyToken, isCompany, updateCustomer);
-router.delete('/removeCustomer/:id', verifyToken, isCompany, removeCustomer);
+router.get('/getCompanyCustomers', authenticate, isCompany, getCompanyCustomers);
+router.post('/addCustomer', authenticate, isCompany, addCustomer);
+router.put('/updateCustomer/:id', authenticate, isCompany, updateCustomer);
+router.delete('/removeCustomer/:id', authenticate, isCompany, removeCustomer);
 
 // ===== Customer Protected Routes =====
 router.get('/getCustomerProfile', verifyToken, isCustomer, (req, res) => {
