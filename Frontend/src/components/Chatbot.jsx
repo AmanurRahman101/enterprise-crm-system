@@ -1,50 +1,163 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import ApiService from '../services/api';
-import SocketService from '../services/socketService';
 
-const Chatbot = ({ isOpen, onClose }) => {
+// HudHud Chatbot - Named after the Hoopoe bird
+const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [currentMode, setCurrentMode] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
+  // Speech Recognition setup
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const hasSpeechSupport = !!SpeechRecognition;
+
+  // Determine current mode from route (isClientPortal) passed from DashboardLayout
+  const getCurrentMode = useCallback(() => {
+    // Client mode when on /dashboard/client/* routes
+    if (isClientPortal) {
+      return {
+        mode: 'client',
+        name: 'Client Portal'
+      };
+    }
+    // Organization mode when on /dashboard/organization/* routes
+    if (currentOrganization && currentOrganization.id) {
+      return {
+        mode: 'organization',
+        name: currentOrganization.name || 'Organization'
+      };
+    }
+    // Default to client mode if no organization selected
+    return {
+      mode: 'client',
+      name: 'Client Portal'
+    };
+  }, [currentOrganization, isClientPortal]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (hasSpeechSupport) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interim = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setInputMessage(prev => prev + finalTranscript);
+          setInterimTranscript('');
+          
+          // Reset silence timer on final result
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+          
+          // Start silence detection timer (1.5 seconds)
+          silenceTimerRef.current = setTimeout(() => {
+            if (isListening) {
+              stopListening(true);
+            }
+          }, 1500);
+        } else {
+          setInterimTranscript(interim);
+          
+          // Reset silence timer on interim results too
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+          silenceTimerRef.current = setTimeout(() => {
+            if (isListening) {
+              stopListening(true);
+            }
+          }, 1500);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error !== 'no-speech') {
+          toast.error('Voice recognition error. Please try again.');
+        }
+        setIsListening(false);
+        setInterimTranscript('');
+      };
+
+      recognition.onend = () => {
+        if (isListening) {
+          // Restart if still supposed to be listening
+          try {
+            recognition.start();
+          } catch (e) {
+            setIsListening(false);
+          }
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, [hasSpeechSupport, isListening]);
+
+  // Update mode when chatbot opens or organization changes
   useEffect(() => {
     if (isOpen) {
-      // Add welcome message
-      setMessages([
-        {
-          id: 'welcome',
-          type: 'bot',
-          text: '👋 Hello! I\'m your CRM assistant. I can help you with:\n\n• Finding contacts\n• Checking deal status\n• Creating issues\n• Viewing activities\n• General information\n\nHow can I help you today?',
-          timestamp: new Date()
-        }
-      ]);
-
-      // Connect to WebSocket for real-time responses
-      if (!SocketService.isConnected()) {
-        SocketService.connect();
+      const mode = getCurrentMode();
+      setCurrentMode(mode);
+      
+      // Only set welcome message on first open (not on org change)
+      if (messages.length === 0) {
+        setMessages([
+          {
+            id: 'welcome',
+            type: 'bot',
+            text: `Hello! I'm HudHud, your CRM assistant.\n\nI can help you with:\n• Finding and managing contacts\n• Checking deal status and pipeline\n• Creating and tracking issues\n• Viewing activities and insights\n\nCurrently in ${mode.name} mode. How can I help you today?`,
+            timestamp: new Date()
+          }
+        ]);
       }
-
-      // Listen for chatbot messages
-      const unsubscribe = SocketService.on('chatbot_message', (data) => {
-        if (data.message) {
-          addBotMessage(data.message);
-        }
-      });
 
       // Focus input
       if (inputRef.current) {
         inputRef.current.focus();
       }
-
-      return () => {
-        unsubscribe();
-      };
+    } else {
+      // Clean up when closing
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+      setIsListening(false);
+      setInterimTranscript('');
     }
-  }, [isOpen]);
+  }, [isOpen, getCurrentMode, currentOrganization, isClientPortal]);
 
   useEffect(() => {
     scrollToBottom();
@@ -75,9 +188,56 @@ const Chatbot = ({ isOpen, onClose }) => {
     setMessages(prev => [...prev, newMessage]);
   };
 
+  const startListening = () => {
+    if (!hasSpeechSupport) {
+      toast.error('Voice input is not supported in this browser');
+      return;
+    }
+
+    try {
+      recognitionRef.current?.start();
+      setIsListening(true);
+      setInterimTranscript('');
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error);
+      toast.error('Failed to start voice input');
+    }
+  };
+
+  const stopListening = (autoSubmit = false) => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+    
+    setIsListening(false);
+    setInterimTranscript('');
+
+    // Auto-submit if there's text and autoSubmit is true
+    if (autoSubmit && inputMessage.trim()) {
+      setTimeout(() => handleSendMessage(), 100);
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening(false);
+    } else {
+      startListening();
+    }
+  };
+
   const handleSendMessage = async () => {
     const message = inputMessage.trim();
     if (!message) return;
+
+    // Stop listening if active
+    if (isListening) {
+      stopListening(false);
+    }
 
     // Add user message
     addUserMessage(message);
@@ -91,14 +251,14 @@ const Chatbot = ({ isOpen, onClose }) => {
         body: { message }
       });
 
-      if (response.success && response.reply) {
-        addBotMessage(response.reply);
+      if (response.success && response.response) {
+        addBotMessage(response.response);
       } else {
-        throw new Error('No response from chatbot');
+        throw new Error('No response from HudHud');
       }
     } catch (error) {
       console.error('Chatbot error:', error);
-      addBotMessage('Sorry, I encountered an error processing your request. Please try again.');
+      addBotMessage('I apologize, but I encountered an error processing your request. Please try again.');
       toast.error('Failed to send message');
     }
   };
@@ -110,6 +270,25 @@ const Chatbot = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleResetChat = async () => {
+    try {
+      await ApiService.request('/api/chatbot/reset', { method: 'POST' });
+      const mode = getCurrentMode();
+      setMessages([
+        {
+          id: 'welcome-reset',
+          type: 'bot',
+          text: `Chat history cleared. I'm ready for a fresh conversation!\n\nCurrently in ${mode.name} mode.`,
+          timestamp: new Date()
+        }
+      ]);
+      toast.success('Chat reset successfully');
+    } catch (error) {
+      console.error('Failed to reset chat:', error);
+      toast.error('Failed to reset chat');
+    }
+  };
+
   const formatTime = (date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
@@ -117,12 +296,19 @@ const Chatbot = ({ isOpen, onClose }) => {
     });
   };
 
-  const quickActions = [
-    { label: 'Show my deals', value: 'Show me my deals' },
-    { label: 'Recent activities', value: 'What are the recent activities?' },
-    { label: 'Open issues', value: 'Show open issues' },
-    { label: 'Contact list', value: 'Show all contacts' }
-  ];
+  const quickActions = currentMode?.mode === 'organization' 
+    ? [
+        { label: '📊 Show deals', value: 'Show me all deals' },
+        { label: '👥 List contacts', value: 'Show all contacts' },
+        { label: '🎫 Open issues', value: 'What are the open issues?' },
+        { label: '📈 Stats overview', value: 'Give me an overview of our stats' }
+      ]
+    : [
+        { label: '💼 My deals', value: 'Show me my deals' },
+        { label: '🎫 My issues', value: 'What are my open issues?' },
+        { label: '📊 Overview', value: 'Give me an overview' },
+        { label: '🏢 Organizations', value: 'List organizations I can contact' }
+      ];
 
   const handleQuickAction = (value) => {
     setInputMessage(value);
@@ -132,43 +318,58 @@ const Chatbot = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 transition-all ${isMinimized ? 'w-80' : 'w-96'}`}>
-      <div className={`bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col ${isMinimized ? 'h-16' : 'h-[600px]'}`}>
+    <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${isMinimized ? 'w-80' : 'w-[420px]'}`}>
+      <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-amber-500/20 flex flex-col overflow-hidden ${isMinimized ? 'h-16' : 'h-[650px]'}`}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-xl">
-              🤖
+            {/* HudHud Bird Avatar */}
+            <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/30">
+              <svg viewBox="0 0 24 24" className="w-7 h-7 text-white" fill="currentColor">
+                <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5 0 .3 0 .5-.1.8-.8-.2-1.6-.3-2.4-.3s-1.6.1-2.4.3c-.1-.3-.1-.5-.1-.8C9.5 5.1 10.6 4 12 4zm-4 9c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm6 0c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm-2 3c-1.1 0-2-.4-2.5-1h5c-.5.6-1.4 1-2.5 1z"/>
+              </svg>
             </div>
             <div>
-              <h3 className="font-semibold">CRM Assistant</h3>
-              <p className="text-xs opacity-90">
-                {SocketService.isConnected() ? '🟢 Online' : '🔴 Offline'}
+              <h3 className="font-bold text-white text-lg tracking-tight">HudHud</h3>
+              <p className="text-xs text-white/80 font-medium">
+                {currentMode?.mode === 'organization' 
+                  ? `🏢 ${currentMode.name}`
+                  : '👤 Client Portal'
+                }
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={handleResetChat}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              title="Reset Chat"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
             <button
               onClick={() => setIsMinimized(!isMinimized)}
-              className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
-              title={isMinimized ? 'Maximize' : 'Minimize'}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              title={isMinimized ? 'Expand' : 'Minimize'}
             >
               {isMinimized ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               )}
             </button>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               title="Close"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -178,23 +379,30 @@ const Chatbot = ({ isOpen, onClose }) => {
         {!isMinimized && (
           <>
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-800/50 to-slate-900/50">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
                 >
+                  {message.type === 'bot' && (
+                    <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 shadow-lg">
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                        <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2z"/>
+                      </svg>
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-lg ${
                       message.type === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-900'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                        : 'bg-slate-700/80 backdrop-blur-sm text-gray-100 border border-slate-600/50'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
                     <p
-                      className={`text-xs mt-1 ${
-                        message.type === 'user' ? 'text-indigo-200' : 'text-gray-500'
+                      className={`text-xs mt-2 ${
+                        message.type === 'user' ? 'text-amber-100' : 'text-slate-400'
                       }`}
                     >
                       {formatTime(message.timestamp)}
@@ -204,12 +412,17 @@ const Chatbot = ({ isOpen, onClose }) => {
               ))}
 
               {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
+                <div className="flex justify-start animate-fadeIn">
+                  <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                      <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2z"/>
+                    </svg>
+                  </div>
+                  <div className="bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl px-4 py-3">
                     <div className="flex space-x-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -220,13 +433,14 @@ const Chatbot = ({ isOpen, onClose }) => {
 
             {/* Quick Actions */}
             {messages.length <= 1 && (
-              <div className="px-4 py-2 border-t border-gray-200 bg-white">
+              <div className="px-4 py-3 border-t border-slate-700/50 bg-slate-800/50">
+                <p className="text-xs text-slate-400 mb-2 font-medium">Quick actions:</p>
                 <div className="flex flex-wrap gap-2">
                   {quickActions.map((action, index) => (
                     <button
                       key={index}
                       onClick={() => handleQuickAction(action.value)}
-                      className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+                      className="px-3 py-1.5 text-xs bg-slate-700/50 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 rounded-full transition-all border border-slate-600/50 hover:border-amber-500/50"
                     >
                       {action.label}
                     </button>
@@ -236,51 +450,119 @@ const Chatbot = ({ isOpen, onClose }) => {
             )}
 
             {/* Input Area */}
-            <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
+            <div className="p-4 border-t border-slate-700/50 bg-slate-800/80 backdrop-blur-sm">
+              {/* Voice Recording Indicator */}
+              {isListening && (
+                <div className="mb-3 flex items-center justify-center space-x-2 text-amber-400">
+                  <div className="flex space-x-1">
+                    <div className="w-1 h-4 bg-amber-400 rounded-full animate-pulse"></div>
+                    <div className="w-1 h-6 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-1 h-3 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-1 h-5 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                    <div className="w-1 h-4 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                  <span className="text-sm font-medium">Listening... (pause to send)</span>
+                </div>
+              )}
+
               <div className="flex items-end space-x-2">
-                <textarea
-                  ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  rows={1}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                  disabled={loading}
-                />
+                <div className="flex-1 relative">
+                  <textarea
+                    ref={inputRef}
+                    value={inputMessage + (interimTranscript ? ` ${interimTranscript}` : '')}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={isListening ? 'Listening...' : 'Type your message or use voice...'}
+                    rows={1}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none text-gray-100 placeholder-slate-400 transition-all"
+                    disabled={loading}
+                    style={{ minHeight: '48px', maxHeight: '120px' }}
+                  />
+                  {interimTranscript && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                      ...
+                    </span>
+                  )}
+                </div>
+
+                {/* Voice Input Button */}
+                {hasSpeechSupport && (
+                  <button
+                    onClick={toggleListening}
+                    disabled={loading}
+                    className={`p-3 rounded-xl transition-all ${
+                      isListening
+                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                        : 'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-amber-400 border border-slate-600/50'
+                    }`}
+                    title={isListening ? 'Stop listening' : 'Start voice input'}
+                  >
+                    {isListening ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+
+                {/* Send Button */}
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim() || loading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="p-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-amber-500/25"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </button>
               </div>
+
+              {/* Voice support hint */}
+              {!hasSpeechSupport && (
+                <p className="text-xs text-slate-500 mt-2 text-center">
+                  Voice input not supported in this browser
+                </p>
+              )}
             </div>
           </>
         )}
       </div>
+
+      {/* Styles for animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
 
-// Chatbot Toggle Button Component
+// HudHud Toggle Button Component
 export const ChatbotToggle = ({ onClick, hasUnread = false }) => {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-4 right-4 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40"
-      title="Open Chat Assistant"
+      className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 hover:shadow-amber-500/40 z-40 border border-amber-400/30"
+      title="Chat with HudHud"
     >
-      <span className="text-2xl">💬</span>
+      <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
+        <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5 0 .3 0 .5-.1.8-.8-.2-1.6-.3-2.4-.3s-1.6.1-2.4.3c-.1-.3-.1-.5-.1-.8C9.5 5.1 10.6 4 12 4zm-4 9c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm6 0c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm-2 3c-1.1 0-2-.4-2.5-1h5c-.5.6-1.4 1-2.5 1z"/>
+      </svg>
       {hasUnread && (
-        <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></span>
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
       )}
     </button>
   );
 };
 
 export default Chatbot;
-

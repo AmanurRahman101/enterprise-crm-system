@@ -385,7 +385,12 @@ const DashboardLayout = () => {
       {user && (
         <>
           <ChatbotToggle onClick={() => setChatbotOpen(!chatbotOpen)} />
-          <Chatbot isOpen={chatbotOpen} onClose={() => setChatbotOpen(false)} />
+          <Chatbot 
+            isOpen={chatbotOpen} 
+            onClose={() => setChatbotOpen(false)} 
+            currentOrganization={currentOrg}
+            isClientPortal={location.pathname.startsWith('/dashboard/client')}
+          />
           <CallInterface />
         </>
       )}
