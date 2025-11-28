@@ -11,16 +11,18 @@ const { chat, resetSession, getSessionInfo } = require('../services/chatbotServi
 /**
  * POST /api/chatbot/message
  * Send a message to HudHud
- * Mode is auto-detected from JWT:
- * - If organizationId present → Organization Mode
- * - If no organizationId → Client Mode
+ * Mode is determined by isClientMode flag from request body:
+ * - isClientMode: true → Client Mode (only user's own data)
+ * - isClientMode: false/undefined → Organization Mode (org data)
  */
 router.post('/message', authenticate, async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, isClientMode } = req.body;
     const userId = req.user.userId;
-    const organizationId = req.user.organizationId || null;
     const email = req.user.email;
+    
+    // Use client mode if explicitly requested, otherwise use org mode if user has an org
+    const effectiveOrgId = isClientMode ? null : (req.user.organizationId || null);
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({
@@ -29,12 +31,12 @@ router.post('/message', authenticate, async (req, res) => {
       });
     }
 
-    const response = await chat(userId, organizationId, message, { email });
+    const response = await chat(userId, effectiveOrgId, message, { email });
 
     res.status(200).json({
       success: true,
       response,
-      mode: organizationId ? 'organization' : 'client'
+      mode: effectiveOrgId ? 'organization' : 'client'
     });
 
   } catch (error) {
@@ -55,10 +57,13 @@ router.post('/message', authenticate, async (req, res) => {
  */
 router.post('/reset', authenticate, async (req, res) => {
   try {
+    const { isClientMode } = req.body || {};
     const userId = req.user.userId;
-    const organizationId = req.user.organizationId || null;
+    
+    // Use client mode if explicitly requested
+    const effectiveOrgId = isClientMode ? null : (req.user.organizationId || null);
 
-    resetSession(userId, organizationId);
+    resetSession(userId, effectiveOrgId);
 
     res.status(200).json({
       success: true,
@@ -77,13 +82,17 @@ router.post('/reset', authenticate, async (req, res) => {
 /**
  * GET /api/chatbot/status
  * Get current session info
+ * Pass ?clientMode=true for client mode session info
  */
 router.get('/status', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const organizationId = req.user.organizationId || null;
+    const isClientMode = req.query.clientMode === 'true';
+    
+    // Use client mode if explicitly requested
+    const effectiveOrgId = isClientMode ? null : (req.user.organizationId || null);
 
-    const sessionInfo = getSessionInfo(userId, organizationId);
+    const sessionInfo = getSessionInfo(userId, effectiveOrgId);
 
     res.status(200).json({
       success: true,

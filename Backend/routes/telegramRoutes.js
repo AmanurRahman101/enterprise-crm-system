@@ -5,7 +5,8 @@ const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const {
   createVerificationCodeForUser,
-  getLinkStatusForUser
+  getLinkStatusForUser,
+  unlinkTelegramForUser
 } = require('../telegram/auth');
 
 const serializeLinkPayload = (status, entry) => {
@@ -62,6 +63,33 @@ router.post('/link', verifyToken, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to generate Telegram verification code.',
+      error: error.message
+    });
+  }
+});
+
+// Unlink Telegram account for authenticated user
+router.delete('/link', verifyToken, async (req, res) => {
+  try {
+    const unlinked = await unlinkTelegramForUser(req.user.userId);
+    if (!unlinked) {
+      return res.status(404).json({
+        success: false,
+        message: 'No Telegram link found to remove.'
+      });
+    }
+    return res.json({
+      success: true,
+      message: 'Telegram account unlinked successfully.',
+      status: 'not_linked',
+      link: null,
+      botUsername: process.env.TELEGRAM_BOT_USERNAME || null
+    });
+  } catch (error) {
+    console.error('Failed to unlink Telegram account:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to unlink Telegram account.',
       error: error.message
     });
   }

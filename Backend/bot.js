@@ -6,7 +6,8 @@ const { SSEClientTransport } = require('@modelcontextprotocol/sdk/client/sse.js'
 const {
   resolveUserContext,
   tryVerifyLink,
-  getUserAccessSummary
+  getUserAccessSummary,
+  unlinkTelegramByChatId
 } = require('./telegram/auth');
 const { SessionStore } = require('./telegram/sessionStore');
 
@@ -187,7 +188,7 @@ function buildContextKeyboard(accessSummary) {
   return Markup.inlineKeyboard(buttons);
 }
 
-async function promptContextSelection(ctx, userContext) {
+async function promptContextSelection(ctx, userContext, forceShowMenu = false) {
   const accessSummary = await getUserAccessSummary(userContext.userId);
 
   // If user has no organization memberships, auto-select client mode
@@ -210,8 +211,9 @@ async function promptContextSelection(ctx, userContext) {
     return;
   }
 
-  // If user has exactly one org and no client relationships, auto-select that org
-  if (accessSummary.memberOrganizations.length === 1 && !accessSummary.hasClientAccess) {
+  // If forceShowMenu is false (initial login) and user has exactly one org, auto-select
+  // But if forceShowMenu is true (/switch command), always show the menu
+  if (!forceShowMenu && accessSummary.memberOrganizations.length === 1 && !accessSummary.hasClientAccess) {
     const org = accessSummary.memberOrganizations[0];
     sessionStore.setContext(ctx.chat.id, {
       mode: 'org',
@@ -229,7 +231,7 @@ async function promptContextSelection(ctx, userContext) {
     return;
   }
 
-  // Multiple options - show selection menu
+  // Show selection menu
   const message = buildContextSelectionMessage(accessSummary);
   const keyboard = buildContextKeyboard(accessSummary);
 
@@ -396,6 +398,7 @@ bot.start(async ctx => {
     '*Commands:*\n' +
     '/switch - Change between Client/Organization mode\n' +
     '/status - Show current mode\n' +
+    '/unlink - Disconnect your CRM account\n' +
     '/help - Show this help message',
     { parse_mode: 'Markdown' }
   );
@@ -407,6 +410,7 @@ bot.command('help', async ctx => {
     '*Commands:*\n' +
     '/switch - Change mode (Client ↔ Organization)\n' +
     '/status - Show your current mode\n' +
+    '/unlink - Disconnect your CRM account\n' +
     '/help - Show this message\n\n' +
     '*Client Mode:*\n' +
     '• View deals where you\'re a contact\n' +
@@ -443,8 +447,8 @@ bot.command('switch', async ctx => {
     // Clear current context
     sessionStore.clearContext(chatId);
     
-    // Prompt for new selection
-    await promptContextSelection(ctx, userContext);
+    // Prompt for new selection - force show menu so user can choose
+    await promptContextSelection(ctx, userContext, true);
   } catch (error) {
     console.error('Switch command error:', error);
     await ctx.reply('⚠️ Something went wrong. Please try again.');
@@ -478,6 +482,39 @@ bot.command('status', async ctx => {
       'Use /switch to change modes.',
       { parse_mode: 'Markdown' }
     );
+  }
+});
+
+bot.command('unlink', async ctx => {
+  const chatId = ctx.chat.id;
+
+  try {
+    const userId = await unlinkTelegramByChatId(chatId);
+    
+    if (!userId) {
+      await ctx.reply(
+        '❓ No linked account found.\n\n' +
+        'Your Telegram is not currently connected to any CRM account.\n' +
+        'Send a 6-digit code from CRM Settings to link your account.'
+      );
+      return;
+    }
+
+    // Clear session data
+    sessionStore.reset(chatId);
+
+    await ctx.reply(
+      '✅ *Account Disconnected*\n\n' +
+      'Your CRM account has been unlinked from this Telegram chat.\n\n' +
+      'To reconnect:\n' +
+      '1. Go to CRM Settings → Telegram\n' +
+      '2. Generate a new 6-digit code\n' +
+      '3. Send it here to link again',
+      { parse_mode: 'Markdown' }
+    );
+  } catch (error) {
+    console.error('Unlink command error:', error);
+    await ctx.reply('⚠️ Something went wrong. Please try again.');
   }
 });
 

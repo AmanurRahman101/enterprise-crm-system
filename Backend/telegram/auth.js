@@ -213,6 +213,41 @@ async function getLinkStatusForUser(userId) {
   };
 }
 
+/**
+ * Unlink Telegram account for a user
+ * Removes all telegram links (both pending and verified) for the user
+ */
+async function unlinkTelegramForUser(userId) {
+  const [result] = await db.query(
+    'DELETE FROM user_telegram_links WHERE user_id = ?',
+    [userId]
+  );
+  return result.affectedRows > 0;
+}
+
+/**
+ * Unlink Telegram account by chat ID (for bot /unlink command)
+ * Returns the user ID that was unlinked, or null if not found
+ */
+async function unlinkTelegramByChatId(chatId) {
+  const [linked] = await db.query(
+    'SELECT user_id FROM user_telegram_links WHERE telegram_chat_id = ? AND verified_at IS NOT NULL LIMIT 1',
+    [chatId]
+  );
+
+  if (linked.length === 0) {
+    return null;
+  }
+
+  const userId = linked[0].user_id;
+  await db.query(
+    'DELETE FROM user_telegram_links WHERE telegram_chat_id = ?',
+    [chatId]
+  );
+
+  return userId;
+}
+
 module.exports = {
   resolveUserContext,
   getUserOrganizations,
@@ -221,5 +256,7 @@ module.exports = {
   tryVerifyLink,
   createVerificationCodeForUser,
   getLinkStatusForUser,
+  unlinkTelegramForUser,
+  unlinkTelegramByChatId,
   CODE_REGEX
 };

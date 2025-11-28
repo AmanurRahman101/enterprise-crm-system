@@ -15,6 +15,9 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
+  const isListeningRef = useRef(false); // Ref to track listening state for callbacks
+  const pendingMessageRef = useRef(''); // Ref to store message to send after silence
+  const sendMessageRef = useRef(null); // Ref to the send function for voice callbacks
 
   // Speech Recognition setup
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -43,79 +46,98 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
     };
   }, [currentOrganization, isClientPortal]);
 
-  // Initialize speech recognition
+  // Initialize speech recognition (only once)
   useEffect(() => {
-    if (hasSpeechSupport) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
+    if (!hasSpeechSupport) return;
 
-      recognition.onresult = (event) => {
-        let finalTranscript = '';
-        let interim = '';
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interim += transcript;
-          }
-        }
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interim = '';
 
-        if (finalTranscript) {
-          setInputMessage(prev => prev + finalTranscript);
-          setInterimTranscript('');
-          
-          // Reset silence timer on final result
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-          }
-          
-          // Start silence detection timer (1.5 seconds)
-          silenceTimerRef.current = setTimeout(() => {
-            if (isListening) {
-              stopListening(true);
-            }
-          }, 1500);
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
         } else {
-          setInterimTranscript(interim);
-          
-          // Reset silence timer on interim results too
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-          }
-          silenceTimerRef.current = setTimeout(() => {
-            if (isListening) {
-              stopListening(true);
-            }
-          }, 1500);
+          interim += transcript;
         }
-      };
+      }
 
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error !== 'no-speech') {
-          toast.error('Voice recognition error. Please try again.');
-        }
-        setIsListening(false);
+      if (finalTranscript) {
+        // Accumulate the transcript
+        pendingMessageRef.current += finalTranscript;
+        setInputMessage(pendingMessageRef.current);
         setInterimTranscript('');
-      };
-
-      recognition.onend = () => {
-        if (isListening) {
-          // Restart if still supposed to be listening
-          try {
-            recognition.start();
-          } catch (e) {
-            setIsListening(false);
-          }
+        
+        // Reset silence timer on final result
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
         }
-      };
+        
+        // Start silence detection timer (1.5 seconds) - send message but keep listening
+        silenceTimerRef.current = setTimeout(() => {
+          if (isListeningRef.current && pendingMessageRef.current.trim()) {
+            // Send the message via ref
+            if (sendMessageRef.current) {
+              sendMessageRef.current(pendingMessageRef.current.trim());
+            }
+            // Clear for next message but keep listening
+            pendingMessageRef.current = '';
+            setInputMessage('');
+            setInterimTranscript('');
+          }
+        }, 1500);
+      } else {
+        setInterimTranscript(interim);
+        
+        // Reset silence timer on interim results too
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+        silenceTimerRef.current = setTimeout(() => {
+          if (isListeningRef.current && pendingMessageRef.current.trim()) {
+            // Send the message via ref
+            if (sendMessageRef.current) {
+              sendMessageRef.current(pendingMessageRef.current.trim());
+            }
+            // Clear for next message but keep listening
+            pendingMessageRef.current = '';
+            setInputMessage('');
+            setInterimTranscript('');
+          }
+        }, 1500);
+      }
+    };
 
-      recognitionRef.current = recognition;
-    }
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error !== 'no-speech') {
+        toast.error('Voice recognition error. Please try again.');
+      }
+      isListeningRef.current = false;
+      setIsListening(false);
+      setInterimTranscript('');
+      pendingMessageRef.current = '';
+    };
+
+    recognition.onend = () => {
+      // Only restart if we're still supposed to be listening (use ref to avoid stale closure)
+      if (isListeningRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          isListeningRef.current = false;
+          setIsListening(false);
+        }
+      }
+    };
+
+    recognitionRef.current = recognition;
 
     return () => {
       if (recognitionRef.current) {
@@ -125,7 +147,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
         clearTimeout(silenceTimerRef.current);
       }
     };
-  }, [hasSpeechSupport, isListening]);
+  }, [hasSpeechSupport]); // Only depend on hasSpeechSupport - initialize once
 
   // Update mode when chatbot opens or organization changes
   useEffect(() => {
@@ -151,6 +173,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
       }
     } else {
       // Clean up when closing
+      isListeningRef.current = false;
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
@@ -195,7 +218,9 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
     }
 
     try {
+      pendingMessageRef.current = ''; // Clear pending message
       recognitionRef.current?.start();
+      isListeningRef.current = true; // Update ref
       setIsListening(true);
       setInterimTranscript('');
     } catch (error) {
@@ -204,40 +229,35 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
     }
   };
 
-  const stopListening = (autoSubmit = false) => {
+  const stopListening = () => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
     }
     
+    isListeningRef.current = false; // Update ref first
+    pendingMessageRef.current = ''; // Clear pending
+    
     if (recognitionRef.current) {
-      recognitionRef.current.abort();
+      recognitionRef.current.stop();
     }
     
     setIsListening(false);
     setInterimTranscript('');
-
-    // Auto-submit if there's text and autoSubmit is true
-    if (autoSubmit && inputMessage.trim()) {
-      setTimeout(() => handleSendMessage(), 100);
-    }
   };
 
   const toggleListening = () => {
     if (isListening) {
-      stopListening(false);
+      stopListening();
     } else {
       startListening();
     }
   };
 
-  const handleSendMessage = async () => {
-    const message = inputMessage.trim();
-    if (!message) return;
-
-    // Stop listening if active
-    if (isListening) {
-      stopListening(false);
-    }
+  // Core send function - used by both manual and voice sends
+  const sendMessage = async (messageText) => {
+    if (!messageText || !messageText.trim()) return;
+    
+    const message = messageText.trim();
 
     // Add user message
     addUserMessage(message);
@@ -245,10 +265,13 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
     setLoading(true);
 
     try {
-      // Send to backend chatbot API
+      // Send to backend chatbot API with explicit mode flag
       const response = await ApiService.request('/api/chatbot/message', {
         method: 'POST',
-        body: { message }
+        body: { 
+          message,
+          isClientMode: isClientPortal  // Explicitly tell backend which mode
+        }
       });
 
       if (response.success && response.response) {
@@ -263,6 +286,21 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
     }
   };
 
+  // Assign send function to ref for voice callbacks
+  sendMessageRef.current = sendMessage;
+
+  const handleSendMessage = async () => {
+    const message = inputMessage.trim();
+    if (!message) return;
+
+    // Stop listening if active (manual send stops voice)
+    if (isListening) {
+      stopListening();
+    }
+
+    await sendMessage(message);
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -272,7 +310,10 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
   const handleResetChat = async () => {
     try {
-      await ApiService.request('/api/chatbot/reset', { method: 'POST' });
+      await ApiService.request('/api/chatbot/reset', { 
+        method: 'POST',
+        body: { isClientMode: isClientPortal }
+      });
       const mode = getCurrentMode();
       setMessages([
         {

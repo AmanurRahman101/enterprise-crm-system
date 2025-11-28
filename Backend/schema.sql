@@ -297,7 +297,7 @@ CREATE TABLE notifications (
 CREATE TABLE user_telegram_links (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    telegram_chat_id BIGINT NOT NULL UNIQUE,
+    telegram_chat_id BIGINT NULL UNIQUE,
     verification_code VARCHAR(6) NOT NULL,
     verified_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

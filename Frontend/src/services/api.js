@@ -216,6 +216,12 @@ class ApiService {
       method: 'POST'
     });
   }
+
+  async unlinkTelegram() {
+    return this.request('/api/telegram/link', {
+      method: 'DELETE'
+    });
+  }
 }
 
 export default new ApiService();

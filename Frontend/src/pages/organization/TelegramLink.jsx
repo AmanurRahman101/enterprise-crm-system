@@ -12,6 +12,7 @@ const TelegramLink = () => {
   const [statusPayload, setStatusPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
 
   const loadStatus = async () => {
     setLoading(true);
@@ -35,6 +36,22 @@ const TelegramLink = () => {
       toast.error(error.message || 'Failed to generate verification code');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!confirm('Are you sure you want to disconnect your Telegram account? You will need to re-link it to use the bot again.')) {
+      return;
+    }
+    setUnlinking(true);
+    try {
+      const response = await ApiService.unlinkTelegram();
+      setStatusPayload(response);
+      toast.success('Telegram account disconnected');
+    } catch (error) {
+      toast.error(error.message || 'Failed to disconnect Telegram account');
+    } finally {
+      setUnlinking(false);
     }
   };
 
@@ -101,13 +118,22 @@ const TelegramLink = () => {
                     {verifiedAt && (
                       <p className="text-sm text-green-700 mt-1">Linked on {verifiedAt}</p>
                     )}
-                    <button
-                      onClick={handleGenerateCode}
-                      className="mt-4 inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-green-700 bg-white border border-green-200 hover:bg-green-100 transition disabled:opacity-50"
-                      disabled={generating}
-                    >
-                      {generating ? 'Generating…' : 'Generate new pairing code'}
-                    </button>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        onClick={handleGenerateCode}
+                        className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-green-700 bg-white border border-green-200 hover:bg-green-100 transition disabled:opacity-50"
+                        disabled={generating || unlinking}
+                      >
+                        {generating ? 'Generating…' : 'Generate new pairing code'}
+                      </button>
+                      <button
+                        onClick={handleUnlink}
+                        className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-red-600 bg-white border border-red-200 hover:bg-red-50 transition disabled:opacity-50"
+                        disabled={generating || unlinking}
+                      >
+                        {unlinking ? 'Disconnecting…' : 'Disconnect Telegram'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
