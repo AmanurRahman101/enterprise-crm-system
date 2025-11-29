@@ -1,26 +1,26 @@
 -- Tawasol CRM Sample Data
 -- Run this after schema.sql to populate the database with test data
--- All passwords are: password123 (bcrypt hash)
+-- All passwords are: Password1234 (bcrypt hash)
 
 USE tawasol_crm;
 
 -- =====================================================
--- USERS (password: password123 for all)
+-- USERS (password: Password1234 for all)
 -- =====================================================
--- Hash for 'password123': $2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T
+-- Hash for 'Password1234': $2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y
 INSERT INTO users (email, password, full_name, phone, user_type) VALUES
 -- Organization team members
-('john.smith@techcorp.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'John Smith', '+1-555-0101', 'internal'),
-('sarah.jones@techcorp.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Sarah Jones', '+1-555-0102', 'internal'),
-('mike.wilson@techcorp.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Mike Wilson', '+1-555-0103', 'internal'),
-('emma.davis@globalbank.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Emma Davis', '+1-555-0201', 'internal'),
-('david.brown@globalbank.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'David Brown', '+1-555-0202', 'internal'),
+('john.smith@techcorp.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'John Smith', '+1-555-0101', 'internal'),
+('sarah.jones@techcorp.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Sarah Jones', '+1-555-0102', 'internal'),
+('mike.wilson@techcorp.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Mike Wilson', '+1-555-0103', 'internal'),
+('emma.davis@globalbank.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Emma Davis', '+1-555-0201', 'internal'),
+('david.brown@globalbank.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'David Brown', '+1-555-0202', 'internal'),
 -- Client users (can be contacts in deals)
-('alice.johnson@acme.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Alice Johnson', '+1-555-1001', 'client'),
-('bob.miller@startup.io', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Bob Miller', '+1-555-1002', 'client'),
-('carol.white@enterprise.net', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Carol White', '+1-555-1003', 'client'),
-('dan.garcia@solutions.co', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Dan Garcia', '+1-555-1004', 'client'),
-('eva.martinez@retail.com', '$2a$10$rQnM1rZ3xKvVx5VJ5P5pXuLvD8KvX5kGJ5L5H5M5N5O5P5Q5R5S5T', 'Eva Martinez', '+1-555-1005', 'client');
+('alice.johnson@acme.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Alice Johnson', '+1-555-1001', 'client'),
+('bob.miller@startup.io', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Bob Miller', '+1-555-1002', 'client'),
+('carol.white@enterprise.net', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Carol White', '+1-555-1003', 'client'),
+('dan.garcia@solutions.co', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Dan Garcia', '+1-555-1004', 'client'),
+('eva.martinez@retail.com', '$2b$10$wEIGl1OsN78fcMad1U5KAu7myZanwdawXJxXsteC6pMOmxL3oBF7y', 'Eva Martinez', '+1-555-1005', 'client');
 
 -- =====================================================
 -- ORGANIZATIONS
