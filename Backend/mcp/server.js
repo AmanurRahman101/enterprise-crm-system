@@ -29,6 +29,44 @@ const baseOrgSchema = {
   organizationId: z.number().int().positive().describe('Organization ID to scope the query')
 };
 
+// Role schema for permission checks
+const roleSchema = z.enum(['owner', 'admin', 'manager', 'agent', 'viewer']).optional();
+
+// Permission levels (higher = more access)
+const ROLE_LEVELS = {
+  viewer: 1,
+  agent: 2,
+  manager: 3,
+  admin: 4,
+  owner: 5
+};
+
+/**
+ * Check if a role has permission to perform an action
+ * @param {string} userRole - The user's role
+ * @param {string} requiredRole - Minimum required role
+ * @returns {boolean}
+ */
+function hasPermission(userRole, requiredRole = 'agent') {
+  const userLevel = ROLE_LEVELS[userRole] || 0;
+  const requiredLevel = ROLE_LEVELS[requiredRole] || 0;
+  return userLevel >= requiredLevel;
+}
+
+/**
+ * Format permission denied error
+ */
+function formatPermissionError(action, userRole) {
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `🚫 Permission denied: Your role (${userRole || 'unknown'}) cannot ${action}. Please contact an admin for access.`
+      }
+    ]
+  };
+}
+
 const limitSchema = z
   .number()
   .int()
@@ -240,14 +278,14 @@ function registerClientTools(server) {
   // Create issue as client
   server.tool(
     'createIssue',
-    'Report a new issue or support request to an organization. Use listOrganizations first to find the organization ID.',
+    'Report a new issue or support request to an organization. IMPORTANT: Before creating, ask the user if this issue is related to a specific deal or is a general support request. If deal-related, ask for the deal ID. If general, leave dealId empty. Use listOrganizations first to find the organization ID.',
     {
       ...baseUserSchema,
       organizationId: z.number().int().positive().describe('Organization ID to report to (use listOrganizations to find)'),
       title: z.string().min(3).max(200).describe('Issue title'),
       description: z.string().max(5000).describe('Detailed description of the issue').optional(),
       priority: z.enum(ISSUE_PRIORITIES).describe('Issue priority').optional(),
-      dealId: z.number().int().positive().describe('Related deal ID (if applicable)').optional()
+      dealId: z.number().int().positive().describe('Related deal ID if this is a deal-based issue. Leave empty/null if this is a general support request.').optional()
     },
     async ({ userId, organizationId, title, description, priority = 'medium', dealId }) => {
       try {
@@ -805,9 +843,10 @@ function registerOrgTools(server) {
 
   server.tool(
     'createDeal',
-    'Create a new deal for this organization.',
+    'Create a new deal for this organization. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       creatorEmail: z.string().email().describe('Email of the user creating the deal'),
       title: z.string().min(3).max(150).describe('Deal title'),
       stageId: z.number().int().positive().describe('Deal stage ID'),
@@ -824,6 +863,7 @@ function registerOrgTools(server) {
       try {
         const {
           organizationId,
+          userRole,
           creatorEmail,
           title,
           stageId,
@@ -836,6 +876,11 @@ function registerOrgTools(server) {
           probability,
           notes
         } = args;
+
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('create deals', userRole);
+        }
 
         // Verify creator is in org
         await resolveOrgUser(organizationId, { email: creatorEmail });
@@ -901,9 +946,10 @@ function registerOrgTools(server) {
 
   server.tool(
     'updateDeal',
-    'Update fields on an existing deal.',
+    'Update fields on an existing deal. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       dealId: z.number().int().positive().describe('Deal ID to update'),
       title: z.string().min(3).max(150).optional(),
       value: z.number().nonnegative().optional(),
@@ -920,6 +966,7 @@ function registerOrgTools(server) {
       try {
         const {
           organizationId,
+          userRole,
           dealId,
           title,
           value,
@@ -932,6 +979,11 @@ function registerOrgTools(server) {
           probability,
           notes
         } = args;
+
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('update deals', userRole);
+        }
 
         const existingDeal = await ensureDeal(organizationId, dealId);
         let finalProbability = existingDeal.probability;
@@ -1033,13 +1085,19 @@ function registerOrgTools(server) {
 
   server.tool(
     'deleteDeal',
-    'Delete a deal from this organization.',
+    'Delete a deal from this organization. Requires manager role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       dealId: z.number().int().positive().describe('Deal ID to delete')
     },
-    async ({ organizationId, dealId }) => {
+    async ({ organizationId, userRole, dealId }) => {
       try {
+        // Permission check - require at least manager role for deletion
+        if (!hasPermission(userRole, 'manager')) {
+          return formatPermissionError('delete deals', userRole);
+        }
+
         await ensureDeal(organizationId, dealId);
         await db.query(
           'DELETE FROM deals WHERE id = ? AND organization_id = ?',
@@ -1060,75 +1118,15 @@ function registerOrgTools(server) {
   );
 
   // ==================== ISSUE MUTATIONS ====================
-
-  server.tool(
-    'createIssue',
-    'Create a new issue/ticket inside this organization.',
-    {
-      ...baseOrgSchema,
-      creatorEmail: z.string().email().describe('Email of the user creating the issue'),
-      title: z.string().min(3).max(200).describe('Issue title'),
-      description: z.string().max(5000).optional(),
-      priority: z.enum(ISSUE_PRIORITIES).describe('Issue priority').optional(),
-      assignedToEmail: z.string().email().optional(),
-      dealId: z.number().int().positive().describe('Related deal ID').optional()
-    },
-    async ({
-      organizationId,
-      creatorEmail,
-      title,
-      description,
-      priority = 'medium',
-      assignedToEmail,
-      dealId
-    }) => {
-      try {
-        const reporter = await resolveOrgUser(organizationId, { email: creatorEmail });
-        
-        let assignedUser = null;
-        if (assignedToEmail) {
-          assignedUser = await resolveOrgUser(organizationId, {
-            email: assignedToEmail,
-            required: false
-          });
-        }
-        if (dealId) {
-          await ensureDeal(organizationId, dealId);
-        }
-
-        const [result] = await db.query(
-          `INSERT INTO issues (organization_id, deal_id, title, description, status, priority, assigned_to_user_id, reporter_user_id)
-           VALUES (?, ?, ?, ?, 'open', ?, ?, ?)`,
-          [
-            organizationId,
-            dealId || null,
-            title.trim(),
-            description || null,
-            priority,
-            assignedUser?.id || null,
-            reporter.id
-          ]
-        );
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✅ Issue "${title}" created with ID ${result.insertId}${assignedUser ? ` and assigned to ${assignedUser.full_name}` : ''}.`
-            }
-          ]
-        };
-      } catch (error) {
-        return formatError(`Failed to create issue: ${error.message}`);
-      }
-    }
-  );
+  // Note: createIssue is NOT available in organization mode
+  // Issues can only be created by clients in Client Portal mode
 
   server.tool(
     'updateIssue',
-    'Update fields on an existing issue.',
+    'Update fields on an existing issue. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       issueId: z.number().int().positive().describe('Issue ID to update'),
       title: z.string().min(3).max(200).optional(),
       description: z.string().max(5000).optional(),
@@ -1136,8 +1134,13 @@ function registerOrgTools(server) {
       priority: z.enum(ISSUE_PRIORITIES).optional(),
       assignedToEmail: z.string().email().optional()
     },
-    async ({ organizationId, issueId, title, description, status, priority, assignedToEmail }) => {
+    async ({ organizationId, userRole, issueId, title, description, status, priority, assignedToEmail }) => {
       try {
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('update issues', userRole);
+        }
+
         await ensureIssue(organizationId, issueId);
         const updates = [];
         const params = [];
@@ -1191,13 +1194,19 @@ function registerOrgTools(server) {
 
   server.tool(
     'deleteIssue',
-    'Delete an issue from this organization.',
+    'Delete an issue from this organization. Requires manager role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       issueId: z.number().int().positive().describe('Issue ID to delete')
     },
-    async ({ organizationId, issueId }) => {
+    async ({ organizationId, userRole, issueId }) => {
       try {
+        // Permission check - require at least manager role for deletion
+        if (!hasPermission(userRole, 'manager')) {
+          return formatPermissionError('delete issues', userRole);
+        }
+
         await ensureIssue(organizationId, issueId);
         await db.query(
           'DELETE FROM issues WHERE id = ? AND organization_id = ?',
@@ -1218,9 +1227,10 @@ function registerOrgTools(server) {
 
   server.tool(
     'createContactPerson',
-    'Create a new person contact. Can be a general contact (external) or linked to a system user.',
+    'Create a new person contact. Can be a general contact (external) or linked to a system user. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       creatorEmail: z.string().email().describe('Email of the CRM user creating this contact'),
       firstName: z.string().min(1).max(100).describe('Contact first name'),
       lastName: z.string().max(100).describe('Contact last name').optional(),
@@ -1230,8 +1240,13 @@ function registerOrgTools(server) {
       notes: z.string().max(2000).describe('Notes about the contact').optional(),
       linkToSystemUser: z.boolean().describe('If true, automatically link to system user if email matches').optional()
     },
-    async ({ organizationId, creatorEmail, firstName, lastName, email, phone, jobTitle, notes, linkToSystemUser }) => {
+    async ({ organizationId, userRole, creatorEmail, firstName, lastName, email, phone, jobTitle, notes, linkToSystemUser }) => {
       try {
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('create contacts', userRole);
+        }
+
         const creator = await resolveOrgUser(organizationId, { email: creatorEmail });
         const cleanedEmail = email.toLowerCase();
         
@@ -1295,14 +1310,20 @@ function registerOrgTools(server) {
 
   server.tool(
     'linkContactToUser',
-    'Link an existing general contact to a system user account.',
+    'Link an existing general contact to a system user account. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       contactPersonId: z.number().int().positive().describe('Contact person ID to link'),
       systemUserId: z.number().int().positive().describe('System user ID to link to (use searchSystemUsers to find)')
     },
-    async ({ organizationId, contactPersonId, systemUserId }) => {
+    async ({ organizationId, userRole, contactPersonId, systemUserId }) => {
       try {
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('link contacts to users', userRole);
+        }
+
         // Verify contact exists
         const contact = await ensureContactPerson(organizationId, contactPersonId);
         
@@ -1340,13 +1361,19 @@ function registerOrgTools(server) {
 
   server.tool(
     'unlinkContactFromUser',
-    'Unlink a system contact, converting it to a general contact.',
+    'Unlink a system contact, converting it to a general contact. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       contactPersonId: z.number().int().positive().describe('Contact person ID to unlink')
     },
-    async ({ organizationId, contactPersonId }) => {
+    async ({ organizationId, userRole, contactPersonId }) => {
       try {
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('unlink contacts from users', userRole);
+        }
+
         const contact = await ensureContactPerson(organizationId, contactPersonId);
         
         if (!contact.user_id) {
@@ -1374,9 +1401,10 @@ function registerOrgTools(server) {
 
   server.tool(
     'updateContactPerson',
-    'Update an existing contact person.',
+    'Update an existing contact person. Requires agent role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       contactPersonId: z.number().int().positive().describe('Contact person ID'),
       firstName: z.string().min(1).max(100).optional(),
       lastName: z.string().max(100).optional(),
@@ -1385,8 +1413,13 @@ function registerOrgTools(server) {
       jobTitle: z.string().max(150).optional(),
       notes: z.string().max(2000).optional()
     },
-    async ({ organizationId, contactPersonId, firstName, lastName, email, phone, jobTitle, notes }) => {
+    async ({ organizationId, userRole, contactPersonId, firstName, lastName, email, phone, jobTitle, notes }) => {
       try {
+        // Permission check - require at least agent role
+        if (!hasPermission(userRole, 'agent')) {
+          return formatPermissionError('update contacts', userRole);
+        }
+
         await ensureContactPerson(organizationId, contactPersonId);
         const updates = [];
         const params = [];
@@ -1446,13 +1479,19 @@ function registerOrgTools(server) {
 
   server.tool(
     'deleteContactPerson',
-    'Delete a contact person from this organization.',
+    'Delete a contact person from this organization. Requires manager role or higher.',
     {
       ...baseOrgSchema,
+      userRole: roleSchema.describe('Role of the user making the request'),
       contactPersonId: z.number().int().positive().describe('Contact person ID')
     },
-    async ({ organizationId, contactPersonId }) => {
+    async ({ organizationId, userRole, contactPersonId }) => {
       try {
+        // Permission check - require at least manager role for deletion
+        if (!hasPermission(userRole, 'manager')) {
+          return formatPermissionError('delete contacts', userRole);
+        }
+
         await ensureContactPerson(organizationId, contactPersonId);
         await db.query(
           'DELETE FROM contacts_people WHERE id = ? AND organization_id = ?',
@@ -1658,10 +1697,9 @@ function mountMcpServer(app) {
     clientSessions.set(sessionId, { transport, server });
 
     transport.onclose = () => {
+      // Just clean up the session - don't call server.close() as it would trigger transport.close() again (infinite loop)
       clientSessions.delete(sessionId);
-      server.close().catch(err => {
-        console.warn(`[MCP-Client] Error closing server for session ${sessionId}:`, err.message);
-      });
+      console.log(`[MCP-Client] SSE session closed (${sessionId})`);
     };
 
     try {
@@ -1707,10 +1745,9 @@ function mountMcpServer(app) {
     orgSessions.set(sessionId, { transport, server });
 
     transport.onclose = () => {
+      // Just clean up the session - don't call server.close() as it would trigger transport.close() again (infinite loop)
       orgSessions.delete(sessionId);
-      server.close().catch(err => {
-        console.warn(`[MCP-Org] Error closing server for session ${sessionId}:`, err.message);
-      });
+      console.log(`[MCP-Org] SSE session closed (${sessionId})`);
     };
 
     try {

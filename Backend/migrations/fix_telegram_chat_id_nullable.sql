@@ -4,3 +4,4 @@
 
 ALTER TABLE user_telegram_links MODIFY telegram_chat_id BIGINT NULL;
 
+

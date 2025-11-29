@@ -157,14 +157,14 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
       
       // Only set welcome message on first open (not on org change)
       if (messages.length === 0) {
-        setMessages([
-          {
-            id: 'welcome',
-            type: 'bot',
+      setMessages([
+        {
+          id: 'welcome',
+          type: 'bot',
             text: `Hello! I'm HudHud, your CRM assistant.\n\nI can help you with:\n• Finding and managing contacts\n• Checking deal status and pipeline\n• Creating and tracking issues\n• Viewing activities and insights\n\nCurrently in ${mode.name} mode. How can I help you today?`,
-            timestamp: new Date()
-          }
-        ]);
+          timestamp: new Date()
+        }
+      ]);
       }
 
       // Focus input
@@ -349,7 +349,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
         { label: '🎫 My issues', value: 'What are my open issues?' },
         { label: '📊 Overview', value: 'Give me an overview' },
         { label: '🏢 Organizations', value: 'List organizations I can contact' }
-      ];
+  ];
 
   const handleQuickAction = (value) => {
     setInputMessage(value);
@@ -508,15 +508,15 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
               <div className="flex items-end space-x-2">
                 <div className="flex-1 relative">
-                  <textarea
-                    ref={inputRef}
+                <textarea
+                  ref={inputRef}
                     value={inputMessage + (interimTranscript ? ` ${interimTranscript}` : '')}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
                     placeholder={isListening ? 'Listening...' : 'Type your message or use voice...'}
-                    rows={1}
+                  rows={1}
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none text-gray-100 placeholder-slate-400 transition-all"
-                    disabled={loading}
+                  disabled={loading}
                     style={{ minHeight: '48px', maxHeight: '120px' }}
                   />
                   {interimTranscript && (

@@ -84,6 +84,32 @@ function stripUnsupportedKeywords(schema) {
   return schema;
 }
 
+/**
+ * Filter tools based on user role
+ * Viewers can only use query tools, not mutations
+ */
+function filterToolsByRole(tools = [], userRole) {
+  if (!userRole || userRole === 'viewer') {
+    // Mutation tools that viewers cannot use
+    const mutationTools = [
+      'createDeal',
+      'updateDeal',
+      'deleteDeal',
+      'createIssue',
+      'updateIssue',
+      'deleteIssue',
+      'createContactPerson',
+      'updateContactPerson',
+      'deleteContactPerson',
+      'linkContactToUser',
+      'unlinkContactFromUser'
+    ];
+    return tools.filter(tool => !mutationTools.includes(tool.name));
+  }
+  // All other roles (agent, manager, admin, owner) get all tools
+  return tools;
+}
+
 function mapTools(tools = []) {
   if (!tools.length) {
     return undefined;
@@ -119,20 +145,28 @@ function flattenToolContent(content = []) {
     .join('\n');
 }
 
-function buildClientSystemInstruction(userId) {
+function buildClientSystemInstruction(userId, fullName, email) {
   return `
 You are Tawasol CRM's client assistant. Always keep responses concise (<= 6 sentences).
+You are speaking with ${fullName} (${email}). The user ID is ${userId}. Always pass userId=${userId} to all tool calls.
 You help clients view their deals and issues across organizations where they are listed as contacts.
-The user ID is ${userId}. Always pass userId=${userId} to all tool calls.
+When creating issues, always ask if the issue is related to a specific deal or is a general support request. If deal-related, ask for the deal ID.
 Be helpful and provide actionable information about their deals and support requests.
 `;
 }
 
-function buildOrgSystemInstruction(organizationId, organizationName, role) {
+function buildOrgSystemInstruction(organizationId, organizationName, role, fullName, email) {
+  const isViewer = role === 'viewer';
+  const permissionNote = isViewer 
+    ? `\nIMPORTANT: The user has "${role}" role (viewer). You can ONLY use query/view tools. You CANNOT create, update, or delete any data. If the user asks to create, update, or delete anything, politely explain that their role only allows viewing data and they need to contact an admin for changes.`
+    : `\nThe user's role is "${role}" which allows creating and updating data.`;
+  
   return `
 You are Tawasol CRM's assistant for ${organizationName}. Always keep responses concise (<= 6 sentences).
+You are speaking with ${fullName} (${email}).
 You have deterministic SQL tools and must scope every call to organization_id=${organizationId}.
-Never leak other tenant data. The user's role is "${role}".
+Never leak other tenant data.${permissionNote}
+IMPORTANT: Issues can only be created in Client Portal, not in Organization Portal. If the user asks to create an issue, politely explain they need to switch to Client Portal mode.
 Return actionable summaries referencing deal/contact/issue names and highlight blockers when present.
 `;
 }
@@ -296,18 +330,32 @@ async function runAgent(chatId, context, userText) {
 
   try {
     const { tools } = await client.listTools();
-    const geminiTools = mapTools(tools);
+    
+    // Filter tools based on user role (viewers can't use mutation tools)
+    // Also remove createIssue from org mode (issues can only be created in client mode)
+    let filteredTools = isClientMode 
+      ? tools 
+      : filterToolsByRole(tools, sessionContext.role);
+    
+    // Remove createIssue from org mode entirely
+    if (!isClientMode) {
+      filteredTools = filteredTools.filter(tool => tool.name !== 'createIssue');
+    }
+    
+    const geminiTools = mapTools(filteredTools);
     
     // Get and clean history to prevent Gemini errors
     const rawHistory = sessionStore.getHistory(chatId);
     const history = cleanHistory(rawHistory);
 
     const systemInstruction = isClientMode
-      ? buildClientSystemInstruction(context.userId)
+      ? buildClientSystemInstruction(context.userId, context.fullName || 'User', context.email || 'unknown@example.com')
       : buildOrgSystemInstruction(
           sessionContext.organizationId,
           sessionContext.organizationName,
-          sessionContext.role
+          sessionContext.role,
+          context.fullName || 'User',
+          context.email || 'unknown@example.com'
         );
 
     const chat = model.startChat({
@@ -333,6 +381,8 @@ async function runAgent(chatId, context, userText) {
             args.userId = context.userId;
           } else {
             args.organizationId = sessionContext.organizationId;
+            // Inject user role for permission checks
+            args.userRole = sessionContext.role;
             // Inject creator/requestor email for mutations
             if (context.email && args.creatorEmail === undefined) {
               args.creatorEmail = context.email.toLowerCase();

@@ -90,6 +90,32 @@ function stripUnsupportedKeywords(schema) {
 }
 
 /**
+ * Filter tools based on user role
+ * Viewers can only use query tools, not mutations
+ */
+function filterToolsByRole(tools = [], userRole) {
+  if (!userRole || userRole === 'viewer') {
+    // Mutation tools that viewers cannot use
+    const mutationTools = [
+      'createDeal',
+      'updateDeal',
+      'deleteDeal',
+      'createIssue',
+      'updateIssue',
+      'deleteIssue',
+      'createContactPerson',
+      'updateContactPerson',
+      'deleteContactPerson',
+      'linkContactToUser',
+      'unlinkContactFromUser'
+    ];
+    return tools.filter(tool => !mutationTools.includes(tool.name));
+  }
+  // All other roles (agent, manager, admin, owner) get all tools
+  return tools;
+}
+
+/**
  * Map MCP tools to Gemini function declarations
  */
 function mapTools(tools = []) {
@@ -134,21 +160,29 @@ function flattenToolContent(content = []) {
 // SYSTEM INSTRUCTIONS
 // ============================================================
 
-function buildClientSystemInstruction(userId) {
+function buildClientSystemInstruction(userId, fullName, email) {
   return `
 You are HudHud, Tawasol CRM's friendly client assistant. Always keep responses concise (<= 6 sentences).
+You are speaking with ${fullName} (${email}). The user ID is ${userId}. Always pass userId=${userId} to all tool calls.
 You help clients view their deals and issues across organizations where they are listed as contacts.
-The user ID is ${userId}. Always pass userId=${userId} to all tool calls.
+When creating issues, always ask if the issue is related to a specific deal or is a general support request. If deal-related, ask for the deal ID.
 Be helpful and provide actionable information about their deals and support requests.
 Use a warm, professional tone. Format responses with clear structure when listing items.
 `;
 }
 
-function buildOrgSystemInstruction(organizationId, organizationName, role) {
+function buildOrgSystemInstruction(organizationId, organizationName, role, fullName, email) {
+  const isViewer = role === 'viewer';
+  const permissionNote = isViewer 
+    ? `\nIMPORTANT: The user has "${role}" role (viewer). You can ONLY use query/view tools. You CANNOT create, update, or delete any data. If the user asks to create, update, or delete anything, politely explain that their role only allows viewing data and they need to contact an admin for changes.`
+    : `\nThe user's role is "${role}" which allows creating and updating data.`;
+  
   return `
 You are HudHud, Tawasol CRM's intelligent assistant for ${organizationName}. Always keep responses concise (<= 6 sentences).
+You are speaking with ${fullName} (${email}).
 You have deterministic SQL tools and must scope every call to organization_id=${organizationId}.
-Never leak other tenant data. The user's role is "${role}".
+Never leak other tenant data.${permissionNote}
+IMPORTANT: Issues can only be created in Client Portal, not in Organization Portal. If the user asks to create an issue, politely explain they need to switch to Client Portal mode.
 Return actionable summaries referencing deal/contact/issue names and highlight blockers when present.
 Use a warm, professional tone. Format responses with clear structure when listing items.
 `;
@@ -157,6 +191,30 @@ Use a warm, professional tone. Format responses with clear structure when listin
 // ============================================================
 // CONTEXT HELPERS
 // ============================================================
+
+/**
+ * Get user details (full name and email)
+ */
+async function getUserDetails(userId) {
+  try {
+    const [users] = await db.query(
+      'SELECT full_name, email FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (users.length === 0) {
+      return { fullName: 'User', email: 'unknown@example.com' };
+    }
+    
+    return {
+      fullName: users[0].full_name || 'User',
+      email: users[0].email || 'unknown@example.com'
+    };
+  } catch (error) {
+    console.error('Error getting user details:', error);
+    return { fullName: 'User', email: 'unknown@example.com' };
+  }
+}
 
 /**
  * Get organization details for context
@@ -203,6 +261,9 @@ async function runAgent(userId, organizationId, userContext, userText) {
   const isClientMode = !organizationId;
   const sseUrl = isClientMode ? MCP_CLIENT_SSE_URL : MCP_ORG_SSE_URL;
 
+  // Get user details for identification
+  const userDetails = await getUserDetails(userId);
+  
   // Get or create session context
   let orgContext = { organizationName: null, role: null };
   if (!isClientMode) {
@@ -225,18 +286,32 @@ async function runAgent(userId, organizationId, userContext, userText) {
 
   try {
     const { tools } = await client.listTools();
-    const geminiTools = mapTools(tools);
+    
+    // Filter tools based on user role (viewers can't use mutation tools)
+    // Also remove createIssue from org mode (issues can only be created in client mode)
+    let filteredTools = isClientMode 
+      ? tools 
+      : filterToolsByRole(tools, orgContext.role);
+    
+    // Remove createIssue from org mode entirely
+    if (!isClientMode) {
+      filteredTools = filteredTools.filter(tool => tool.name !== 'createIssue');
+    }
+    
+    const geminiTools = mapTools(filteredTools);
     
     // Get and clean history
     const rawHistory = sessionStore.getHistory(userId, organizationId);
     const history = sessionStore.cleanHistory(rawHistory);
 
     const systemInstruction = isClientMode
-      ? buildClientSystemInstruction(userId)
+      ? buildClientSystemInstruction(userId, userDetails.fullName, userDetails.email)
       : buildOrgSystemInstruction(
           organizationId,
           orgContext.organizationName,
-          orgContext.role
+          orgContext.role,
+          userDetails.fullName,
+          userDetails.email
         );
 
     const chat = model.startChat({
@@ -262,6 +337,8 @@ async function runAgent(userId, organizationId, userContext, userText) {
             args.userId = userId;
           } else {
             args.organizationId = organizationId;
+            // Inject user role for permission checks
+            args.userRole = orgContext.role;
             // Inject creator/requestor email for mutations
             if (userContext.email && args.creatorEmail === undefined) {
               args.creatorEmail = userContext.email.toLowerCase();
