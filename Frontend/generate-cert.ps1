@@ -23,7 +23,7 @@ if (-not $opensslPath) {
     Write-Host ""
     Write-Host "To use this certificate with Vite:"
     Write-Host "1. Export it manually from Certificate Manager (certmgr.msc)"
-    Write-Host "2. Or use mkcert (recommended): https://github.com/FiloSottile/mkcert"
+    Write-Host '2. Or use mkcert (recommended): https://github.com/FiloSottile/mkcert'
     Write-Host ""
     Write-Host "==================================="
     Write-Host "RECOMMENDED APPROACH: Use mkcert"

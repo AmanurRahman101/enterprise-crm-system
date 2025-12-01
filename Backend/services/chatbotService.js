@@ -12,7 +12,15 @@ const db = require('../db/connection');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const MCP_BASE_URL = process.env.MCP_BASE_URL || 'http://localhost:3000';
+
+// Detect protocol (HTTPS if certificates exist, otherwise HTTP)
+const fs = require('fs');
+const path = require('path');
+const certPath = path.join(__dirname, '../cert');
+const certFile = path.join(certPath, 'localhost.crt');
+const hasSSL = fs.existsSync(certFile);
+const protocol = hasSSL ? 'https' : 'http';
+const MCP_BASE_URL = process.env.MCP_BASE_URL || `${protocol}://localhost:3000`;
 const MCP_CLIENT_SSE_URL = `${MCP_BASE_URL}/mcp/client/sse`;
 const MCP_ORG_SSE_URL = `${MCP_BASE_URL}/mcp/org/sse`;
 
@@ -60,9 +68,35 @@ async function createMcpClient(sseUrl) {
     name: 'tawasol-hudhud-web',
     version: '1.0.0'
   });
-  const transport = new SSEClientTransport(baseUrl);
-  await client.connect(transport);
-  return { client, transport };
+  
+  // For HTTPS with self-signed certificates in development, temporarily disable
+  // certificate validation for internal MCP connections
+  const isHTTPS = baseUrl.protocol === 'https:';
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const isLocalhost = baseUrl.hostname === 'localhost' || baseUrl.hostname === '127.0.0.1' || baseUrl.hostname.startsWith('192.168.');
+  
+  let originalRejectUnauthorized = null;
+  if (isHTTPS && isDevelopment && isLocalhost) {
+    // Temporarily disable SSL verification for self-signed certs in development
+    const https = require('https');
+    originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  }
+  
+  try {
+    const transport = new SSEClientTransport(baseUrl);
+    await client.connect(transport);
+    return { client, transport };
+  } finally {
+    // Restore original setting
+    if (originalRejectUnauthorized !== null) {
+      if (originalRejectUnauthorized === undefined) {
+        delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+      } else {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
+      }
+    }
+  }
 }
 
 /**

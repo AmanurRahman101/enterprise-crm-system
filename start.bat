@@ -139,7 +139,7 @@ echo Opening browser in 5 seconds...
 timeout /t 5 /nobreak >nul
 
 REM Open browser
-start http://localhost:5173
+start https://localhost:5173
 
 echo.
 echo System is running! Press any key to return...

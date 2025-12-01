@@ -359,20 +359,28 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${isMinimized ? 'w-80' : 'w-[420px]'}`}>
-      <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-amber-500/20 flex flex-col overflow-hidden ${isMinimized ? 'h-16' : 'h-[650px]'}`}>
+    <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${
+      isMinimized 
+        ? 'w-[280px] sm:w-80' 
+        : 'w-[calc(100vw-2rem)] sm:w-[420px] max-w-[400px] sm:max-w-[420px]'
+    }`}>
+      <div className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-amber-500/20 flex flex-col overflow-hidden ${
+        isMinimized 
+          ? 'h-16' 
+          : 'h-[500px] sm:h-[650px] max-h-[calc(100vh-8rem)]'
+      }`}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
             {/* HudHud Bird Avatar */}
-            <div className="w-11 h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/30">
-              <svg viewBox="0 0 24 24" className="w-7 h-7 text-white" fill="currentColor">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg border border-white/30 flex-shrink-0">
+              <svg viewBox="0 0 24 24" className="w-5 h-5 sm:w-7 sm:h-7 text-white" fill="currentColor">
                 <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5 0 .3 0 .5-.1.8-.8-.2-1.6-.3-2.4-.3s-1.6.1-2.4.3c-.1-.3-.1-.5-.1-.8C9.5 5.1 10.6 4 12 4zm-4 9c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm6 0c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm-2 3c-1.1 0-2-.4-2.5-1h5c-.5.6-1.4 1-2.5 1z"/>
               </svg>
             </div>
-            <div>
-              <h3 className="font-bold text-white text-lg tracking-tight">HudHud</h3>
-              <p className="text-xs text-white/80 font-medium">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-white text-base sm:text-lg tracking-tight truncate">HudHud</h3>
+              <p className="text-xs text-white/80 font-medium truncate">
                 {currentMode?.mode === 'organization' 
                   ? `🏢 ${currentMode.name}`
                   : '👤 Client Portal'
@@ -380,37 +388,40 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 flex-shrink-0">
             <button
               onClick={handleResetChat}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 sm:p-2.5 hover:bg-white/20 rounded-lg transition-colors touch-manipulation"
               title="Reset Chat"
+              aria-label="Reset Chat"
             >
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
             <button
               onClick={() => setIsMinimized(!isMinimized)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 sm:p-2.5 hover:bg-white/20 rounded-lg transition-colors touch-manipulation hidden sm:block"
               title={isMinimized ? 'Expand' : 'Minimize'}
+              aria-label={isMinimized ? 'Expand' : 'Minimize'}
             >
               {isMinimized ? (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               )}
             </button>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-2 sm:p-2.5 hover:bg-white/20 rounded-lg transition-colors touch-manipulation"
               title="Close"
+              aria-label="Close"
             >
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -420,29 +431,29 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
         {!isMinimized && (
           <>
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-800/50 to-slate-900/50">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gradient-to-b from-slate-800/50 to-slate-900/50">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
                 >
                   {message.type === 'bot' && (
-                    <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 shadow-lg">
-                      <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 flex-shrink-0 shadow-lg">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor">
                         <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2z"/>
                       </svg>
                     </div>
                   )}
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-lg ${
+                    className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-lg ${
                       message.type === 'user'
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
                         : 'bg-slate-700/80 backdrop-blur-sm text-gray-100 border border-slate-600/50'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed break-words">{message.text}</p>
                     <p
-                      className={`text-xs mt-2 ${
+                      className={`text-[10px] sm:text-xs mt-1.5 sm:mt-2 ${
                         message.type === 'user' ? 'text-amber-100' : 'text-slate-400'
                       }`}
                     >
@@ -454,16 +465,16 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
               {loading && (
                 <div className="flex justify-start animate-fadeIn">
-                  <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 flex-shrink-0">
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor">
                       <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2z"/>
                     </svg>
                   </div>
-                  <div className="bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl px-4 py-3">
-                    <div className="flex space-x-2">
-                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-                      <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+                  <div className="bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl px-3 py-2 sm:px-4 sm:py-3">
+                    <div className="flex space-x-1.5 sm:space-x-2">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full animate-bounce"></div>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -474,14 +485,14 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
             {/* Quick Actions */}
             {messages.length <= 1 && (
-              <div className="px-4 py-3 border-t border-slate-700/50 bg-slate-800/50">
-                <p className="text-xs text-slate-400 mb-2 font-medium">Quick actions:</p>
-                <div className="flex flex-wrap gap-2">
+              <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-slate-700/50 bg-slate-800/50">
+                <p className="text-[10px] sm:text-xs text-slate-400 mb-1.5 sm:mb-2 font-medium">Quick actions:</p>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {quickActions.map((action, index) => (
                     <button
                       key={index}
                       onClick={() => handleQuickAction(action.value)}
-                      className="px-3 py-1.5 text-xs bg-slate-700/50 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 rounded-full transition-all border border-slate-600/50 hover:border-amber-500/50"
+                      className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs bg-slate-700/50 hover:bg-amber-500/20 active:bg-amber-500/30 text-slate-300 hover:text-amber-300 rounded-full transition-all border border-slate-600/50 hover:border-amber-500/50 touch-manipulation"
                     >
                       {action.label}
                     </button>
@@ -491,22 +502,22 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
             )}
 
             {/* Input Area */}
-            <div className="p-4 border-t border-slate-700/50 bg-slate-800/80 backdrop-blur-sm">
+            <div className="p-3 sm:p-4 border-t border-slate-700/50 bg-slate-800/80 backdrop-blur-sm">
               {/* Voice Recording Indicator */}
               {isListening && (
-                <div className="mb-3 flex items-center justify-center space-x-2 text-amber-400">
-                  <div className="flex space-x-1">
-                    <div className="w-1 h-4 bg-amber-400 rounded-full animate-pulse"></div>
-                    <div className="w-1 h-6 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-1 h-3 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-1 h-5 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                    <div className="w-1 h-4 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                <div className="mb-2 sm:mb-3 flex items-center justify-center space-x-2 text-amber-400">
+                  <div className="flex space-x-0.5 sm:space-x-1">
+                    <div className="w-0.5 h-3 sm:h-4 bg-amber-400 rounded-full animate-pulse"></div>
+                    <div className="w-0.5 h-4 sm:h-6 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-0.5 h-2 sm:h-3 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-0.5 h-3.5 sm:h-5 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                    <div className="w-0.5 h-3 sm:h-4 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                   </div>
-                  <span className="text-sm font-medium">Listening... (pause to send)</span>
+                  <span className="text-xs sm:text-sm font-medium">Listening... (pause to send)</span>
                 </div>
               )}
 
-              <div className="flex items-end space-x-2">
+              <div className="flex items-end space-x-1.5 sm:space-x-2">
                 <div className="flex-1 relative">
                 <textarea
                   ref={inputRef}
@@ -515,12 +526,12 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                   onKeyPress={handleKeyPress}
                     placeholder={isListening ? 'Listening...' : 'Type your message or use voice...'}
                   rows={1}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none text-gray-100 placeholder-slate-400 transition-all"
+                    className="w-full px-3 py-2.5 sm:px-4 sm:py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none text-gray-100 placeholder-slate-400 transition-all text-sm sm:text-base"
                   disabled={loading}
-                    style={{ minHeight: '48px', maxHeight: '120px' }}
+                    style={{ minHeight: '44px', maxHeight: '120px' }}
                   />
                   {interimTranscript && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                    <span className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px] sm:text-xs">
                       ...
                     </span>
                   )}
@@ -531,20 +542,21 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                   <button
                     onClick={toggleListening}
                     disabled={loading}
-                    className={`p-3 rounded-xl transition-all ${
+                    className={`p-2.5 sm:p-3 rounded-xl transition-all touch-manipulation ${
                       isListening
-                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                        : 'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-amber-400 border border-slate-600/50'
+                        ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white animate-pulse'
+                        : 'bg-slate-700/50 hover:bg-slate-600/50 active:bg-slate-600 text-slate-300 hover:text-amber-400 border border-slate-600/50'
                     }`}
                     title={isListening ? 'Stop listening' : 'Start voice input'}
+                    aria-label={isListening ? 'Stop listening' : 'Start voice input'}
                   >
                     {isListening ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                       </svg>
                     ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                     )}
@@ -555,9 +567,10 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim() || loading}
-                  className="p-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-amber-500/25"
+                  className="p-2.5 sm:p-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 active:from-amber-700 active:to-orange-700 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-amber-500/25 touch-manipulation"
+                  aria-label="Send message"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </button>
@@ -565,7 +578,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
               {/* Voice support hint */}
               {!hasSpeechSupport && (
-                <p className="text-xs text-slate-500 mt-2 text-center">
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5 sm:mt-2 text-center">
                   Voice input not supported in this browser
                 </p>
               )}
@@ -593,14 +606,15 @@ export const ChatbotToggle = ({ onClick, hasUnread = false }) => {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 hover:shadow-amber-500/40 z-40 border border-amber-400/30"
+      className="fixed bottom-4 right-4 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:from-amber-700 active:to-orange-700 text-white rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 hover:shadow-amber-500/40 z-40 border border-amber-400/30 touch-manipulation"
       title="Chat with HudHud"
+      aria-label="Chat with HudHud"
     >
-      <svg viewBox="0 0 24 24" className="w-8 h-8" fill="currentColor">
+      <svg viewBox="0 0 24 24" className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor">
         <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5 0 .3 0 .5-.1.8-.8-.2-1.6-.3-2.4-.3s-1.6.1-2.4.3c-.1-.3-.1-.5-.1-.8C9.5 5.1 10.6 4 12 4zm-4 9c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm6 0c0-.6.4-1 1-1s1 .4 1 1-.4 1-1 1-1-.4-1-1zm-2 3c-1.1 0-2-.4-2.5-1h5c-.5.6-1.4 1-2.5 1z"/>
       </svg>
       {hasUnread && (
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+        <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
       )}
     </button>
   );

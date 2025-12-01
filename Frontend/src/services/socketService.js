@@ -102,8 +102,16 @@ class SocketService {
       autoConnect: true
     };
 
-    // Only allow websocket if protocols match
-    if (allowWebsocketUpgrade) {
+    // For HTTPS with self-signed certificates, use polling only to avoid WebSocket upgrade issues
+    // WebSocket upgrades can fail with "Invalid frame header" errors with self-signed certs
+    if (allowWebsocketUpgrade && isHTTPS && isBackendHTTPS) {
+      // Try websocket, but fallback to polling if upgrade fails
+      socketOptions.transports = ['polling', 'websocket'];
+      socketOptions.upgrade = true;
+      // Add longer timeout for HTTPS connections
+      socketOptions.timeout = 30000;
+    } else if (allowWebsocketUpgrade) {
+      // HTTP to HTTP - websocket should work fine
       socketOptions.transports = ['polling', 'websocket'];
       socketOptions.upgrade = true;
     } else {
@@ -161,13 +169,16 @@ class SocketService {
       }
     }
 
-    // Handle upgrade errors (polling to websocket) - suppress harmless protocol mismatch errors
+    // Handle upgrade errors (polling to websocket) - suppress harmless errors with self-signed certs
     this.socket.io.on('upgradeError', (error) => {
-      // Suppress "Invalid frame header" errors - they're expected with protocol mismatch
+      // Suppress "Invalid frame header" errors - common with self-signed certificates
       const errorMsg = error.message || String(error);
-      if (errorMsg.includes('Invalid frame header') || errorMsg.includes('websocket')) {
-        // Silently ignore - this is expected when protocols don't match
-        // Polling will continue to work fine
+      if (errorMsg.includes('Invalid frame header') || 
+          errorMsg.includes('websocket') ||
+          errorMsg.includes('SSL') ||
+          errorMsg.includes('certificate')) {
+        // Silently ignore - polling will continue to work fine
+        console.log('ℹ️ WebSocket upgrade skipped (using polling instead)');
         return;
       }
       console.warn('⚠️ WebSocket upgrade error:', errorMsg);

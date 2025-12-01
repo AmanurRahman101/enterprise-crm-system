@@ -59,7 +59,10 @@ const io = new Server(server, {
     credentials: true
   },
   transports: ['polling', 'websocket'], // Support both transports
-  allowEIO3: true // Allow Engine.IO v3 clients
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  // Handle WebSocket upgrade errors gracefully with self-signed certificates
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Socket.io connection handling
