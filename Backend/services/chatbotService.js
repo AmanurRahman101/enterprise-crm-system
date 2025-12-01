@@ -78,7 +78,9 @@ function stripUnsupportedKeywords(schema) {
       if (
         key === 'exclusiveMinimum' ||
         key === 'exclusiveMaximum' ||
-        key === 'definitions'
+        key === 'definitions' ||
+        key === '$schema' ||
+        key === 'additionalProperties'
       ) {
         continue;
       }
