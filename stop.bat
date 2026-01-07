@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ========================================
-echo   Stopping Tawasol CRM System
+echo   Stopping Enterprise CRM System
 echo ========================================
 echo.
 
@@ -25,8 +25,8 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5173 ^| findstr LISTENING') 
 
 REM Find and kill processes by window title
 echo Checking for server windows...
-taskkill /FI "WINDOWTITLE eq Tawasol CRM - Backend*" /F >nul 2>nul
-taskkill /FI "WINDOWTITLE eq Tawasol CRM - Frontend*" /F >nul 2>nul
+taskkill /FI "WINDOWTITLE eq Enterprise CRM - Backend*" /F >nul 2>nul
+taskkill /FI "WINDOWTITLE eq Enterprise CRM - Frontend*" /F >nul 2>nul
 
 REM Wait a moment for processes to stop
 timeout /t 1 /nobreak >nul
@@ -47,11 +47,11 @@ if errorlevel 1 (
 )
 
 echo.
-echo All Tawasol CRM servers stopped successfully!
+echo All Enterprise CRM servers stopped successfully!
 
 echo.
 echo ========================================
-echo   Tawasol CRM Stopped
+echo   Enterprise CRM Stopped
 echo ========================================
 echo.
 echo Ports 3000 and 5173 are now free.

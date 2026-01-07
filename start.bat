@@ -1,7 +1,7 @@
 @echo off
 echo.
 echo ========================================
-echo   Starting Tawasol CRM System
+echo   Starting Enterprise CRM System
 echo ========================================
 echo.
 
@@ -16,10 +16,10 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Check if MySQL is running
 echo [1/5] Checking MySQL connection...
-mysql -u root -e "SELECT 1" >nul 2>nul
+C:\xampp\mysql\bin\mysql.exe -u root -e "SELECT 1" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
     echo [WARNING] MySQL is not running or not accessible!
-    echo Please start MySQL server first.
+    echo Please start MySQL server first via XAMPP Control Panel.
     echo.
     choice /C YN /M "Continue anyway"
     if errorlevel 2 exit /b 1
@@ -27,19 +27,19 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Check if database exists
 echo [2/5] Checking database...
-mysql -u root -e "USE tawasol_crm;" >nul 2>nul
+C:\xampp\mysql\bin\mysql.exe -u root -e "USE `enterprise-crm-system`;" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo [WARNING] Database 'tawasol_crm' does not exist!
+    echo [WARNING] Database 'enterprise-crm-system' does not exist!
     echo.
     choice /C YN /M "Do you want to create it now"
     if errorlevel 2 (
-        echo Please run: mysql -u root -p ^< Backend/schema.sql
+        echo Please run: C:\xampp\mysql\bin\mysql.exe -u root ^< Backend/schema.sql
         pause
         exit /b 1
     )
     echo Creating database...
-    mysql -u root -e "CREATE DATABASE tawasol_crm;"
-    mysql -u root tawasol_crm < Backend\schema.sql
+    C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE `enterprise-crm-system`;"
+    C:\xampp\mysql\bin\mysql.exe -u root "enterprise-crm-system" < Backend\schema.sql
     echo Database created successfully!
 )
 
@@ -109,18 +109,18 @@ echo.
 
 REM Start Backend Server in new window
 echo Starting Backend Server (Port 3000)...
-start "Tawasol CRM - Backend" cmd /k "cd Backend && npm run dev"
+start "Enterprise CRM - Backend" cmd /k "cd Backend && npm run dev"
 
 REM Wait a moment for backend to start
 timeout /t 3 /nobreak >nul
 
 REM Start Frontend Server in new window
 echo Starting Frontend Server (Port 5173)...
-start "Tawasol CRM - Frontend" cmd /k "cd Frontend && npm run dev"
+start "Enterprise CRM - Frontend" cmd /k "cd Frontend && npm run dev"
 
 echo.
 echo ========================================
-echo   Tawasol CRM Started Successfully!
+echo   Enterprise CRM Started Successfully!
 echo ========================================
 echo.
 echo Backend:  http://localhost:3000
@@ -139,7 +139,7 @@ echo Opening browser in 5 seconds...
 timeout /t 5 /nobreak >nul
 
 REM Open browser
-start https://localhost:5173
+start http://localhost:5173
 
 echo.
 echo System is running! Press any key to return...

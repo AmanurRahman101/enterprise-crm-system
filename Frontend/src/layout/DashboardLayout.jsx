@@ -283,10 +283,12 @@ const DashboardLayout = () => {
           </Link>
         </div>
 
-        {/* Organization Switcher (show when in organization mode and has org) */}
-        {location.pathname.startsWith('/dashboard/organization') && currentOrg && !isSidebarCollapsed && (
+        {/* Organization Switcher (show when in organization mode - always visible so users can create orgs) */}
+        {location.pathname.startsWith('/dashboard/organization') && !isSidebarCollapsed && (
           <div className="px-3 py-2 border-b border-gray-200 bg-white">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5 px-1">Current Organization</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5 px-1">
+              {currentOrg ? 'Current Organization' : 'No Organization'}
+            </p>
             <OrganizationSwitcher />
           </div>
         )}

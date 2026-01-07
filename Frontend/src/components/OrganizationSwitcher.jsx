@@ -113,8 +113,30 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
     setIsOpen(false);
   };
 
+  // Always show the component - users need to be able to create organizations
+  // even if they don't have any yet
+
+  // If no organizations exist, show create button directly
   if (!currentOrganization && organizations.length === 0) {
-    return null;
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Create Organization
+        </button>
+        {showCreateModal && (
+          <CreateOrganizationModal
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={handleCreateSuccess}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
