@@ -496,8 +496,365 @@ const getSessionInfo = (userId, organizationId) => {
   };
 };
 
+// ============================================================
+// THREAD MANAGEMENT
+// ============================================================
+
+/**
+ * Generate a chat title from the first user message
+ * @param {string} message - First user message
+ * @returns {string} Generated title
+ */
+function generateChatTitle(message) {
+  if (!message || typeof message !== 'string') {
+    return 'New chat';
+  }
+
+  // Strip whitespace and newlines
+  let title = message.trim().replace(/\s+/g, ' ');
+
+  // Remove emoji-only content or very short messages
+  const emojiRegex = /^[\p{Emoji}\s]+$/u;
+  if (emojiRegex.test(title) || title.length < 3) {
+    return 'New chat';
+  }
+
+  // Truncate to 48 characters
+  if (title.length > 48) {
+    title = title.substring(0, 45) + '...';
+  }
+
+  return title;
+}
+
+/**
+ * Create a new chat thread
+ * @param {number} userId
+ * @param {number|null} organizationId
+ * @returns {Promise<string>} Thread ID
+ */
+async function createThread(userId, organizationId) {
+  const { v4: uuidv4 } = require('uuid');
+  const threadId = uuidv4();
+
+  await db.query(
+    'INSERT INTO chat_threads (id, user_id, organization_id, title) VALUES (?, ?, ?, ?)',
+    [threadId, userId, organizationId, 'New chat']
+  );
+
+  return threadId;
+}
+
+/**
+ * Get user's chat threads
+ * @param {number} userId
+ * @param {number|null} organizationId
+ * @returns {Promise<Array>} List of threads
+ */
+async function getThreads(userId, organizationId) {
+  const [threads] = await db.query(
+    `SELECT id, title, created_at, updated_at 
+     FROM chat_threads 
+     WHERE user_id = ? AND (organization_id <=> ?) AND deleted_at IS NULL
+     ORDER BY updated_at DESC
+     LIMIT 50`,
+    [userId, organizationId]
+  );
+
+  return threads;
+}
+
+/**
+ * Get messages for a specific thread
+ * @param {number} userId
+ * @param {string} threadId
+ * @returns {Promise<Array>} List of messages
+ */
+async function getThreadMessages(userId, threadId) {
+  // Verify thread ownership
+  const [threads] = await db.query(
+    'SELECT id FROM chat_threads WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+    [threadId, userId]
+  );
+
+  if (threads.length === 0) {
+    throw new Error('THREAD_NOT_FOUND');
+  }
+
+  // Get messages
+  const [messages] = await db.query(
+    `SELECT id, role, content, created_at 
+     FROM chat_messages 
+     WHERE thread_id = ?
+     ORDER BY created_at ASC`,
+    [threadId]
+  );
+
+  return messages;
+}
+
+/**
+ * Soft-delete a chat thread
+ * @param {number} userId
+ * @param {string} threadId
+ */
+async function deleteThread(userId, threadId) {
+  // Verify thread ownership
+  const [threads] = await db.query(
+    'SELECT id FROM chat_threads WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+    [threadId, userId]
+  );
+
+  if (threads.length === 0) {
+    throw new Error('THREAD_NOT_FOUND');
+  }
+
+  // Soft delete
+  await db.query(
+    'UPDATE chat_threads SET deleted_at = NOW() WHERE id = ?',
+    [threadId]
+  );
+}
+
+/**
+ * Load thread history for Gemini
+ * @param {string} threadId
+ * @param {number} maxMessages - Maximum number of messages to load
+ * @returns {Promise<Array>} Gemini history format
+ */
+async function loadThreadHistory(threadId, maxMessages = 20) {
+  const [messages] = await db.query(
+    `SELECT role, content 
+     FROM chat_messages 
+     WHERE thread_id = ?
+     ORDER BY created_at DESC
+     LIMIT ?`,
+    [threadId, maxMessages]
+  );
+
+  // Reverse to get chronological order and convert to Gemini format
+  return messages.reverse().map(msg => ({
+    role: msg.role,
+    parts: [{ text: msg.content }]
+  }));
+}
+
+/**
+ * Save a message to thread
+ * @param {string} threadId
+ * @param {string} role - 'user' or 'model'
+ * @param {string} content
+ */
+async function saveThreadMessage(threadId, role, content) {
+  const { v4: uuidv4 } = require('uuid');
+  const messageId = uuidv4();
+
+  await db.query(
+    'INSERT INTO chat_messages (id, thread_id, role, content) VALUES (?, ?, ?, ?)',
+    [messageId, threadId, role, content]
+  );
+
+  // Update thread's updated_at
+  await db.query(
+    'UPDATE chat_threads SET updated_at = NOW() WHERE id = ?',
+    [threadId]
+  );
+}
+
+/**
+ * Update thread title based on first message
+ * @param {string} threadId
+ * @param {string} firstMessage
+ */
+async function updateThreadTitle(threadId, firstMessage) {
+  // Check if thread still has default title
+  const [threads] = await db.query(
+    'SELECT title FROM chat_threads WHERE id = ?',
+    [threadId]
+  );
+
+  if (threads.length > 0 && threads[0].title === 'New chat') {
+    const title = generateChatTitle(firstMessage);
+    await db.query(
+      'UPDATE chat_threads SET title = ? WHERE id = ?',
+      [title, threadId]
+    );
+  }
+}
+
+/**
+ * Send a message to a specific thread
+ * @param {number} userId
+ * @param {number|null} organizationId
+ * @param {string} threadId
+ * @param {string} message
+ * @param {object} userContext
+ * @returns {Promise<string>} Bot response
+ */
+async function sendThreadMessage(userId, organizationId, threadId, message, userContext = {}) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Gemini API key not configured');
+  }
+
+  // Verify thread ownership and mode match
+  const [threads] = await db.query(
+    'SELECT id FROM chat_threads WHERE id = ? AND user_id = ? AND (organization_id <=> ?) AND deleted_at IS NULL',
+    [threadId, userId, organizationId]
+  );
+
+  if (threads.length === 0) {
+    throw new Error('THREAD_NOT_FOUND');
+  }
+
+  // Save user message
+  await saveThreadMessage(threadId, 'user', message);
+
+  // Update thread title if this is the first message
+  const [messageCount] = await db.query(
+    'SELECT COUNT(*) as count FROM chat_messages WHERE thread_id = ?',
+    [threadId]
+  );
+  
+  if (messageCount[0].count === 1) {
+    await updateThreadTitle(threadId, message);
+  }
+
+  // Load thread history
+  const history = await loadThreadHistory(threadId);
+
+  // Get user details for identification
+  const userDetails = await getUserDetails(userId);
+  
+  // Get or create session context
+  let orgContext = { organizationName: null, role: null };
+  if (organizationId) {
+    orgContext = await getOrganizationContext(organizationId, userId);
+    sessionStore.setContext(userId, organizationId, orgContext);
+  }
+
+  const isClientMode = !organizationId;
+  const sseUrl = isClientMode ? MCP_CLIENT_SSE_URL : MCP_ORG_SSE_URL;
+
+  // Try to connect to MCP server
+  let client, transport;
+  try {
+    const connection = await createMcpClient(sseUrl);
+    client = connection.client;
+    transport = connection.transport;
+  } catch (error) {
+    console.error('MCP connection error:', error);
+    throw new Error('CONNECTION_FAILED');
+  }
+
+  try {
+    const { tools } = await client.listTools();
+    
+    // Filter tools based on user role and mode
+    let filteredTools = isClientMode 
+      ? tools 
+      : filterToolsByRole(tools, orgContext.role);
+    
+    if (!isClientMode) {
+      filteredTools = filteredTools.filter(tool => tool.name !== 'createIssue');
+    }
+    
+    const geminiTools = mapTools(filteredTools);
+    
+    // Clean history for Gemini
+    const cleanedHistory = sessionStore.cleanHistory(history);
+
+    const systemInstruction = isClientMode
+      ? buildClientSystemInstruction(userId, userDetails.fullName, userDetails.email)
+      : buildOrgSystemInstruction(
+          organizationId,
+          orgContext.organizationName,
+          orgContext.role,
+          userDetails.fullName,
+          userDetails.email
+        );
+
+    const chat = model.startChat({
+      tools: geminiTools,
+      history: cleanedHistory,
+      systemInstruction: {
+        role: 'system',
+        parts: [{ text: systemInstruction }]
+      }
+    });
+
+    const initial = await chat.sendMessage(message);
+    const response = await initial.response;
+    const functionCalls = typeof response.functionCalls === 'function' ? response.functionCalls() : undefined;
+
+    if (functionCalls && functionCalls.length > 0) {
+      const toolResults = await Promise.all(
+        functionCalls.map(async call => {
+          const args = { ...(call.args || {}) };
+          
+          // Inject context-specific parameters
+          if (isClientMode) {
+            args.userId = userId;
+          } else {
+            args.organizationId = organizationId;
+            args.userRole = orgContext.role;
+            if (userContext.email && args.creatorEmail === undefined) {
+              args.creatorEmail = userContext.email.toLowerCase();
+            }
+            if (userContext.email && args.requestorEmail === undefined) {
+              args.requestorEmail = userContext.email.toLowerCase();
+            }
+          }
+
+          const toolResult = await client.callTool({
+            name: call.name,
+            arguments: args
+          });
+          return {
+            name: call.name,
+            result: flattenToolContent(toolResult.content)
+          };
+        })
+      );
+
+      const responseParts = toolResults.map(result => ({
+        functionResponse: {
+          name: result.name,
+          response: { result: result.result }
+        }
+      }));
+
+      const finalMessage = await chat.sendMessage(responseParts);
+      const finalResponse = await finalMessage.response;
+      const finalText =
+        extractModelText(finalResponse) ||
+        toolResults.map(r => r.result).join('\n') ||
+        'I was unable to compose a reply.';
+
+      // Save model response
+      await saveThreadMessage(threadId, 'model', finalText);
+
+      return finalText;
+    }
+
+    const text = extractModelText(response, 'I did not find anything to share yet.');
+    
+    // Save model response
+    await saveThreadMessage(threadId, 'model', text);
+    
+    return text;
+  } finally {
+    await client.close().catch(() => {});
+    await transport.close().catch(() => {});
+  }
+}
+
 module.exports = {
   chat,
   resetSession,
-  getSessionInfo
+  getSessionInfo,
+  createThread,
+  getThreads,
+  getThreadMessages,
+  deleteThread,
+  sendThreadMessage
 };

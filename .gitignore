@@ -53,3 +53,5 @@ Frontend/cert/*.crt
 Frontend/cert/*.key
 !Backend/cert/.gitkeep
 !Frontend/cert/.gitkeep
+Backend/.env
+Backend/.env
