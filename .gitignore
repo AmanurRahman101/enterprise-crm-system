@@ -5,10 +5,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment Variables
-
-.env.local
-.env.development
-.env.production
+.env
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -53,5 +52,3 @@ Frontend/cert/*.crt
 Frontend/cert/*.key
 !Backend/cert/.gitkeep
 !Frontend/cert/.gitkeep
-Backend/.env
-Backend/.env
