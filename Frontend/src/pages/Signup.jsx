@@ -83,27 +83,27 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
+      <div className="max-w-md w-full animate-fade-in-up">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-600 mb-2">Tawasol CRM</h1>
-          <p className="text-gray-600">Create your account</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg mb-2">Tawassul CRM</h1>
+          <p className="text-gray-300">Create your account</p>
         </div>
 
         {/* Signup Form */}
-        <div className="bg-white rounded-xl shadow-xl p-8">
+        <div className="bg-gray-900/70 backdrop-blur-xl border border-teal-500/20 rounded-2xl shadow-2xl shadow-teal-500/20 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Info Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-teal-900/20 border border-teal-500/30 rounded-lg p-4 mb-4">
+              <p className="text-sm text-teal-300">
                 <strong>✨ Unified Account:</strong> Create an account to access both Client Portal (view your deals/issues) and Organizations (create/join teams).
               </p>
             </div>
 
             {/* Full Name */}
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1">
                 Full Name *
               </label>
               <input
@@ -112,18 +112,19 @@ const Signup = () => {
                 required
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.fullName ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-2 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.fullName ? 'border-red-500/50' : 'border-gray-700'
                 }`}
                 placeholder="John Doe"
+                autoComplete="name"
                 aria-invalid={errors.fullName ? 'true' : 'false'}
               />
-              {errors.fullName && <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>}
+              {errors.fullName && <p className="mt-1 text-xs text-red-400">{errors.fullName}</p>}
             </div>
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                 Email Address *
               </label>
               <input
@@ -132,37 +133,39 @@ const Signup = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.email ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-2 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.email ? 'border-red-500/50' : 'border-gray-700'
                 }`}
                 placeholder="john@example.com"
+                autoComplete="email"
                 aria-invalid={errors.email ? 'true' : 'false'}
               />
-              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+              {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email}</p>}
             </div>
 
-            {/* Phone (Optional) */}
+            {/* Phone */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number (Optional)
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-1">
+                Phone Number
               </label>
               <input
                 type="tel"
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.phone ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-2 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.phone ? 'border-red-500/50' : 'border-gray-700'
                 }`}
-                placeholder="+1 (555) 123-4567"
+                placeholder="+1234567890"
+                autoComplete="tel"
                 aria-invalid={errors.phone ? 'true' : 'false'}
               />
-              {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
+              {errors.phone && <p className="mt-1 text-xs text-red-400">{errors.phone}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
                 Password *
               </label>
               <input
@@ -171,21 +174,22 @@ const Signup = () => {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.password ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-2 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.password ? 'border-red-500/50' : 'border-gray-700'
                 }`}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 aria-invalid={errors.password ? 'true' : 'false'}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                At least 8 characters with uppercase, lowercase, and a number.
+              {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password}</p>}
+              <p className="mt-1 text-xs text-gray-500">
+                At least 8 characters with uppercase, lowercase, and number
               </p>
-              {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-1">
                 Confirm Password *
               </label>
               <input
@@ -194,32 +198,38 @@ const Signup = () => {
                 required
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.confirmPassword ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-2 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.confirmPassword ? 'border-red-500/50' : 'border-gray-700'
                 }`}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 aria-invalid={errors.confirmPassword ? 'true' : 'false'}
               />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>
-              )}
+              {errors.confirmPassword && <p className="mt-1 text-xs text-red-400">{errors.confirmPassword}</p>}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-3 rounded-lg font-medium hover:shadow-2xl hover:shadow-teal-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 
+          {/* Divider */}
+          <div className="mt-6 mb-6 flex items-center">
+            <div className="flex-1 border-t border-gray-700"></div>
+            <span className="px-4 text-sm text-gray-500">OR</span>
+            <div className="flex-1 border-t border-gray-700"></div>
+          </div>
+
           {/* Sign In Link */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+          <div className="text-center">
+            <p className="text-sm text-gray-400">
               Already have an account?{' '}
-              <Link to="/auth/signin" className="text-indigo-600 hover:text-indigo-700 font-medium">
+              <Link to="/auth/signin" className="text-teal-400 hover:text-teal-300 font-medium transition-colors">
                 Sign In
               </Link>
             </p>
@@ -231,4 +241,3 @@ const Signup = () => {
 };
 
 export default Signup;
-

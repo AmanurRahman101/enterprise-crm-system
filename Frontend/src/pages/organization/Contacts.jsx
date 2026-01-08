@@ -315,13 +315,13 @@ const PersonModal = ({ person, onClose, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="glass-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+        <div className="p-6 border-b border-gray-700/50 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-white">
             {person ? 'Edit Contact' : 'Add Contact from System'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -331,7 +331,7 @@ const PersonModal = ({ person, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {!person && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Select User from System *
               </label>
               <div className="relative" ref={dropdownRef}>
@@ -344,16 +344,16 @@ const PersonModal = ({ person, onClose, onSave }) => {
                     setShowDropdown(true);
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    errors.userId ? 'border-red-400' : 'border-gray-300'
+                  className={`w-full px-3 py-2 bg-gray-800/50 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-400 transition-all ${
+                    errors.userId ? 'border-red-400' : 'border-gray-700'
                   }`}
                 />
                 {showDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-gray-900/95 backdrop-blur-xl border border-teal-500/30 rounded-lg shadow-2xl shadow-black/50 max-h-60 overflow-y-auto">
                     {loadingUsers ? (
-                      <div className="p-4 text-center text-gray-500">Loading...</div>
+                      <div className="p-4 text-center text-gray-400">Loading...</div>
                     ) : availableUsers.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
+                      <div className="p-4 text-center text-gray-400">
                         {searchQuery.length < 2 ? 'Type at least 2 characters to search' : 'No users found'}
                       </div>
                     ) : (
@@ -362,12 +362,12 @@ const PersonModal = ({ person, onClose, onSave }) => {
                           key={user.id}
                           type="button"
                           onClick={() => handleUserSelect(user)}
-                          className="w-full text-left px-4 py-2 hover:bg-indigo-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          className="w-full text-left px-4 py-2 hover:bg-teal-500/20 hover:border-teal-500/30 transition-all border-b border-gray-700/50 last:border-b-0 backdrop-blur-sm"
                         >
-                          <div className="font-medium text-gray-900">{user.fullName}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="font-medium text-white">{user.fullName}</div>
+                          <div className="text-sm text-gray-400">{user.email}</div>
                           {user.phone && (
-                            <div className="text-xs text-gray-400">{user.phone}</div>
+                            <div className="text-xs text-gray-500">{user.phone}</div>
                           )}
                         </button>
                       ))
@@ -375,29 +375,29 @@ const PersonModal = ({ person, onClose, onSave }) => {
                   </div>
                 )}
                 {selectedUser && (
-                  <div className="mt-2 p-3 bg-indigo-50 rounded-lg">
-                    <div className="text-sm font-medium text-indigo-900">Selected: {selectedUser.fullName}</div>
-                    <div className="text-xs text-indigo-700">{selectedUser.email}</div>
+                  <div className="mt-2 p-3 bg-teal-500/20 border border-teal-500/40 rounded-lg backdrop-blur-sm">
+                    <div className="text-sm font-medium text-teal-400">Selected: {selectedUser.fullName}</div>
+                    <div className="text-xs text-teal-300">{selectedUser.email}</div>
                   </div>
                 )}
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-400">
                 Only users who have signed up to the system can be added as contacts (for calling feature).
               </p>
-              {errors.userId && <p className="mt-1 text-xs text-red-600">{errors.userId}</p>}
+              {errors.userId && <p className="mt-1 text-xs text-red-400">{errors.userId}</p>}
             </div>
           )}
 
           {person && (
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-600">Contact:</div>
-              <div className="font-medium text-gray-900">{person.firstName} {person.lastName}</div>
-              <div className="text-sm text-gray-600">{person.email}</div>
+            <div className="p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg backdrop-blur-sm">
+              <div className="text-sm text-gray-400">Contact:</div>
+              <div className="font-medium text-white">{person.firstName} {person.lastName}</div>
+              <div className="text-sm text-gray-400">{person.email}</div>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Job Title (Optional)
             </label>
             <input
@@ -405,12 +405,12 @@ const PersonModal = ({ person, onClose, onSave }) => {
               value={formData.jobTitle}
               onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
               placeholder="e.g., Manager, Developer"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-400 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Notes (Optional)
             </label>
             <textarea
@@ -418,21 +418,21 @@ const PersonModal = ({ person, onClose, onSave }) => {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
               placeholder="Additional notes about this contact..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-400 transition-all"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-700/50">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-lg hover:from-teal-600 hover:to-emerald-600 transition-colors shadow-lg shadow-teal-500/30"
             >
               {person ? 'Update' : 'Add Contact'}
             </button>
@@ -512,13 +512,13 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="glass-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+        <div className="p-6 border-b border-gray-700/50 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-white">
             {organization ? 'Edit Contact' : 'Add Organization from System'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -528,7 +528,7 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {!organization && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Select Organization from System *
               </label>
               <div className="relative" ref={dropdownRef}>
@@ -541,16 +541,16 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
                     setShowDropdown(true);
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                    errors.organizationId ? 'border-red-400' : 'border-gray-300'
+                  className={`w-full px-3 py-2 bg-gray-800/50 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-400 transition-all ${
+                    errors.organizationId ? 'border-red-400' : 'border-gray-700'
                   }`}
                 />
                 {showDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-gray-900/95 backdrop-blur-xl border border-teal-500/30 rounded-lg shadow-2xl shadow-black/50 max-h-60 overflow-y-auto">
                     {loadingOrgs ? (
-                      <div className="p-4 text-center text-gray-500">Loading...</div>
+                      <div className="p-4 text-center text-gray-400">Loading...</div>
                     ) : availableOrganizations.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500">
+                      <div className="p-4 text-center text-gray-400">
                         {searchQuery.length < 2 ? 'Type at least 2 characters to search' : 'No organizations found'}
                       </div>
                     ) : (
@@ -559,14 +559,14 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
                           key={org.id}
                           type="button"
                           onClick={() => handleOrgSelect(org)}
-                          className="w-full text-left px-4 py-2 hover:bg-indigo-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          className="w-full text-left px-4 py-2 hover:bg-teal-500/20 hover:border-teal-500/30 transition-all border-b border-gray-700/50 last:border-b-0 backdrop-blur-sm"
                         >
-                          <div className="font-medium text-gray-900">{org.name}</div>
+                          <div className="font-medium text-white">{org.name}</div>
                           {org.email && (
-                            <div className="text-sm text-gray-500">{org.email}</div>
+                            <div className="text-sm text-gray-400">{org.email}</div>
                           )}
                           {org.phone && (
-                            <div className="text-xs text-gray-400">{org.phone}</div>
+                            <div className="text-xs text-gray-500">{org.phone}</div>
                           )}
                         </button>
                       ))
@@ -574,35 +574,35 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
                   </div>
                 )}
                 {selectedOrg && (
-                  <div className="mt-2 p-3 bg-indigo-50 rounded-lg">
-                    <div className="text-sm font-medium text-indigo-900">Selected: {selectedOrg.name}</div>
+                  <div className="mt-2 p-3 bg-teal-500/20 border border-teal-500/40 rounded-lg backdrop-blur-sm">
+                    <div className="text-sm font-medium text-teal-400">Selected: {selectedOrg.name}</div>
                     {selectedOrg.email && (
-                      <div className="text-xs text-indigo-700">{selectedOrg.email}</div>
+                      <div className="text-xs text-teal-300">{selectedOrg.email}</div>
                     )}
                   </div>
                 )}
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-400">
                 Only organizations that exist in the system can be added as contacts.
               </p>
               {errors.organizationId && (
-                <p className="mt-1 text-xs text-red-600">{errors.organizationId}</p>
+                <p className="mt-1 text-xs text-red-400">{errors.organizationId}</p>
               )}
             </div>
           )}
 
           {organization && (
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-600">Organization:</div>
-              <div className="font-medium text-gray-900">{organization.name}</div>
+            <div className="p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg backdrop-blur-sm">
+              <div className="text-sm text-gray-400">Organization:</div>
+              <div className="font-medium text-white">{organization.name}</div>
               {organization.email && (
-                <div className="text-sm text-gray-600">{organization.email}</div>
+                <div className="text-sm text-gray-400">{organization.email}</div>
               )}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Notes (Optional)
             </label>
             <textarea
@@ -610,21 +610,21 @@ const OrganizationModal = ({ organization, onClose, onSave }) => {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={4}
               placeholder="Additional notes about this organization..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-white placeholder-gray-400 transition-all"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-700/50">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-lg hover:from-teal-600 hover:to-emerald-600 transition-colors shadow-lg shadow-teal-500/30"
             >
               {organization ? 'Update' : 'Add Contact'}
             </button>

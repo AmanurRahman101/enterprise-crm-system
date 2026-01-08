@@ -448,13 +448,13 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                     className={`max-w-[80%] sm:max-w-[75%] rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-lg ${
                       message.type === 'user'
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
-                        : 'bg-slate-700/80 backdrop-blur-sm text-gray-100 border border-slate-600/50'
+                        : 'bg-gray-700/80 backdrop-blur-sm text-gray-100 border border-slate-600/50'
                     }`}
                   >
                     <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed break-words">{message.text}</p>
                     <p
                       className={`text-[10px] sm:text-xs mt-1.5 sm:mt-2 ${
-                        message.type === 'user' ? 'text-amber-100' : 'text-slate-400'
+                        message.type === 'user' ? 'text-amber-100' : 'text-gray-400'
                       }`}
                     >
                       {formatTime(message.timestamp)}
@@ -470,7 +470,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                       <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 .5.1 1 .2 1.5C5.5 8.5 4 10.5 4 13c0 3.5 2.5 6 6 7v2h4v-2c3.5-1 6-3.5 6-7 0-2.5-1.5-4.5-3.7-5-.1-.5-.2-1-.2-1.5C16.5 4 14.5 2 12 2z"/>
                     </svg>
                   </div>
-                  <div className="bg-slate-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl px-3 py-2 sm:px-4 sm:py-3">
+                  <div className="bg-gray-700/80 backdrop-blur-sm border border-slate-600/50 rounded-2xl px-3 py-2 sm:px-4 sm:py-3">
                     <div className="flex space-x-1.5 sm:space-x-2">
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full animate-bounce"></div>
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
@@ -485,14 +485,14 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
             {/* Quick Actions */}
             {messages.length <= 1 && (
-              <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-slate-700/50 bg-slate-800/50">
-                <p className="text-[10px] sm:text-xs text-slate-400 mb-1.5 sm:mb-2 font-medium">Quick actions:</p>
+              <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-slate-700/50 bg-gray-800/50">
+                <p className="text-[10px] sm:text-xs text-gray-400 mb-1.5 sm:mb-2 font-medium">Quick actions:</p>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {quickActions.map((action, index) => (
                     <button
                       key={index}
                       onClick={() => handleQuickAction(action.value)}
-                      className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs bg-slate-700/50 hover:bg-amber-500/20 active:bg-amber-500/30 text-slate-300 hover:text-amber-300 rounded-full transition-all border border-slate-600/50 hover:border-amber-500/50 touch-manipulation"
+                      className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs bg-gray-700/50 hover:bg-amber-500/20 active:bg-amber-500/30 text-gray-300 hover:text-amber-300 rounded-full transition-all border border-slate-600/50 hover:border-amber-500/50 touch-manipulation"
                     >
                       {action.label}
                     </button>
@@ -502,7 +502,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
             )}
 
             {/* Input Area */}
-            <div className="p-3 sm:p-4 border-t border-slate-700/50 bg-slate-800/80 backdrop-blur-sm">
+            <div className="p-3 sm:p-4 border-t border-slate-700/50 bg-gray-800/80 backdrop-blur-sm">
               {/* Voice Recording Indicator */}
               {isListening && (
                 <div className="mb-2 sm:mb-3 flex items-center justify-center space-x-2 text-amber-400">
@@ -526,12 +526,12 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                   onKeyPress={handleKeyPress}
                     placeholder={isListening ? 'Listening...' : 'Type your message or use voice...'}
                   rows={1}
-                    className="w-full px-3 py-2.5 sm:px-4 sm:py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none text-gray-100 placeholder-slate-400 transition-all text-sm sm:text-base"
+                    className="w-full px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-700/50 border border-slate-600/50 rounded-xl focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none text-gray-100 placeholder-slate-400 transition-all text-sm sm:text-base"
                   disabled={loading}
                     style={{ minHeight: '44px', maxHeight: '120px' }}
                   />
                   {interimTranscript && (
-                    <span className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px] sm:text-xs">
+                    <span className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 text-gray-500 text-[10px] sm:text-xs">
                       ...
                     </span>
                   )}
@@ -545,7 +545,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
                     className={`p-2.5 sm:p-3 rounded-xl transition-all touch-manipulation ${
                       isListening
                         ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white animate-pulse'
-                        : 'bg-slate-700/50 hover:bg-slate-600/50 active:bg-slate-600 text-slate-300 hover:text-amber-400 border border-slate-600/50'
+                        : 'bg-gray-700/50 hover:bg-gray-600/50 active:bg-gray-600 text-gray-300 hover:text-amber-400 border border-slate-600/50'
                     }`}
                     title={isListening ? 'Stop listening' : 'Start voice input'}
                     aria-label={isListening ? 'Stop listening' : 'Start voice input'}
@@ -578,7 +578,7 @@ const Chatbot = ({ isOpen, onClose, currentOrganization, isClientPortal }) => {
 
               {/* Voice support hint */}
               {!hasSpeechSupport && (
-                <p className="text-[10px] sm:text-xs text-slate-500 mt-1.5 sm:mt-2 text-center">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 text-center">
                   Voice input not supported in this browser
                 </p>
               )}

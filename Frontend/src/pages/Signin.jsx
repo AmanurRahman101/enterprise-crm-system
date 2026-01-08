@@ -82,20 +82,20 @@ const Signin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
+      <div className="max-w-md w-full animate-fade-in-up">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-600 mb-2">Tawasol CRM</h1>
-          <p className="text-gray-600">Sign in to your account</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg mb-2">Tawassul CRM</h1>
+          <p className="text-gray-300">Sign in to your account</p>
         </div>
 
         {/* Signin Form */}
-        <div className="bg-white rounded-xl shadow-xl p-8">
+        <div className="bg-gray-900/70 backdrop-blur-xl border border-teal-500/20 rounded-2xl shadow-2xl shadow-teal-500/20 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                 Email Address *
               </label>
               <input
@@ -104,25 +104,25 @@ const Signin = () => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.email ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-3 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.email ? 'border-red-500/50' : 'border-gray-700'
                 }`}
                 placeholder="john@example.com"
                 autoComplete="email"
                 aria-invalid={errors.email ? 'true' : 'false'}
               />
-              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+              {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email}</p>}
             </div>
 
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                   Password *
                 </label>
                 <Link
                   to="/auth/forgot-password"
-                  className="text-sm text-indigo-600 hover:text-indigo-700"
+                  className="text-sm text-teal-400 hover:text-teal-300 transition-colors"
                 >
                   Forgot?
                 </Link>
@@ -133,21 +133,21 @@ const Signin = () => {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.password ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-4 py-3 bg-gray-900/80 border text-white placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
+                  errors.password ? 'border-red-500/50' : 'border-gray-700'
                 }`}
                 placeholder="••••••••"
                 autoComplete="current-password"
                 aria-invalid={errors.password ? 'true' : 'false'}
               />
-              {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password}</p>}
+              {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password}</p>}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-teal-500 to-emerald-500 text-white py-3 rounded-lg font-medium hover:shadow-2xl hover:shadow-teal-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5"
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </button>
@@ -155,24 +155,24 @@ const Signin = () => {
 
           {/* Divider */}
           <div className="mt-6 mb-6 flex items-center">
-            <div className="flex-1 border-t border-gray-300"></div>
+            <div className="flex-1 border-t border-gray-700"></div>
             <span className="px-4 text-sm text-gray-500">OR</span>
-            <div className="flex-1 border-t border-gray-300"></div>
+            <div className="flex-1 border-t border-gray-700"></div>
           </div>
 
           {/* Sign Up Link */}
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Don't have an account?{' '}
-              <Link to="/auth/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">
+              <Link to="/auth/signup" className="text-teal-400 hover:text-teal-300 font-medium transition-colors">
                 Create Account
               </Link>
             </p>
           </div>
 
           {/* Info */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-xs text-blue-800">
+          <div className="mt-6 p-4 bg-teal-900/20 border border-teal-500/30 rounded-lg">
+            <p className="text-xs text-teal-300">
               <strong>✨ Unified Account:</strong> Sign in to access both Client Portal (your deals/issues) and Organizations (create/join teams).
             </p>
           </div>
@@ -183,4 +183,3 @@ const Signin = () => {
 };
 
 export default Signin;
-

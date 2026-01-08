@@ -122,13 +122,13 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
       <div className="relative">
         <button
           onClick={() => setShowCreateModal(true)}
-          className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Create Organization
-        </button>
+                className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 rounded-lg transition-all shadow-lg shadow-teal-500/30"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Create Organization
+              </button>
         {showCreateModal && (
           <CreateOrganizationModal
             onClose={() => setShowCreateModal(false)}
@@ -144,11 +144,11 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={loading}
-        className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 transition-all"
+        className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-white bg-gray-900/70 border border-teal-500/30 rounded-lg hover:bg-gray-800/80 hover:border-teal-500/50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 focus:ring-offset-gray-900 disabled:opacity-50 transition-all backdrop-blur-sm"
       >
         <div className="flex items-center flex-1 min-w-0">
           <svg
-            className="w-4 h-4 mr-2 text-indigo-600 shrink-0"
+            className="w-4 h-4 mr-2 text-teal-400 shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -165,7 +165,7 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
           </span>
         </div>
         <svg
-          className={`w-4 h-4 ml-2 text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 ml-2 text-teal-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -185,7 +185,7 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute left-0 right-0 mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-80 overflow-y-auto">
+          <div className="absolute left-0 right-0 mt-2 w-full bg-gray-900/95 backdrop-blur-xl border border-teal-500/30 rounded-lg shadow-2xl shadow-black/50 z-20 max-h-80 overflow-y-auto">
             <div className="p-2">
               {organizations.length > 0 ? (
                 <>
@@ -196,18 +196,18 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
                       disabled={loading}
                       className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all ${
                         org.id === currentOrganization?.id
-                          ? 'bg-indigo-50 text-indigo-600 font-semibold border border-indigo-200'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'bg-teal-500/20 text-teal-300 font-semibold border border-teal-500/40'
+                          : 'text-gray-200 hover:bg-gray-800/50 hover:text-white'
                       } disabled:opacity-50 mb-1 last:mb-0`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="truncate font-medium">{org.name}</div>
-                          <div className="text-xs text-gray-500 mt-0.5 capitalize">{org.role}</div>
+                          <div className="text-xs text-gray-400 mt-0.5 capitalize">{org.role}</div>
                         </div>
                         {org.id === currentOrganization?.id && (
                           <svg
-                            className="w-5 h-5 text-indigo-600 shrink-0 ml-2"
+                            className="w-5 h-5 text-teal-400 shrink-0 ml-2"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -221,13 +221,13 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
                       </div>
                     </button>
                   ))}
-                  <div className="border-t border-gray-200 mt-2 pt-2">
+                  <div className="border-t border-gray-700 mt-2 pt-2">
                     <button
                       onClick={() => {
                         setIsOpen(false);
                         setShowCreateModal(true);
                       }}
-                      className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all border border-indigo-200"
+                      className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 rounded-lg transition-all shadow-lg shadow-teal-500/30"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -246,7 +246,7 @@ const OrganizationSwitcher = ({ onOrganizationChange }) => {
                       setIsOpen(false);
                       setShowCreateModal(true);
                     }}
-                    className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all border border-indigo-200"
+                    className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 rounded-lg transition-all shadow-lg shadow-teal-500/30"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />

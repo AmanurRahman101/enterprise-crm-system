@@ -50,28 +50,28 @@ const DashboardNavbar = ({ onToggleSidebar, isSidebarOpen, onToggleCollapse, isS
     return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
   };
 
-  // Get role badge color
+  // Get role badge color (Dark mode)
   const getRoleBadgeColor = (role) => {
-    if (!role) return 'bg-gray-100 text-gray-700';
+    if (!role) return 'bg-gray-700/50 text-gray-300 border border-slate-600';
     const roleLower = role.toLowerCase();
     switch (roleLower) {
       case 'owner':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-purple-900/30 text-purple-300 border border-purple-500/30';
       case 'admin':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-900/30 text-red-300 border border-red-500/30';
       case 'manager':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-900/30 text-blue-300 border border-blue-500/30';
       case 'agent':
-        return 'bg-green-100 text-green-700';
+        return 'bg-emerald-900/30 text-emerald-300 border border-emerald-500/30';
       case 'viewer':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300 border border-slate-600';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-700/50 text-gray-300 border border-slate-600';
     }
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm w-full z-50">
+    <nav className="bg-gray-950/95 backdrop-blur-xl shadow-2xl border-b border-teal-500/20 w-full z-50">
       <div className="w-full px-3 sm:pr-4 md:pr-6 lg:pr-8">
         <div className="flex items-center justify-between h-14">
           {/* Left: Sidebar Toggle (Mobile) + Collapse Toggle (Desktop) + CRM Logo & Title */}
@@ -79,7 +79,7 @@ const DashboardNavbar = ({ onToggleSidebar, isSidebarOpen, onToggleCollapse, isS
             {/* Sidebar Toggle Button - Only on Mobile */}
             <button
               onClick={onToggleSidebar}
-              className="lg:hidden mr-2 sm:mr-3 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="lg:hidden mr-2 sm:mr-3 p-2 text-gray-300 hover:text-teal-400 hover:bg-gray-700/50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-slate-900"
               aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
               aria-expanded={isSidebarOpen}
             >
@@ -95,7 +95,7 @@ const DashboardNavbar = ({ onToggleSidebar, isSidebarOpen, onToggleCollapse, isS
             {/* Collapse/Expand Toggle Button - Only on Desktop */}
             <button
               onClick={onToggleCollapse}
-              className="hidden lg:flex mr-2 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="hidden lg:flex mr-2 p-2 text-gray-300 hover:text-teal-400 hover:bg-gray-700/50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-slate-900"
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -111,24 +111,24 @@ const DashboardNavbar = ({ onToggleSidebar, isSidebarOpen, onToggleCollapse, isS
 
             {/* CRM Logo - Hidden on mobile, visible on md and up */}
             <Link to="/dashboard/organization" className="hidden md:flex items-center shrink-0 px-2 sm:px-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-1.5 sm:mr-2 shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-lg flex items-center justify-center mr-1.5 sm:mr-2 shrink-0 shadow-lg shadow-teal-500/50 animate-glow-pulse">
                 <span className="text-white font-bold text-sm sm:text-base">T</span>
               </div>
               <div className="min-w-0">
-                <span className="text-base sm:text-lg font-bold text-gray-900 whitespace-nowrap">Tawasol</span>
-                <span className="text-base sm:text-lg font-light text-gray-600 ml-0.5 sm:ml-1 whitespace-nowrap">CRM</span>
+                <span className="text-base sm:text-lg font-bold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent whitespace-nowrap">Tawassul</span>
+                <span className="text-base sm:text-lg font-light text-gray-400 ml-0.5 sm:ml-1 whitespace-nowrap">CRM</span>
               </div>
             </Link>
 
             {/* Title (Organization Name or User Name) */}
             {getNavbarTitle() && (
               <>
-                <div className="hidden md:block w-px h-6 bg-gray-300 mx-2 lg:mx-4 shrink-0"></div>
+                <div className="hidden md:block w-px h-6 bg-gray-700 mx-2 lg:mx-4 shrink-0"></div>
                 <div className="flex items-baseline space-x-2 sm:space-x-3 min-w-0 flex-1">
-                  <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-900 truncate leading-tight min-w-0">
+                  <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-100 truncate leading-tight min-w-0">
                     {getNavbarTitle()}
                   </h1>
-                  <p className="hidden lg:block text-xs text-gray-500 font-medium uppercase tracking-wider whitespace-nowrap shrink-0">
+                  <p className="hidden lg:block text-xs text-gray-400 font-medium uppercase tracking-wider whitespace-nowrap shrink-0">
                     {getNavbarSubtitle()}
                   </p>
                 </div>

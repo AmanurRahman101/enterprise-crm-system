@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import ApiService from '../../services/api';
+import { TableSkeleton } from '../../components/SkeletonLoader';
+import EmptyState from '../../components/EmptyState';
 
 const MyIssues = () => {
   const navigate = useNavigate();
@@ -106,16 +108,15 @@ const MyIssues = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
+        <TableSkeleton rows={5} columns={5} />
       ) : issues.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-          </svg>
-          <p className="text-gray-600">No issues found.</p>
-        </div>
+        <EmptyState
+          icon="issues"
+          title="No Issues Yet"
+          description="You haven't reported any issues yet. Create your first issue to get started tracking problems and support requests."
+          actionLabel="Create First Issue"
+          onAction={() => setShowCreateModal(true)}
+        />
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">

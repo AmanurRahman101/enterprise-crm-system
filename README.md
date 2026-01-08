@@ -1,4 +1,4 @@
- # Tawasol CRM
+ # Tawassul CRM
 
 A comprehensive multi-tenant CRM system with real-time voice calling capabilities, built with React, Node.js, Express, and MySQL.
 
@@ -30,7 +30,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 git clone <repository-url>
-cd tawasol-crm
+cd tawassul-crm
 ```
 
 ### 2. Database Setup
@@ -44,8 +44,8 @@ mysql -u root -p < Backend/schema.sql
 Or manually:
 
 ```sql
-CREATE DATABASE tawasol_crm;
-USE tawasol_crm;
+CREATE DATABASE tawassul_crm;
+USE tawassul_crm;
 SOURCE Backend/schema.sql;
 ```
 
@@ -65,7 +65,7 @@ Required variables:
 - `DB_HOST` - MySQL host (default: localhost)
 - `DB_USER` - MySQL username (default: root)
 - `DB_PASSWORD` - MySQL password
-- `DB_NAME` - Database name (default: tawasol_crm)
+- `DB_NAME` - Database name (default: tawassul_crm)
 - `DB_PORT` - MySQL port (default: 3306)
 - `JWT_SECRET` - Secret key for JWT tokens (change this in production!)
 - `AGORA_APP_ID` - Agora application ID (for voice calls)
@@ -198,7 +198,7 @@ To access the application from other devices on your local network:
 ## Project Structure
 
 ```
-tawasol-crm/
+tawassul-crm/
 ├── Backend/                 # Node.js/Express backend
 │   ├── cert/               # SSL certificates (not in git)
 │   ├── config/             # Configuration files

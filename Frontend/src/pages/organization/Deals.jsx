@@ -34,8 +34,9 @@ const SortableDealCard = ({ deal, onEdit }) => {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.3 : 1,
+    cursor: isDragging ? 'grabbing' : 'grab'
   };
 
   const formatCurrency = (value, currency = 'USD') => {
@@ -51,7 +52,11 @@ const SortableDealCard = ({ deal, onEdit }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-3 hover:shadow-md transition-shadow relative group"
+      className={`glass-card rounded-xl p-3 sm:p-4 mb-3 relative group ${
+        isDragging 
+          ? 'shadow-none' 
+          : 'hover:shadow-xl hover:shadow-teal-500/10 transition-shadow'
+      }`}
     >
       {/* Drag handle area */}
       <div
@@ -70,7 +75,7 @@ const SortableDealCard = ({ deal, onEdit }) => {
           e.stopPropagation();
           onEdit(deal);
         }}
-        className="absolute top-2 right-2 z-20 p-1.5 bg-indigo-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-700"
+        className="absolute top-2 right-2 z-20 p-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity hover:from-teal-600 hover:to-emerald-600 shadow-lg shadow-teal-500/30"
         title="Edit deal"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,8 +139,8 @@ const DroppableStageColumn = ({ stage, deals, onEdit, isOver }) => {
   return (
     <div 
       ref={setNodeRef}
-      className={`flex-1 min-w-[240px] sm:min-w-[280px] bg-gray-50 rounded-lg p-3 sm:p-4 transition-colors ${
-        isOver ? 'bg-indigo-50 ring-2 ring-indigo-300' : ''
+      className={`flex-1 min-w-[240px] sm:min-w-[280px] glass-card rounded-xl p-3 sm:p-4 transition-all ${
+        isOver ? 'bg-teal-50/80 ring-2 ring-teal-300 shadow-xl shadow-teal-500/20' : ''
       }`}
     >
       <div className="flex items-center justify-between mb-4">
@@ -404,7 +409,7 @@ const Deals = () => {
           {hasPermission(userRole, 'MANAGE_ORGANIZATION') && (
             <button
               onClick={() => setShowStageManagement(true)}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center sm:justify-start"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center sm:justify-start shadow-lg"
             >
               <svg className="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -415,7 +420,7 @@ const Deals = () => {
           {hasPermission(userRole, 'CREATE_DEAL') && (
             <button
               onClick={handleCreateDeal}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center sm:justify-start"
+              className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-lg hover:from-teal-600 hover:to-emerald-600 transition-colors flex items-center justify-center sm:justify-start shadow-lg shadow-teal-500/30"
             >
               <svg className="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -444,13 +449,13 @@ const Deals = () => {
             />
           ))}
         </div>
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeDeal ? (
-            <div className="bg-white rounded-lg shadow-lg border-2 border-indigo-500 p-4 w-64">
-              <h3 className="font-semibold text-gray-900 mb-2">{activeDeal.title}</h3>
-              <div className="text-sm text-gray-600">
+            <div className="bg-gray-900/95 backdrop-blur-xl border-2 border-teal-500 rounded-xl shadow-2xl shadow-teal-500/50 p-4 w-64 transform rotate-3 cursor-grabbing">
+              <h3 className="font-semibold text-white mb-2">{activeDeal.title}</h3>
+              <div className="text-sm text-gray-300">
                 <div className="flex items-center">
-                  <span className="font-medium">Value:</span>
+                  <span className="font-medium text-teal-400">Value:</span>
                   <span className="ml-2">
                     {activeDeal.value 
                       ? new Intl.NumberFormat('en-US', {
@@ -463,7 +468,7 @@ const Deals = () => {
                 </div>
                 {activeDeal.contactPerson && (
                   <div className="flex items-center mt-1">
-                    <span className="font-medium">Contact:</span>
+                    <span className="font-medium text-teal-400">Contact:</span>
                     <span className="ml-2">{activeDeal.contactPerson.name}</span>
                   </div>
                 )}
@@ -617,8 +622,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
             {deal ? 'Edit Deal' : 'Create Deal'}
@@ -643,8 +648,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.title ? 'border-red-400' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm ${
+                errors.title ? 'border-red-400' : 'border-white/20'
               }`}
             />
             {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title}</p>}
@@ -659,8 +664,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 type="number"
                 value={formData.value}
                 onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.value ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm ${
+                  errors.value ? 'border-red-400' : 'border-white/20'
                 }`}
               />
               {errors.value && <p className="mt-1 text-xs text-red-600">{errors.value}</p>}
@@ -672,7 +677,7 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
               <select
                 value={formData.currency}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-white/20 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
               >
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -697,8 +702,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                   probability: selectedStage?.defaultProbability || formData.probability
                 });
               }}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                errors.stageId ? 'border-red-400' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm ${
+                errors.stageId ? 'border-red-400' : 'border-white/20'
               }`}
             >
               {stages.map(stage => (
@@ -730,7 +735,7 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 setFormData({ ...formData, assignedToUserId: userId });
                 setSelectedUser(user ? { id: user.id, name: user.name, email: user.email } : null);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-white/20 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
             >
               <option value="">No assignment</option>
               {loadingUsers ? (
@@ -764,8 +769,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 type="date"
                 value={formData.expectedCloseDate}
                 onChange={(e) => setFormData({ ...formData, expectedCloseDate: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.expectedCloseDate ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm ${
+                  errors.expectedCloseDate ? 'border-red-400' : 'border-white/20'
                 }`}
               />
               {errors.expectedCloseDate && (
@@ -782,8 +787,8 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
                 max="100"
                 value={formData.probability}
                 onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.probability ? 'border-red-400' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm ${
+                  errors.probability ? 'border-red-400' : 'border-white/20'
                 }`}
               />
               {errors.probability && <p className="mt-1 text-xs text-red-600">{errors.probability}</p>}
@@ -825,7 +830,7 @@ const DealModal = ({ deal, stages, onClose, onSave, onDelete, canDeleteDeal }) =
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-lg hover:from-teal-600 hover:to-emerald-600 transition-colors disabled:opacity-50 shadow-lg shadow-teal-500/30"
               disabled={submitting}
             >
               {submitting ? 'Saving...' : deal ? 'Update' : 'Create'}
@@ -902,8 +907,8 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-card rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">Manage Deal Stages</h2>
           <button
@@ -933,7 +938,7 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
                       handleCreateStage();
                     }
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="flex-1 px-3 py-2 border border-white/20 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
                 />
                 <input
                   type="color"
@@ -948,11 +953,11 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
                   placeholder="Prob %"
                   value={newStageProbability}
                   onChange={(e) => setNewStageProbability(parseInt(e.target.value) || 0)}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-24 px-3 py-2 border border-white/20 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
                 />
                 <button
                   onClick={handleCreateStage}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-lg hover:from-teal-600 hover:to-emerald-600 transition-colors shadow-lg shadow-teal-500/30"
                 >
                   Add Stage
                 </button>
@@ -990,7 +995,7 @@ const StageManagementModal = ({ stages, onClose, onUpdate }) => {
                       </div>
                       <button
                         onClick={() => setEditingStage(stage.id)}
-                        className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                        className="px-3 py-1 text-sm text-teal-600 hover:bg-teal-50 rounded transition-colors"
                       >
                         Edit
                       </button>
@@ -1050,7 +1055,7 @@ const StageEditForm = ({ stage, onSave, onCancel }) => {
           }
         }}
         autoFocus
-        className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        className="flex-1 px-2 py-1 border border-white/20 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
       />
       <input
         type="color"
@@ -1070,7 +1075,7 @@ const StageEditForm = ({ stage, onSave, onCancel }) => {
           setDefaultProbability(parseInt(e.target.value) || 0);
         }}
         onBlur={handleSave}
-        className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        className="w-20 px-2 py-1 border border-white/20 rounded focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white/50 backdrop-blur-sm"
         placeholder="Prob %"
       />
       <button

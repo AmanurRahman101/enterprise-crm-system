@@ -5,6 +5,9 @@ import OrganizationSwitcher from '../components/OrganizationSwitcher'
 import DashboardNavbar from '../components/DashboardNavbar'
 import Chatbot, { ChatbotToggle } from '../components/Chatbot'
 import CallInterface from '../components/CallInterface'
+import CommandPalette from '../components/CommandPalette'
+import RouteLoadingBar from '../components/RouteLoadingBar'
+import ScrollToTop from '../components/ScrollToTop'
 import ApiService from '../services/api'
 import SocketService from '../services/socketService'
 
@@ -16,6 +19,7 @@ const DashboardLayout = () => {
   // Sidebar open state (for mobile) - false = closed, true = open
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [chatbotOpen, setChatbotOpen] = useState(false)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [user, setUser] = useState(() => ApiService.getUser())
   const [currentOrg, setCurrentOrg] = useState(() => ApiService.getCurrentOrganization())
   
@@ -31,6 +35,19 @@ const DashboardLayout = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [isSidebarOpen]);
+  
+  // Command Palette keyboard shortcut (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   // Sync user and org from localStorage on mount and when location changes
   useEffect(() => {
@@ -191,7 +208,9 @@ const DashboardLayout = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden">
+      <RouteLoadingBar />
+      <ScrollToTop />
       {/* Top Navbar - Full Width */}
       <DashboardNavbar 
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -215,13 +234,13 @@ const DashboardLayout = () => {
         <aside className={`
           fixed top-14 left-0 bottom-0 z-40
           ${isSidebarCollapsed ? 'lg:w-16' : 'w-64 sm:w-72 lg:w-64'}
-          bg-gradient-to-b from-white to-gray-50 shadow-xl flex flex-col
-          transform transition-all duration-300 ease-in-out
+          bg-gray-950/95 backdrop-blur-xl border-r border-teal-500/20 flex flex-col
+          transform transition-all duration-300 ease-in-out shadow-2xl shadow-black/50
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
 
         {/* User Profile Section - Clickable to Client Portal */}
-        <div className={`p-3 border-b border-gray-200 bg-white ${isSidebarCollapsed ? 'lg:px-2' : ''}`}>
+        <div className={`p-3 border-b border-gray-800 bg-gray-900/30 ${isSidebarCollapsed ? 'lg:px-2' : ''}`}>
           <Link
             to="/dashboard/client"
             onClick={() => {
@@ -230,11 +249,11 @@ const DashboardLayout = () => {
                 setIsSidebarOpen(false);
               }
             }}
-            className={`flex items-center mb-2 cursor-pointer hover:opacity-80 transition-opacity group focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-lg p-1 -m-1 ${isSidebarCollapsed ? 'lg:justify-center' : ''}`}
+            className={`flex items-center mb-2 cursor-pointer hover:opacity-80 transition-opacity group focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-lg p-1 -m-1 ${isSidebarCollapsed ? 'lg:justify-center' : ''}`}
             title="Go to Client Portal"
             aria-label="Go to Client Portal"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+            <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-full flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
               <span className="text-white font-bold text-base">
                 {user?.fullName?.[0]?.toUpperCase() || currentOrg?.name?.[0]?.toUpperCase() || 'U'}
               </span>
@@ -242,13 +261,13 @@ const DashboardLayout = () => {
             {!isSidebarCollapsed && (
               <>
                 <div className="ml-2 flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                  <p className="text-sm font-semibold text-white truncate group-hover:text-teal-400 transition-colors">
                     {user?.fullName || currentOrg?.name || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500 truncate group-hover:text-indigo-500 transition-colors">{user?.email}</p>
+                  <p className="text-xs text-gray-300 truncate group-hover:text-teal-300 transition-colors">{user?.email}</p>
                 </div>
                 <svg 
-                  className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors ml-1.5 shrink-0" 
+                  className="w-4 h-4 text-gray-400 group-hover:text-teal-400 transition-colors ml-1.5 shrink-0" 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -268,10 +287,10 @@ const DashboardLayout = () => {
                 setIsSidebarOpen(false);
               }
             }}
-            className={`flex items-center px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+            className={`flex items-center px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
               location.pathname.startsWith('/dashboard/organization')
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-lg shadow-teal-500/40'
+                : 'text-gray-300 hover:bg-gray-800/60 hover:text-white'
             } ${isSidebarCollapsed ? 'lg:justify-center lg:px-2' : ''}`}
             title="Go to Organizations"
             aria-label="Go to Organizations"
@@ -279,14 +298,14 @@ const DashboardLayout = () => {
             <svg className={`w-4 h-4 ${isSidebarCollapsed ? '' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            {!isSidebarCollapsed && <span>Organizations</span>}
+            {!isSidebarCollapsed && <span className="font-medium">Organizations</span>}
           </Link>
         </div>
 
         {/* Organization Switcher (show when in organization mode - always visible so users can create orgs) */}
         {location.pathname.startsWith('/dashboard/organization') && !isSidebarCollapsed && (
-          <div className="px-3 py-2 border-b border-gray-200 bg-white">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5 px-1">
+          <div className="px-3 py-2 border-b border-gray-800">
+            <p className="text-xs font-semibold text-gray-400 uppercase mb-1.5 px-1 tracking-wider">
               {currentOrg ? 'Current Organization' : 'No Organization'}
             </p>
             <OrganizationSwitcher />
@@ -298,7 +317,7 @@ const DashboardLayout = () => {
           <nav className={`flex-1 overflow-y-auto py-3 ${isSidebarCollapsed ? 'lg:px-2' : 'px-3'}`}>
             {!isSidebarCollapsed && (
               <div className="mb-2 px-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   {location.pathname.startsWith('/dashboard/organization') ? 'CRM Modules' : 
                    location.pathname.startsWith('/dashboard/client') ? 'My Portal' : 'Navigation'}
                 </p>
@@ -315,12 +334,12 @@ const DashboardLayout = () => {
                         setIsSidebarOpen(false);
                       }
                     }}
-                    className={`flex items-center py-2.5 rounded-lg text-sm font-medium transition-all group relative focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    className={`flex items-center py-2.5 rounded-lg text-sm font-medium transition-all group relative focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-gray-950 ${
                       isSidebarCollapsed ? 'lg:justify-center lg:px-2' : 'px-3'
                     } ${
                       isActive(item.path)
-                        ? 'bg-indigo-50 text-indigo-600 shadow-sm'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        ? 'bg-teal-500/20 text-teal-400 shadow-lg shadow-teal-500/30 border border-teal-500/30'
+                        : 'text-gray-300 hover:bg-gray-800/60 hover:text-white'
                     }`}
                     title={item.label}
                   >
@@ -328,7 +347,7 @@ const DashboardLayout = () => {
                       className={`w-5 h-5 shrink-0 transition-colors ${
                         isSidebarCollapsed ? '' : 'mr-3'
                       } ${
-                        isActive(item.path) ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'
+                        isActive(item.path) ? 'text-teal-400' : 'text-gray-400 group-hover:text-white'
                       }`}
                       fill="none"
                       stroke="currentColor"
@@ -340,7 +359,7 @@ const DashboardLayout = () => {
                       <>
                         <span className="truncate flex-1">{item.label}</span>
                         {isActive(item.path) && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-600 rounded-r-full"></div>
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-r-full shadow-lg shadow-teal-500/50"></div>
                         )}
                       </>
                     )}
@@ -352,15 +371,15 @@ const DashboardLayout = () => {
         )}
 
         {/* Bottom Actions */}
-        <div className={`border-t border-gray-200 bg-white ${isSidebarCollapsed ? 'lg:p-2' : 'p-4'}`}>
+        <div className={`border-t border-gray-800 ${isSidebarCollapsed ? 'lg:p-2' : 'p-4'}`}>
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center bg-gray-50 text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all group ${
+            className={`w-full flex items-center bg-gray-800/50 text-gray-300 rounded-lg hover:bg-red-900/40 hover:text-red-400 transition-all group ${
               isSidebarCollapsed ? 'lg:justify-center lg:px-2 lg:py-2.5' : 'justify-center px-4 py-2.5'
             }`}
             title="Logout"
           >
-            <svg className={`w-5 h-5 shrink-0 group-hover:text-red-600 ${isSidebarCollapsed ? '' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 shrink-0 group-hover:text-red-400 ${isSidebarCollapsed ? '' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             {!isSidebarCollapsed && <span className="text-sm font-medium">Logout</span>}
@@ -370,7 +389,7 @@ const DashboardLayout = () => {
 
         {/* Main Content */}
         <main 
-          className={`flex-1 overflow-y-auto w-full focus:outline-none bg-gray-50 transition-all duration-300 ${
+          className={`flex-1 overflow-y-auto w-full focus:outline-none transition-all duration-300 ${
             isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
           tabIndex={-1}
@@ -378,7 +397,7 @@ const DashboardLayout = () => {
           aria-label="Main content"
         >
           <div className="min-h-full">
-            <Outlet />
+            <Outlet key={location.pathname} />
           </div>
         </main>
       </div>
@@ -394,6 +413,10 @@ const DashboardLayout = () => {
             isClientPortal={location.pathname.startsWith('/dashboard/client')}
           />
           <CallInterface />
+          <CommandPalette 
+            isOpen={commandPaletteOpen} 
+            onClose={() => setCommandPaletteOpen(false)} 
+          />
         </>
       )}
     </div>

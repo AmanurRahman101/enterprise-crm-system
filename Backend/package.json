@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Tawasol CRM - Multi-tenant CRM Backend API",
+  "description": "Tawassul CRM - Multi-tenant CRM Backend API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
